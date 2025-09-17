@@ -3,6 +3,7 @@ package com.example.adminpanel.i18n;
 import com.vaadin.flow.i18n.I18NProvider;
 import org.springframework.stereotype.Component;
 
+import java.text.MessageFormat;
 import java.util.*;
 
 /**
@@ -49,7 +50,8 @@ public class TranslationProvider implements I18NProvider {
             value = key;
         }
         if (params != null && params.length > 0) {
-            value = String.format(locale, value, params);
+            MessageFormat formatter = new MessageFormat(value, locale);
+            value = formatter.format(params);
         }
         return value;
     }
