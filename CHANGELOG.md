@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## v4.6.0
+### Unified design system and layout polish
+* **Design tokens:** Rebuilt `tokens.css` with a documented color, spacing,
+  typography and elevation scale. Light and dark themes now derive all
+  surfaces, borders and component sizes from these tokens.
+* **View frame helper:** Added a reusable `ViewFrame` base class so views
+  share padding, max-width behaviour and responsive spacing. Grid and
+  form screens adopt surface cards (`surface-card`/`view-section`) for a
+  consistent layout rhythm.
+* **Form styling:** Refined `GeneratedForm` to render sections inside
+  elevated panels with clear titles, gaps and action bars. Inputs reuse
+  the global control height and primary button theme.
+* **Navigation shell:** Modernised header and drawer styling with
+  `.app-header`, `.app-drawer` and `.app-nav-item` classes, aligning hover
+  states, spacing and RTL behaviour.
+* **Design system documentation:** Expanded the `/design-system` view with
+  foundations, spacing and typography swatches plus refreshed button and
+  badge previews. Added `docs/design-system.md` to capture usage
+  guidelines and updated translations for both locales.
+
 ## v4.4.0
 ### Form generation feature and dynamic forms
 * **Dynamic form generator:** Introduced a new `GeneratedForm` component that builds Vaadin forms from JSON specifications stored under `src/main/resources/forms`.  The component reads a specification file, creates form sections and fields on the fly, applies client‑side validations (required, pattern), handles conditional visibility (`visibleWhen` expressions), and updates labels based on the current locale.  Field values are bound to an internal map and validated server‑side via a new `FormValidationService`.

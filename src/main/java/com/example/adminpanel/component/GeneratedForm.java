@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.formlayout.FormLayout;
@@ -14,6 +15,7 @@ import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
@@ -82,6 +84,8 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
     private final Map<String, Object> fieldValues = new HashMap<>();
     private final Map<String, List<Runnable>> visibilityWatchers = new HashMap<>();
     private final List<Runnable> localeUpdaters = new ArrayList<>();
+    private H3 titleHeading;
+    private Button submitButton;
 
     /**
      * Create a form from a JSON specification file located on the classpath
@@ -106,6 +110,10 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         }
         this.formId = spec.has("id") ? spec.get("id").asText() : jsonResource;
         buildForm();
+        addClassNames("surface-card", "form-shell");
+        setPadding(false);
+        setSpacing(false);
+        setWidthFull();
     }
 
     /**
@@ -118,22 +126,51 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
      */
     private void buildForm() {
         removeAll();
-        setSpacing(true);
-        setPadding(true);
-        // Title
+        localeUpdaters.clear();
+
         String title = getTranslationFromNode(spec.get("title"));
         if (StringUtils.hasText(title)) {
-            add(new H3(title));
+            titleHeading = new H3(title);
+            titleHeading.addClassName("form-shell__title");
+            add(titleHeading);
+            localeUpdaters.add(() -> {
+                String translated = getTranslationFromNode(spec.get("title"));
+                if (StringUtils.hasText(translated)) {
+                    titleHeading.setText(translated);
+                }
+            });
+        } else {
+            titleHeading = null;
         }
-        // Layout sections
+
+        VerticalLayout sections = new VerticalLayout();
+        sections.addClassName("form-sections");
+        sections.setPadding(false);
+        sections.setSpacing(false);
+        sections.setWidthFull();
+        sections.setDefaultHorizontalComponentAlignment(FlexComponent.Alignment.STRETCH);
+        add(sections);
+
         ArrayNode layout = (ArrayNode) spec.get("layout");
         if (layout != null) {
-            layout.forEach(sectionNode -> buildSection(sectionNode));
+            layout.forEach(sectionNode -> {
+                Component built = buildSection(sectionNode);
+                if (built != null) {
+                    sections.add(built);
+                }
+            });
         }
-        // Submit button
-        Button submit = new Button(getTranslation("form.submit"));
-        submit.addClickListener(e -> submit());
-        add(submit);
+
+        submitButton = new Button(getTranslation("form.submit"));
+        submitButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        submitButton.addClassName("form-submit");
+        submitButton.addClickListener(e -> submit());
+        localeUpdaters.add(() -> submitButton.setText(getTranslation("form.submit")));
+
+        Div actions = new Div();
+        actions.addClassName("form-actions");
+        actions.add(submitButton);
+        add(actions);
     }
 
     /**
@@ -142,21 +179,26 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
      *
      * @param section the JSON node describing a section
      */
-    private void buildSection(JsonNode section) {
+    private Component buildSection(JsonNode section) {
         String type = section.has("type") ? section.get("type").asText() : "";
         if (!"section".equals(type)) {
-            return;
+            return null;
         }
-        // Section title
+        VerticalLayout wrapper = new VerticalLayout();
+        wrapper.addClassName("form-section");
+        wrapper.setPadding(false);
+        wrapper.setSpacing(false);
+        wrapper.setWidthFull();
+        wrapper.setDefaultHorizontalComponentAlignment(FlexComponent.Alignment.STRETCH);
+
         String title = getTranslationFromNode(section.get("title"));
         if (StringUtils.hasText(title)) {
-            // Use a local variable so we can update the title on locale change
             H4 h4 = new H4(title);
-            add(h4);
-            // Register a locale updater for this section title
+            h4.addClassName("form-section__title");
+            wrapper.add(h4);
             localeUpdaters.add(() -> {
                 String t = getTranslationFromNode(section.get("title"));
-                if (t != null) {
+                if (StringUtils.hasText(t)) {
                     h4.setText(t);
                 }
             });
@@ -178,7 +220,8 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                 }
             });
         }
-        add(formLayout);
+        wrapper.add(formLayout);
+        return wrapper;
     }
 
     /**

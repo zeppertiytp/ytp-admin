@@ -17,18 +17,15 @@ import org.springframework.beans.factory.annotation.Autowired;
  * server‑side validation via a {@link FormValidationService}.
  */
 @Route(value = "forms", layout = MainLayout.class)
-public class FormGenerationView extends VerticalLayout implements LocaleChangeObserver {
+public class FormGenerationView extends ViewFrame implements LocaleChangeObserver {
 
     @Autowired
     public FormGenerationView(FormValidationService validationService) {
-        setPadding(true);
-        setSpacing(true);
-        setSizeFull();
-        // Create a generated form from the sample specification. The
-        // JSON file is located under src/main/resources/forms/user_form.json.
+        VerticalLayout content = createContentSection(ContentWidth.NARROW);
+        content.addClassName("form-view");
+
         GeneratedForm form = new GeneratedForm("user_form.json", validationService);
-        add(form);
-        setHorizontalComponentAlignment(Alignment.START, form);
+        content.add(form);
         updatePageTitle();
     }
 

@@ -6,6 +6,7 @@ import com.example.adminpanel.component.FilterDefinition;
 import com.example.adminpanel.model.Person;
 import com.example.adminpanel.service.MockPersonService;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
@@ -22,17 +23,25 @@ import java.util.List;
  * Person data.  The grid supports pagination and per-column filters.
  */
 @Route(value = "persons", layout = MainLayout.class)
-public class PersonTableView extends VerticalLayout implements BeforeEnterObserver, LocaleChangeObserver {
+public class PersonTableView extends ViewFrame implements BeforeEnterObserver, LocaleChangeObserver {
 
     private final MockPersonService personService;
     private FilterablePaginatedGrid<Person> grid;
+    private H2 heading;
 
     @Autowired
     public PersonTableView(MockPersonService personService) {
         this.personService = personService;
-        setSizeFull();
-        setPadding(true);
-        initTable();
+        VerticalLayout content = createContentSection(ContentWidth.FULL);
+        content.addClassName("grid-view");
+
+        heading = new H2(getTranslation("persons.title"));
+        heading.addClassName("view-title");
+        content.add(heading);
+
+        VerticalLayout gridSection = buildGridSection();
+        content.add(gridSection);
+        content.setFlexGrow(1, gridSection);
         updatePageTitle();
     }
 
@@ -44,7 +53,7 @@ public class PersonTableView extends VerticalLayout implements BeforeEnterObserv
         }
     }
 
-    private void initTable() {
+    private VerticalLayout buildGridSection() {
         // Define columns: property name, header, and type
         List<ColumnDefinition> columns = List.of(
                 new ColumnDefinition("firstName", "person.firstName", String.class),
@@ -90,8 +99,17 @@ public class PersonTableView extends VerticalLayout implements BeforeEnterObserv
             // Navigate to same view with updated parameters
             com.vaadin.flow.component.UI.getCurrent().navigate(PersonTableView.class, params);
         });
-        add(grid);
-        expand(grid);
+        grid.setSizeFull();
+
+        VerticalLayout wrapper = new VerticalLayout();
+        wrapper.addClassNames("surface-card", "view-section");
+        wrapper.setPadding(false);
+        wrapper.setSpacing(false);
+        wrapper.setWidthFull();
+        wrapper.setHeightFull();
+        wrapper.add(grid);
+        wrapper.setFlexGrow(1, grid);
+        return wrapper;
     }
 
     private void updatePageTitle() {
@@ -103,6 +121,7 @@ public class PersonTableView extends VerticalLayout implements BeforeEnterObserv
 
     @Override
     public void localeChange(LocaleChangeEvent event) {
+        heading.setText(getTranslation("persons.title"));
         updatePageTitle();
     }
 }

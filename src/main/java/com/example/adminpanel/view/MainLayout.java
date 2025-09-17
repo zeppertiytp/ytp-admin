@@ -9,6 +9,7 @@ import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.html.H6;
@@ -85,6 +86,7 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
     private void createHeader() {
         toggle = new DrawerToggle();
         toggle.getElement().setAttribute("aria-label", getTranslation("header.toggleMenu"));
+        toggle.addClassName("app-drawer-toggle");
 
         // Avatar + name (menu trigger)
         Avatar avatar = new Avatar("A");
@@ -105,6 +107,8 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
 
         // Language button shows the OTHER language (switch target)
         languageButton = new Button(getLanguageLabel());
+        languageButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        languageButton.addClassName("app-header__language");
         languageButton.addClickListener(click -> {
             Locale current = UI.getCurrent().getLocale();
             Locale next = "fa".equals(current.getLanguage()) ? Locale.ENGLISH : new Locale("fa");
@@ -122,7 +126,9 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
         });
 
         header = new HorizontalLayout();
-        header.setPadding(true);
+        header.addClassName("app-header");
+        header.setPadding(false);
+        header.setSpacing(false);
         header.setWidthFull();
         header.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
 
@@ -130,7 +136,9 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
         headerSpacer.getStyle().set("flex", "1");
 
         headerActions = new HorizontalLayout(languageButton, userMenu);
-        headerActions.setSpacing(true);
+        headerActions.addClassName("app-header__actions");
+        headerActions.setSpacing(false);
+        headerActions.setPadding(false);
         headerActions.setAlignItems(FlexComponent.Alignment.CENTER);
 
         updateHeaderOrder();
@@ -149,6 +157,7 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
 
     private void createDrawer() {
         menuLayout = new VerticalLayout();
+        menuLayout.addClassName("app-drawer");
         menuLayout.setPadding(false);
         menuLayout.setSpacing(false);
         menuLayout.setSizeFull();
@@ -167,13 +176,14 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
 
         grouped.forEach((group, items) -> {
             H6 groupHeader = new H6(getTranslation("menu." + group));
-            groupHeader.getStyle().setMargin("var(--lumo-space-m)");
+            groupHeader.addClassName("app-drawer__section-title");
             menuLayout.add(groupHeader);
 
             VerticalLayout groupLayout = new VerticalLayout();
             groupLayout.setPadding(false);
             groupLayout.setSpacing(false);
             groupLayout.setWidthFull();
+            groupLayout.addClassName("app-drawer__section");
 
             for (MenuItem item : items) {
                 if (item.hasChildren()) {
@@ -188,6 +198,7 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
                     // Make summary fill width and reserve space for the caret to avoid overlap
                     summary.setWidthFull();
                     summary.getStyle().set("padding-inline-end", "24px"); // space for caret
+                    summary.addClassNames("app-nav-item", "app-nav-item--summary");
                     if (icon != null) summary.add(icon);
                     summary.add(label);
 
@@ -195,6 +206,7 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
                     childrenLayout.setPadding(false);
                     childrenLayout.setSpacing(false);
                     childrenLayout.setWidthFull();
+                    childrenLayout.addClassName("app-drawer__children");
 
                     for (MenuItem child : item.getChildren()) {
                         Component childIcon = child.getIcon() != null ? new AppIcon(mapIconName(child.getIcon()), "18") : null;
@@ -205,7 +217,7 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
                         childRow.setPadding(false);
                         childRow.setAlignItems(FlexComponent.Alignment.CENTER);
                         childRow.setWidthFull();
-                        childRow.addClassName("nav-row");
+                        childRow.addClassName("app-nav-item");
                         childRow.getStyle().set("cursor", "pointer");
 
                         if (childIcon != null) childRow.add(childIcon);
@@ -221,6 +233,7 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
 
                     Details details = new Details(summary, childrenLayout);
                     details.setWidthFull();
+                    details.addClassName("app-nav-group");
                     details.setOpened(false);
                     groupLayout.add(details);
                 } else {
@@ -233,7 +246,7 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
                     row.setPadding(false);
                     row.setAlignItems(FlexComponent.Alignment.CENTER);
                     row.setWidthFull();
-                    row.addClassName("nav-row");
+                    row.addClassName("app-nav-item");
                     row.getStyle().set("cursor", "pointer");
 
                     if (icon != null) row.add(icon);

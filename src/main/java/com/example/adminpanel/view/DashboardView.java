@@ -2,8 +2,8 @@ package com.example.adminpanel.view;
 
 import com.example.adminpanel.security.SecurityService;
 import com.vaadin.flow.component.UI;
-import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
@@ -20,26 +20,32 @@ import org.springframework.beans.factory.annotation.Autowired;
  */
 @Route(value = "", layout = MainLayout.class)
 // The page title is set programmatically in the constructor and on locale changes
-public class DashboardView extends VerticalLayout implements LocaleChangeObserver, BeforeEnterObserver {
+public class DashboardView extends ViewFrame implements LocaleChangeObserver, BeforeEnterObserver {
 
     private final SecurityService securityService;
     private H1 title;
+    private Paragraph subtitle;
 
     @Autowired
     public DashboardView(SecurityService securityService) {
         this.securityService = securityService;
-        setSizeFull();
-        setDefaultHorizontalComponentAlignment(Alignment.CENTER);
+        VerticalLayout content = createContentSection();
+        content.addClassName("view-hero");
+        content.setAlignItems(Alignment.START);
+
         title = new H1(getTranslation("dashboard.title"));
-        add(title);
-        // Set the browser tab title programmatically based on the current locale
+        subtitle = new Paragraph(getTranslation("dashboard.subtitle"));
+        subtitle.addClassName("text-muted");
+
+        content.add(title, subtitle);
+
         UI.getCurrent().getPage().setTitle(getTranslation("dashboard.title"));
     }
 
     @Override
     public void localeChange(LocaleChangeEvent event) {
         title.setText(getTranslation("dashboard.title"));
-        // Update the page title when the locale changes
+        subtitle.setText(getTranslation("dashboard.subtitle"));
         UI.getCurrent().getPage().setTitle(getTranslation("dashboard.title"));
     }
 

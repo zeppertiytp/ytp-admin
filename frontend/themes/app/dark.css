@@ -1,67 +1,76 @@
 @import "tokens.css";
+
 :root[theme~="dark"] {
   color-scheme: dark;
-  --lumo-base-color: var(--color-surface-inv);
-  --lumo-body-text-color: var(--text-inverse);
-  --lumo-secondary-text-color: var(--color-muted-inv);
+  --surface-base: #0f172a;
+  --surface-raised: #111827;
+  --color-surface: var(--surface-raised);
+  --color-border: rgba(148, 163, 184, 0.24);
+  --color-muted: var(--gray-400);
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5f5;
+  --text-muted: #94a3b8;
+  --lumo-base-color: var(--color-surface);
+  --lumo-body-text-color: var(--text-primary);
+  --lumo-secondary-text-color: var(--text-secondary);
   --lumo-primary-color: var(--color-primary-400);
-  --lumo-primary-text-color: var(--color-primary-300);
+  --lumo-primary-text-color: var(--color-primary-200);
   --lumo-error-color: var(--color-danger-500);
   --lumo-success-color: var(--color-success-500);
-  --lumo-border-radius: var(--radius-m);
-  --lumo-space-m: var(--space-4);
-  --lumo-space-l: var(--space-6);
-  --lumo-line-height-m: 1.5;
-  --lumo-font-family: var(--font-family-base);
-}
-:root[theme~="dark"] .app-card { background: #151A21; border-color: var(--color-border-inv); box-shadow: 0 2px 6px rgba(0,0,0,.08); }
-/* Focus ring rules */
-vaadin-button::part(focus-ring),
-vaadin-menu-bar-button::part(focus-ring) {
-  box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring-color);
-}
-/* Inputs when focused */
-vaadin-text-field[focused]::part(input-field),
-vaadin-text-area[focused]::part(input-field),
-vaadin-combo-box[focused]::part(input-field),
-vaadin-number-field[focused]::part(input-field),
-vaadin-date-picker[focused]::part(input-field),
-vaadin-select[focused]::part(input-field) {
-  box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring-color);
-  border-color: var(--focus-ring-color);
+  --lumo-box-shadow-s: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --lumo-box-shadow-m: 0 10px 24px rgba(15, 23, 42, 0.5);
+  --lumo-box-shadow-l: 0 18px 36px rgba(15, 23, 42, 0.6);
 }
 
-[theme~="dark"] .app-card h2{color:var(--lumo-body-text-color);}
-
-/* Strong dark override for cards and headings */
-html[theme~="dark"] .app-card,
-body[theme~="dark"] .app-card,
-:root[theme~="dark"] .app-card,
-[theme~="dark"] .app-card {
-  background: #151A21 !important;
-  border-color: var(--color-border-inv) !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,.08) !important;
-}
-html[theme~="dark"] .app-card h2,
-body[theme~="dark"] .app-card h2,
-:root[theme~="dark"] .app-card h2,
-[theme~="dark"] .app-card h2 {
-  color: var(--lumo-body-text-color) !important;
+:root[theme~="dark"] body {
+  background: var(--surface-base);
+  color: var(--text-primary);
 }
 
-
-/* Navigation row styling for consistent icon-text spacing */
-.nav-row{
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-m);
-}
-.nav-row:hover{
-  background: color-mix(in oklab, var(--lumo-body-text-color) 6%, transparent);
+:root[theme~="dark"] vaadin-app-layout::part(navbar) {
+  background: var(--color-surface);
+  border-bottom-color: rgba(148, 163, 184, 0.16);
 }
 
-/* Make nav rows fill drawer width */
-.nav-row{ width:100%; }
+:root[theme~="dark"] vaadin-app-layout::part(drawer) {
+  background: var(--color-surface);
+  border-inline-end-color: rgba(148, 163, 184, 0.16);
+}
+
+:root[theme~="dark"] .app-drawer {
+  background: #0b1220;
+}
+
+:root[theme~="dark"] .app-drawer__section-title {
+  color: var(--text-muted);
+}
+
+:root[theme~="dark"] .app-nav-item:hover {
+  background: rgba(45, 212, 191, 0.16);
+}
+
+:root[theme~="dark"] .surface-card,
+:root[theme~="dark"] .app-card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+:root[theme~="dark"] .form-section {
+  background: rgba(148, 163, 184, 0.05);
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+:root[theme~="dark"] .token-swatch {
+  background: rgba(15, 23, 42, 0.7);
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+:root[theme~="dark"] .token-swatch__sample {
+  background: rgba(45, 212, 191, 0.32);
+}
+
+:root[theme~="dark"] .token-swatch__type,
+:root[theme~="dark"] .token-swatch__label {
+  color: var(--text-muted);
+}

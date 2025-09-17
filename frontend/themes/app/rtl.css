@@ -1,1 +1,17 @@
-[dir="rtl"] .app-card { text-align: right; }
+[dir="rtl"] .app-card,
+[dir="rtl"] .surface-card,
+[dir="rtl"] .form-section {
+  text-align: right;
+}
+
+[dir="rtl"] .form-actions {
+  justify-content: flex-start;
+}
+
+[dir="rtl"] .app-header__actions {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .app-nav-item {
+  justify-content: flex-end;
+}

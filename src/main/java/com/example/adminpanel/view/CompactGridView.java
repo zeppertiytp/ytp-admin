@@ -6,6 +6,7 @@ import com.example.adminpanel.component.FilterablePaginatedGrid;
 import com.example.adminpanel.model.Person;
 import com.example.adminpanel.service.MockPersonService;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
@@ -21,17 +22,25 @@ import java.util.List;
  * are many rows, it will scroll within the specified maximum height.
  */
 @Route(value = "compact-grid", layout = MainLayout.class)
-public class CompactGridView extends VerticalLayout implements LocaleChangeObserver {
+public class CompactGridView extends ViewFrame implements LocaleChangeObserver {
+
+    private H2 heading;
 
     @Autowired
     public CompactGridView(MockPersonService personService) {
-        setSizeFull();
-        setPadding(true);
-        initTable(personService);
+        VerticalLayout content = createContentSection();
+        content.addClassName("grid-view");
+
+        heading = new H2(getTranslation("compactGrid.title"));
+        heading.addClassName("view-title");
+        content.add(heading);
+
+        VerticalLayout gridSection = buildGridSection(personService);
+        content.add(gridSection);
         updatePageTitle();
     }
 
-    private void initTable(MockPersonService personService) {
+    private VerticalLayout buildGridSection(MockPersonService personService) {
         // Define columns
         List<ColumnDefinition> columns = List.of(
                 new ColumnDefinition("firstName", "person.firstName", String.class),
@@ -65,8 +74,13 @@ public class CompactGridView extends VerticalLayout implements LocaleChangeObser
         grid.setExpandGrid(false);
         grid.setMinHeight("200px");
         grid.setMaxHeight("400px");
-        add(grid);
-        // Do not call expand(grid) so that height constraints are respected
+        VerticalLayout wrapper = new VerticalLayout();
+        wrapper.addClassNames("surface-card", "view-section");
+        wrapper.setPadding(false);
+        wrapper.setSpacing(false);
+        wrapper.setWidthFull();
+        wrapper.add(grid);
+        return wrapper;
     }
 
     private void updatePageTitle() {
@@ -78,6 +92,7 @@ public class CompactGridView extends VerticalLayout implements LocaleChangeObser
 
     @Override
     public void localeChange(LocaleChangeEvent event) {
+        heading.setText(getTranslation("compactGrid.title"));
         updatePageTitle();
     }
 }

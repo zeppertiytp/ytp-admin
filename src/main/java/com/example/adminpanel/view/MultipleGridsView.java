@@ -7,6 +7,7 @@ import com.example.adminpanel.component.FilterablePaginatedGrid.GridFeature;
 import com.example.adminpanel.model.Person;
 import com.example.adminpanel.service.MockPersonService;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
@@ -22,18 +23,25 @@ import java.util.List;
  * coexist within a complex view without competing for space.
  */
 @Route(value = "multi-grids", layout = MainLayout.class)
-public class MultipleGridsView extends VerticalLayout implements LocaleChangeObserver {
+public class MultipleGridsView extends ViewFrame implements LocaleChangeObserver {
+
+    private H2 heading;
 
     @Autowired
     public MultipleGridsView(MockPersonService personService) {
-        setSizeFull();
-        setPadding(true);
-        setSpacing(true);
-        initTables(personService);
+        VerticalLayout content = createContentSection();
+        content.addClassName("grid-view");
+
+        heading = new H2(getTranslation("multipleGrids.title"));
+        heading.addClassName("view-title");
+        content.add(heading);
+
+        VerticalLayout sections = buildGridSections(personService);
+        content.add(sections);
         updatePageTitle();
     }
 
-    private void initTables(MockPersonService personService) {
+    private VerticalLayout buildGridSections(MockPersonService personService) {
         // Define common columns and filters
         List<ColumnDefinition> columns = List.of(
                 new ColumnDefinition("firstName", "person.firstName", String.class),
@@ -58,8 +66,25 @@ public class MultipleGridsView extends VerticalLayout implements LocaleChangeObs
         grid2.setExpandGrid(false);
         grid2.setMinHeight("200px");
         grid2.setMaxHeight("400px");
-        // Add both grids to the layout. Do not expand; let each control its own height
-        add(grid1, grid2);
+        VerticalLayout wrapper = new VerticalLayout();
+        wrapper.addClassNames("view-section-stack");
+        wrapper.setPadding(false);
+        wrapper.setSpacing(false);
+        wrapper.setWidthFull();
+
+        wrapper.add(buildGridCard(grid1));
+        wrapper.add(buildGridCard(grid2));
+        return wrapper;
+    }
+
+    private VerticalLayout buildGridCard(FilterablePaginatedGrid<Person> grid) {
+        VerticalLayout card = new VerticalLayout();
+        card.addClassNames("surface-card", "view-section");
+        card.setPadding(false);
+        card.setSpacing(false);
+        card.setWidthFull();
+        card.add(grid);
+        return card;
     }
 
     private void updatePageTitle() {
@@ -71,6 +96,7 @@ public class MultipleGridsView extends VerticalLayout implements LocaleChangeObs
 
     @Override
     public void localeChange(LocaleChangeEvent event) {
+        heading.setText(getTranslation("multipleGrids.title"));
         updatePageTitle();
     }
 }
