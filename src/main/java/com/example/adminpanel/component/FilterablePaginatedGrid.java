@@ -93,7 +93,7 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
     private final boolean usePageResult;
     private final Map<String, String> filters = new HashMap<>();
     private final Map<String, Component> filterComponents = new HashMap<>();
-    private final java.util.Map<com.vaadin.flow.component.formlayout.FormLayout.FormItem, String> filterLabelKeys = new java.util.LinkedHashMap<>();
+    private final java.util.Map<com.vaadin.flow.component.HasText, String> filterLabelKeys = new java.util.LinkedHashMap<>();
     private final com.vaadin.flow.component.dialog.Dialog filterDialog = new com.vaadin.flow.component.dialog.Dialog();
     private final Button filterButton = new Button();
 
@@ -451,9 +451,9 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
                     tf.setClearButtonVisible(true);
                     tf.setPlaceholder(getTranslation("grid.filterPlaceholder"));
                     filterComponents.put(def.getPropertyName(), tf);
-                    com.vaadin.flow.component.formlayout.FormLayout.FormItem item =
-                            formLayout.addFormItem(tf, getTranslation(def.getLabelKey()));
-                    filterLabelKeys.put(item, def.getLabelKey());
+                    com.vaadin.flow.component.html.Span label = new com.vaadin.flow.component.html.Span(getTranslation(def.getLabelKey()));
+                    formLayout.addFormItem(tf, label);
+                    filterLabelKeys.put(label, def.getLabelKey());
                 }
                 case NUMBER_RANGE -> {
                     // Two integer fields: min and max
@@ -468,9 +468,9 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
                     com.vaadin.flow.component.orderedlayout.HorizontalLayout rangeLayout = new com.vaadin.flow.component.orderedlayout.HorizontalLayout(minField, maxField);
                     rangeLayout.setWidthFull();
                     rangeLayout.setSpacing(true);
-                    com.vaadin.flow.component.formlayout.FormLayout.FormItem item =
-                            formLayout.addFormItem(rangeLayout, getTranslation(def.getLabelKey()));
-                    filterLabelKeys.put(item, def.getLabelKey());
+                    com.vaadin.flow.component.html.Span label = new com.vaadin.flow.component.html.Span(getTranslation(def.getLabelKey()));
+                    formLayout.addFormItem(rangeLayout, label);
+                    filterLabelKeys.put(label, def.getLabelKey());
                 }
                 case DATE_RANGE -> {
                     com.vaadin.flow.component.datepicker.DatePicker from = new com.vaadin.flow.component.datepicker.DatePicker();
@@ -482,9 +482,9 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
                     com.vaadin.flow.component.orderedlayout.HorizontalLayout dateLayout = new com.vaadin.flow.component.orderedlayout.HorizontalLayout(from, to);
                     dateLayout.setWidthFull();
                     dateLayout.setSpacing(true);
-                    com.vaadin.flow.component.formlayout.FormLayout.FormItem item =
-                            formLayout.addFormItem(dateLayout, getTranslation(def.getLabelKey()));
-                    filterLabelKeys.put(item, def.getLabelKey());
+                    com.vaadin.flow.component.html.Span label = new com.vaadin.flow.component.html.Span(getTranslation(def.getLabelKey()));
+                    formLayout.addFormItem(dateLayout, label);
+                    filterLabelKeys.put(label, def.getLabelKey());
                 }
                 case SELECT -> {
                     com.vaadin.flow.component.combobox.ComboBox<String> cb = new com.vaadin.flow.component.combobox.ComboBox<>();
@@ -492,9 +492,9 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
                     cb.setItems(def.getOptions());
                     cb.setClearButtonVisible(true);
                     filterComponents.put(def.getPropertyName(), cb);
-                    com.vaadin.flow.component.formlayout.FormLayout.FormItem item =
-                            formLayout.addFormItem(cb, getTranslation(def.getLabelKey()));
-                    filterLabelKeys.put(item, def.getLabelKey());
+                    com.vaadin.flow.component.html.Span label = new com.vaadin.flow.component.html.Span(getTranslation(def.getLabelKey()));
+                    formLayout.addFormItem(cb, label);
+                    filterLabelKeys.put(label, def.getLabelKey());
                     selectComponents.put(def.getPropertyName(), cb);
                 }
             }
@@ -805,7 +805,7 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
             col.setHeader(getTranslation(def.getHeaderKey()));
         }
 
-        filterLabelKeys.forEach((item, key) -> item.setLabel(getTranslation(key)));
+        filterLabelKeys.forEach((label, key) -> label.setText(getTranslation(key)));
 
         filterComponents.forEach((key, comp) -> {
             if (comp instanceof TextField tf) {
