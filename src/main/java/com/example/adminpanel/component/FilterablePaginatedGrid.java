@@ -41,6 +41,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.text.NumberFormat;
+import java.util.Locale;
 
 import com.example.adminpanel.component.PageResult;
 import com.example.adminpanel.component.PageResultService;
@@ -785,9 +787,13 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
     private void updatePageInfo() {
         int from = totalCount == 0 ? 0 : currentPage * pageSize + 1;
         int to = Math.min((currentPage + 1) * pageSize, totalCount);
-        int totalPages = (int) Math.ceil((double) totalCount / pageSize);
-        if (totalPages == 0) totalPages = 1;
-        pageInfo.setText(getTranslation("grid.pageInfo", from, to, totalCount));
+        UI ui = UI.getCurrent();
+        Locale locale = ui != null ? ui.getLocale() : Locale.getDefault();
+        NumberFormat integerFormat = NumberFormat.getIntegerInstance(locale);
+        String fromText = integerFormat.format(from);
+        String toText = integerFormat.format(to);
+        String totalText = integerFormat.format(totalCount);
+        pageInfo.setText(getTranslation("grid.pageInfo", fromText, toText, totalText));
     }
 
     private void applyTranslations() {
