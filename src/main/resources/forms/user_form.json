@@ -1,0 +1,251 @@
+{
+  "id": "user-form-v1",
+  "title": {
+    "fa": "کاربر جدید",
+    "en": "New User"
+  },
+  "layout": [
+    {
+      "type": "section",
+      "title": {
+        "fa": "اطلاعات اصلی",
+        "en": "Main"
+      },
+      "columns": 2,
+      "fields": [
+        {
+          "name": "firstName",
+          "label": {
+            "fa": "نام",
+            "en": "First name"
+          },
+          "type": "text",
+          "required": true,
+          "maxLength": 60
+        },
+        {
+          "name": "lastName",
+          "label": {
+            "fa": "نام خانوادگی",
+            "en": "Last name"
+          },
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "email",
+          "label": {
+            "fa": "ایمیل",
+            "en": "Email"
+          },
+          "type": "email",
+          "validators": [
+            {
+              "type": "pattern",
+              "value": "^.+@.+\\..+$",
+              "message": {
+                "fa": "ایمیل نامعتبر",
+                "en": "Invalid email"
+              }
+            }
+          ],
+          "required": true
+        },
+        {
+          "name": "role",
+          "label": {
+            "fa": "نقش",
+            "en": "Role"
+          },
+          "type": "select",
+          "options": [
+            {
+              "value": "ADMIN",
+              "label": {
+                "fa": "مدیر",
+                "en": "Admin"
+              }
+            },
+            {
+              "value": "EDITOR",
+              "label": {
+                "fa": "ویرایشگر",
+                "en": "Editor"
+              }
+            }
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": {
+        "fa": "تنظیمات",
+        "en": "Settings"
+      },
+      "columns": 2,
+      "fields": [
+        {
+          "name": "twoFactor",
+          "label": {
+            "fa": "دو مرحله‌ای",
+            "en": "Two‑factor"
+          },
+          "type": "switch"
+        },
+        {
+          "name": "phone",
+          "label": {
+            "fa": "موبایل",
+            "en": "Phone"
+          },
+          "type": "tel",
+          "visibleWhen": {
+            "all": [
+              {
+                "field": "twoFactor",
+                "op": "EQ",
+                "value": true
+              }
+            ]
+          },
+          "validators": [
+            {
+              "type": "pattern",
+              "value": "^09\\d{9}$",
+              "message": {
+                "fa": "موبایل نامعتبر",
+                "en": "Invalid phone"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": {
+        "fa": "اطلاعات بیشتر",
+        "en": "Additional"
+      },
+      "columns": 2,
+      "fields": [
+        {
+          "name": "dob",
+          "label": {
+            "fa": "تاریخ تولد",
+            "en": "Date of Birth"
+          },
+          "type": "date"
+        },
+        {
+          "name": "resume",
+          "label": {
+            "fa": "رزومه",
+            "en": "Resume"
+          },
+          "type": "file"
+        },
+        {
+          "name": "attachments",
+          "label": {
+            "fa": "فایل‌ها",
+            "en": "Attachments"
+          },
+          "type": "multiFile"
+        },
+        {
+          "name": "photos",
+          "label": {
+            "fa": "عکس‌ها",
+            "en": "Photos"
+          },
+          "type": "multiImage"
+        },
+        {
+          "name": "gender",
+          "label": {
+            "fa": "جنسیت",
+            "en": "Gender"
+          },
+          "type": "radio",
+          "options": [
+            {
+              "value": "M",
+              "label": {
+                "fa": "مرد",
+                "en": "Male"
+              }
+            },
+            {
+              "value": "F",
+              "label": {
+                "fa": "زن",
+                "en": "Female"
+              }
+            },
+            {
+              "value": "O",
+              "label": {
+                "fa": "دیگر",
+                "en": "Other"
+              }
+            }
+          ]
+        },
+        {
+          "name": "profilePhoto",
+          "label": {
+            "fa": "عکس پروفایل",
+            "en": "Profile photo"
+          },
+          "type": "image"
+        },
+        {
+          "name": "homeLocation",
+          "label": {
+            "fa": "موقعیت جغرافیایی",
+            "en": "Location"
+          },
+          "type": "map"
+        },
+        {
+          "name": "passengers",
+          "label": {
+            "fa": "مسافران",
+            "en": "Passengers"
+          },
+          "type": "group",
+          "minItems": 1,
+          "maxItems": 5,
+          "fields": [
+            {
+              "name": "firstName",
+              "label": {
+                "fa": "نام مسافر",
+                "en": "Passenger first name"
+              },
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": "lastName",
+              "label": {
+                "fa": "نام خانوادگی مسافر",
+                "en": "Passenger last name"
+              },
+              "type": "text",
+              "required": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "submit": {
+    "endpoint": "/api/users",
+    "method": "POST",
+    "backendValidation": true
+  }
+}

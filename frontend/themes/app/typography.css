@@ -1,0 +1,1 @@
+:root { font-family: var(--font-family-base); font-size: var(--font-size-base); } .tabular-nums { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }

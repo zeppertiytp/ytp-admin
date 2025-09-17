@@ -1,0 +1,67 @@
+@import "tokens.css";
+:root[theme~="dark"] {
+  color-scheme: dark;
+  --lumo-base-color: var(--color-surface-inv);
+  --lumo-body-text-color: var(--text-inverse);
+  --lumo-secondary-text-color: var(--color-muted-inv);
+  --lumo-primary-color: var(--color-primary-400);
+  --lumo-primary-text-color: var(--color-primary-300);
+  --lumo-error-color: var(--color-danger-500);
+  --lumo-success-color: var(--color-success-500);
+  --lumo-border-radius: var(--radius-m);
+  --lumo-space-m: var(--space-4);
+  --lumo-space-l: var(--space-6);
+  --lumo-line-height-m: 1.5;
+  --lumo-font-family: var(--font-family-base);
+}
+:root[theme~="dark"] .app-card { background: #151A21; border-color: var(--color-border-inv); box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+/* Focus ring rules */
+vaadin-button::part(focus-ring),
+vaadin-menu-bar-button::part(focus-ring) {
+  box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring-color);
+}
+/* Inputs when focused */
+vaadin-text-field[focused]::part(input-field),
+vaadin-text-area[focused]::part(input-field),
+vaadin-combo-box[focused]::part(input-field),
+vaadin-number-field[focused]::part(input-field),
+vaadin-date-picker[focused]::part(input-field),
+vaadin-select[focused]::part(input-field) {
+  box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring-color);
+  border-color: var(--focus-ring-color);
+}
+
+[theme~="dark"] .app-card h2{color:var(--lumo-body-text-color);}
+
+/* Strong dark override for cards and headings */
+html[theme~="dark"] .app-card,
+body[theme~="dark"] .app-card,
+:root[theme~="dark"] .app-card,
+[theme~="dark"] .app-card {
+  background: #151A21 !important;
+  border-color: var(--color-border-inv) !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,.08) !important;
+}
+html[theme~="dark"] .app-card h2,
+body[theme~="dark"] .app-card h2,
+:root[theme~="dark"] .app-card h2,
+[theme~="dark"] .app-card h2 {
+  color: var(--lumo-body-text-color) !important;
+}
+
+
+/* Navigation row styling for consistent icon-text spacing */
+.nav-row{
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-m);
+}
+.nav-row:hover{
+  background: color-mix(in oklab, var(--lumo-body-text-color) 6%, transparent);
+}
+
+/* Make nav rows fill drawer width */
+.nav-row{ width:100%; }

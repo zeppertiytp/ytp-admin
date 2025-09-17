@@ -1,0 +1,66 @@
+@import "tokens.css";
+:root {
+  color-scheme: light;
+  --lumo-base-color: var(--color-surface);
+  --lumo-body-text-color: var(--text-primary);
+  --lumo-secondary-text-color: var(--text-secondary);
+  --lumo-primary-color: var(--color-primary-600);
+  --lumo-primary-text-color: var(--color-primary-600);
+  --lumo-error-color: var(--color-danger-500);
+  --lumo-success-color: var(--color-success-500);
+  --lumo-border-radius: var(--radius-m);
+  --lumo-space-m: var(--space-4);
+  --lumo-space-l: var(--space-6);
+  --lumo-line-height-m: 1.5;
+  --lumo-font-family: var(--font-family-base);
+}
+/* base badge centering */
+[theme~="badge"]{display:inline-flex;align-items:center;justify-content:center;line-height:1;height:28px;padding:0 var(--space-3);font-weight:600;border-radius:999px}
+/* Badge color variants */
+[theme~="badge"].primary  { background: var(--color-primary-100);  color: var(--color-primary-700); }
+[theme~="badge"].secondary{ background: var(--color-secondary-100);color: var(--color-secondary-700); }
+[theme~="badge"].info     { background: #E0F2FE;                   color: var(--color-info-500);     }
+[theme~="badge"].success  { background: #D1FAE5;                   color: var(--color-success-500);  }
+[theme~="badge"].warning  { background: #FEF3C7;                   color: var(--color-warning-500);  }
+[theme~="badge"].danger   { background: #FFE4E6;                   color: var(--color-danger-500);   }
+
+vaadin-button[theme~="primary"]   { --lumo-primary-color: var(--color-primary-600); }
+vaadin-button[theme~="secondary"] { --lumo-primary-color: var(--color-secondary-600); }
+vaadin-button[theme~="info"]      { --lumo-primary-color: var(--color-info-500); }
+vaadin-button[theme~="success"]   { --lumo-primary-color: var(--color-success-500); }
+vaadin-button[theme~="warning"]   { --lumo-primary-color: var(--color-warning-500); }
+vaadin-button[theme~="danger"]    { --lumo-primary-color: var(--color-danger-500); }
+
+.app-card { background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-l); box-shadow: 0 1px 2px rgba(0,0,0,.06); padding: var(--space-6); }
+/* Focus ring rules */
+vaadin-button::part(focus-ring),
+vaadin-menu-bar-button::part(focus-ring) {
+  box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring-color);
+}
+/* Inputs when focused */
+vaadin-text-field[focused]::part(input-field),
+vaadin-text-area[focused]::part(input-field),
+vaadin-combo-box[focused]::part(input-field),
+vaadin-number-field[focused]::part(input-field),
+vaadin-date-picker[focused]::part(input-field),
+vaadin-select[focused]::part(input-field) {
+  box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring-color);
+  border-color: var(--focus-ring-color);
+}
+
+.app-card h2{margin-top:0;color:var(--lumo-body-text-color);}
+/* Navigation row styling for consistent icon-text spacing */
+.nav-row{
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-m);
+}
+.nav-row:hover{
+  background: color-mix(in oklab, var(--lumo-body-text-color) 6%, transparent);
+}
+
+/* Make nav rows fill drawer width */
+.nav-row{ width:100%; }
