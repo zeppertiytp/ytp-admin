@@ -5,8 +5,10 @@ import com.example.adminpanel.component.FilterDefinition;
 import com.example.adminpanel.component.FilterablePaginatedGrid;
 import com.example.adminpanel.model.Person;
 import com.example.adminpanel.service.MockPersonService;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.i18n.LocaleChangeEvent;
+import com.vaadin.flow.i18n.LocaleChangeObserver;
 import com.vaadin.flow.router.Route;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -19,34 +21,34 @@ import java.util.List;
  * are many rows, it will scroll within the specified maximum height.
  */
 @Route(value = "compact-grid", layout = MainLayout.class)
-@PageTitle("Compact Grid")
-public class CompactGridView extends VerticalLayout {
+public class CompactGridView extends VerticalLayout implements LocaleChangeObserver {
 
     @Autowired
     public CompactGridView(MockPersonService personService) {
         setSizeFull();
         setPadding(true);
         initTable(personService);
+        updatePageTitle();
     }
 
     private void initTable(MockPersonService personService) {
         // Define columns
         List<ColumnDefinition> columns = List.of(
-                new ColumnDefinition("firstName", "First Name", String.class),
-                new ColumnDefinition("lastName", "Last Name", String.class),
-                new ColumnDefinition("email", "Email", String.class),
-                new ColumnDefinition("age", "Age", Integer.class)
+                new ColumnDefinition("firstName", "person.firstName", String.class),
+                new ColumnDefinition("lastName", "person.lastName", String.class),
+                new ColumnDefinition("email", "person.email", String.class),
+                new ColumnDefinition("age", "person.age", Integer.class)
         );
         // Define filters similar to FullGridView
         List<FilterDefinition> filters = List.of(
-                new FilterDefinition("firstName", "First Name", FilterDefinition.FilterType.TEXT, String.class),
-                new FilterDefinition("lastName", "Last Name", FilterDefinition.FilterType.TEXT, String.class),
-                new FilterDefinition("email", "Email", FilterDefinition.FilterType.TEXT, String.class),
-                new FilterDefinition("age", "Age", FilterDefinition.FilterType.NUMBER_RANGE, Integer.class),
-                new FilterDefinition("country", "Country", List.of("USA", "UK", "Iran"), null),
+                new FilterDefinition("firstName", "person.firstName", FilterDefinition.FilterType.TEXT, String.class),
+                new FilterDefinition("lastName", "person.lastName", FilterDefinition.FilterType.TEXT, String.class),
+                new FilterDefinition("email", "person.email", FilterDefinition.FilterType.TEXT, String.class),
+                new FilterDefinition("age", "person.age", FilterDefinition.FilterType.NUMBER_RANGE, Integer.class),
+                new FilterDefinition("country", "person.country", List.of("USA", "UK", "Iran"), null),
                 new FilterDefinition(
                         "city",
-                        "City",
+                        "person.city",
                         List.of(
                                 "USA|New York",
                                 "USA|Los Angeles",
@@ -65,5 +67,17 @@ public class CompactGridView extends VerticalLayout {
         grid.setMaxHeight("400px");
         add(grid);
         // Do not call expand(grid) so that height constraints are respected
+    }
+
+    private void updatePageTitle() {
+        UI ui = UI.getCurrent();
+        if (ui != null) {
+            ui.getPage().setTitle(getTranslation("compactGrid.title"));
+        }
+    }
+
+    @Override
+    public void localeChange(LocaleChangeEvent event) {
+        updatePageTitle();
     }
 }

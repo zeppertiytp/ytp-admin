@@ -78,8 +78,8 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
     private final HorizontalLayout paginationControls = new HorizontalLayout();
     private Span pageSizeLabel;
     private final Span pageInfo = new Span();
-    private final Button prevButton = new Button("Previous");
-    private final Button nextButton = new Button("Next");
+    private final Button prevButton = new Button();
+    private final Button nextButton = new Button();
     private final com.vaadin.flow.component.combobox.ComboBox<Integer> pageSizeSelect = new com.vaadin.flow.component.combobox.ComboBox<>();
 
     // Top control bar containing the filter button and page size selector.
@@ -93,6 +93,7 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
     private final boolean usePageResult;
     private final Map<String, String> filters = new HashMap<>();
     private final Map<String, Component> filterComponents = new HashMap<>();
+    private final java.util.Map<com.vaadin.flow.component.formlayout.FormLayout.FormItem, String> filterLabelKeys = new java.util.LinkedHashMap<>();
     private final com.vaadin.flow.component.dialog.Dialog filterDialog = new com.vaadin.flow.component.dialog.Dialog();
     private final Button filterButton = new Button();
 
@@ -233,6 +234,7 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
         initFilterDialog();
         initPagination();
         refresh();
+        applyTranslations();
     }
 
     /**
@@ -275,6 +277,7 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
         initFilterDialog();
         initPagination();
         refresh();
+        applyTranslations();
     }
 
     /**
@@ -341,10 +344,6 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
         // The grid should take up the available vertical space within this layout,
         // while control bars occupy only the space needed for their contents.
         add(filterRow, topControls, appliedFiltersBar, grid, paginationControls);
-        // i18n initialize
-        filterButton.setText(getTranslation("grid.filter"));
-        filterDialog.setHeaderTitle(getTranslation("grid.filters"));
-
         // Expand the grid to fill vertical space only if expandGrid is enabled.
         if (expandGrid) {
             expand(grid);
@@ -407,7 +406,7 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
         // saved views.
         for (ColumnDefinition def : columns) {
             Grid.Column<T> col = grid.addColumn(item -> getPropertyValue(item, def.getPropertyName()))
-                    .setHeader(def.getHeaderKey())
+                    .setHeader(getTranslation(def.getHeaderKey()))
                     .setKey(def.getPropertyName());
             col.setResizable(true);
             gridColumns.add(col);
@@ -437,9 +436,10 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
         filterDialog.setCloseOnOutsideClick(true);
         filterDialog.setDraggable(true);
         filterDialog.setResizable(true);
-        filterDialog.setHeaderTitle("Filters");
+        filterDialog.setHeaderTitle(getTranslation("grid.filters"));
 
         com.vaadin.flow.component.formlayout.FormLayout formLayout = new com.vaadin.flow.component.formlayout.FormLayout();
+        filterLabelKeys.clear();
 
         // Map to store parent-child relationships for dependent filters
         java.util.Map<String, com.vaadin.flow.component.combobox.ComboBox<String>> selectComponents = new java.util.HashMap<>();
@@ -449,44 +449,52 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
                 case TEXT -> {
                     TextField tf = new TextField();
                     tf.setClearButtonVisible(true);
-                    tf.setPlaceholder("Filter");
+                    tf.setPlaceholder(getTranslation("grid.filterPlaceholder"));
                     filterComponents.put(def.getPropertyName(), tf);
-                    formLayout.addFormItem(tf, def.getLabelKey());
+                    com.vaadin.flow.component.formlayout.FormLayout.FormItem item =
+                            formLayout.addFormItem(tf, getTranslation(def.getLabelKey()));
+                    filterLabelKeys.put(item, def.getLabelKey());
                 }
                 case NUMBER_RANGE -> {
                     // Two integer fields: min and max
                     IntegerField minField = new IntegerField();
-                    minField.setPlaceholder("Min");
+                    minField.setPlaceholder(getTranslation("grid.minPlaceholder"));
                     minField.setClearButtonVisible(true);
                     IntegerField maxField = new IntegerField();
-                    maxField.setPlaceholder("Max");
+                    maxField.setPlaceholder(getTranslation("grid.maxPlaceholder"));
                     maxField.setClearButtonVisible(true);
                     filterComponents.put(def.getPropertyName() + ".min", minField);
                     filterComponents.put(def.getPropertyName() + ".max", maxField);
                     com.vaadin.flow.component.orderedlayout.HorizontalLayout rangeLayout = new com.vaadin.flow.component.orderedlayout.HorizontalLayout(minField, maxField);
                     rangeLayout.setWidthFull();
                     rangeLayout.setSpacing(true);
-                    formLayout.addFormItem(rangeLayout, def.getLabelKey());
+                    com.vaadin.flow.component.formlayout.FormLayout.FormItem item =
+                            formLayout.addFormItem(rangeLayout, getTranslation(def.getLabelKey()));
+                    filterLabelKeys.put(item, def.getLabelKey());
                 }
                 case DATE_RANGE -> {
                     com.vaadin.flow.component.datepicker.DatePicker from = new com.vaadin.flow.component.datepicker.DatePicker();
-                    from.setPlaceholder("From");
+                    from.setPlaceholder(getTranslation("grid.fromPlaceholder"));
                     com.vaadin.flow.component.datepicker.DatePicker to = new com.vaadin.flow.component.datepicker.DatePicker();
-                    to.setPlaceholder("To");
+                    to.setPlaceholder(getTranslation("grid.toPlaceholder"));
                     filterComponents.put(def.getPropertyName() + ".from", from);
                     filterComponents.put(def.getPropertyName() + ".to", to);
                     com.vaadin.flow.component.orderedlayout.HorizontalLayout dateLayout = new com.vaadin.flow.component.orderedlayout.HorizontalLayout(from, to);
                     dateLayout.setWidthFull();
                     dateLayout.setSpacing(true);
-                    formLayout.addFormItem(dateLayout, def.getLabelKey());
+                    com.vaadin.flow.component.formlayout.FormLayout.FormItem item =
+                            formLayout.addFormItem(dateLayout, getTranslation(def.getLabelKey()));
+                    filterLabelKeys.put(item, def.getLabelKey());
                 }
                 case SELECT -> {
                     com.vaadin.flow.component.combobox.ComboBox<String> cb = new com.vaadin.flow.component.combobox.ComboBox<>();
-                    cb.setPlaceholder("Select");
+                    cb.setPlaceholder(getTranslation("grid.selectPlaceholder"));
                     cb.setItems(def.getOptions());
                     cb.setClearButtonVisible(true);
                     filterComponents.put(def.getPropertyName(), cb);
-                    formLayout.addFormItem(cb, def.getLabelKey());
+                    com.vaadin.flow.component.formlayout.FormLayout.FormItem item =
+                            formLayout.addFormItem(cb, getTranslation(def.getLabelKey()));
+                    filterLabelKeys.put(item, def.getLabelKey());
                     selectComponents.put(def.getPropertyName(), cb);
                 }
             }
@@ -779,7 +787,78 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
         int to = Math.min((currentPage + 1) * pageSize, totalCount);
         int totalPages = (int) Math.ceil((double) totalCount / pageSize);
         if (totalPages == 0) totalPages = 1;
-        pageInfo.setText(String.format("%d-%d / %d", from, to, totalCount));
+        pageInfo.setText(getTranslation("grid.pageInfo", from, to, totalCount));
+    }
+
+    private void applyTranslations() {
+        filterButton.setText(getTranslation("grid.filter"));
+        filterDialog.setHeaderTitle(getTranslation("grid.filters"));
+        prevButton.setText(getTranslation("grid.previous"));
+        nextButton.setText(getTranslation("grid.next"));
+        if (pageSizeLabel != null) {
+            pageSizeLabel.setText(getTranslation("grid.rowsPerPage"));
+        }
+
+        for (int i = 0; i < gridColumns.size(); i++) {
+            Grid.Column<T> col = gridColumns.get(i);
+            ColumnDefinition def = columns.get(i);
+            col.setHeader(getTranslation(def.getHeaderKey()));
+        }
+
+        filterLabelKeys.forEach((item, key) -> item.setLabel(getTranslation(key)));
+
+        filterComponents.forEach((key, comp) -> {
+            if (comp instanceof TextField tf) {
+                tf.setPlaceholder(getTranslation("grid.filterPlaceholder"));
+            } else if (comp instanceof IntegerField field) {
+                if (key.endsWith(".min")) {
+                    field.setPlaceholder(getTranslation("grid.minPlaceholder"));
+                } else if (key.endsWith(".max")) {
+                    field.setPlaceholder(getTranslation("grid.maxPlaceholder"));
+                }
+            } else if (comp instanceof com.vaadin.flow.component.datepicker.DatePicker dp) {
+                if (key.endsWith(".from")) {
+                    dp.setPlaceholder(getTranslation("grid.fromPlaceholder"));
+                } else if (key.endsWith(".to")) {
+                    dp.setPlaceholder(getTranslation("grid.toPlaceholder"));
+                }
+            } else if (comp instanceof com.vaadin.flow.component.combobox.ComboBox<?> cb) {
+                cb.setPlaceholder(getTranslation("grid.selectPlaceholder"));
+            }
+        });
+
+        if (configRoot != null) {
+            configRoot.setText(getTranslation("grid.config"));
+            var rootSub = configRoot.getSubMenu();
+            int idx = 0;
+            if (features.contains(GridFeature.COLUMN_CONFIG)) {
+                MenuItem colItem = (MenuItem) rootSub.getItems().get(idx++);
+                colItem.setText(getTranslation("grid.columns"));
+            }
+            if (features.contains(GridFeature.EXPORT) && exportRoot != null) {
+                exportRoot.setText(getTranslation("grid.export"));
+                var exportSub = exportRoot.getSubMenu();
+                if (exportSub != null && exportSub.getItems().size() >= 2) {
+                    exportSub.getItems().get(0).setText(getTranslation("grid.exportCsv"));
+                    exportSub.getItems().get(1).setText(getTranslation("grid.exportExcel"));
+                }
+                idx++;
+            }
+            if (features.contains(GridFeature.VIEWS) && viewsRoot != null) {
+                viewsRoot.setText(getTranslation("grid.views"));
+                var viewsSub = viewsRoot.getSubMenu();
+                if (viewsSub != null && !viewsSub.getItems().isEmpty()) {
+                    viewsSub.getItems().get(0).setText(getTranslation("grid.saveView"));
+                }
+            }
+        }
+
+        if (features.contains(GridFeature.ROW_SELECTION) && bulkActionButton != null) {
+            int selected = grid.getSelectedItems().size();
+            bulkActionButton.setText(getTranslation("grid.selectedCount", selected));
+        }
+
+        updatePageInfo();
     }
 
     /**
@@ -996,48 +1075,7 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
 
     @Override
     public void localeChange(LocaleChangeEvent event) {
-        if (filterButton != null) filterButton.setText(getTranslation("grid.filter"));
-        if (filterDialog != null) filterDialog.setHeaderTitle(getTranslation("grid.filters"));
-        if (pageSizeLabel != null) pageSizeLabel.setText(getTranslation("grid.rowsPerPage"));
-        // Update captions for the configuration menu and its sub menus
-        if (configRoot != null) {
-            // Root caption
-            configRoot.setText(getTranslation("grid.config"));
-            // Column config item is first sub item if enabled, update its caption
-            var rootSub = configRoot.getSubMenu();
-            int idx = 0;
-            if (features.contains(GridFeature.COLUMN_CONFIG)) {
-                // Cast the first sub item to MenuItem and update its text.  The
-                // items list is keyed off the currently selected language, so we
-                // retrieve the first item and set the translated caption.
-                MenuItem colItem = (MenuItem) rootSub.getItems().get(idx++);
-                colItem.setText(getTranslation("grid.columns"));
-            }
-            // Export root and its children
-            if (features.contains(GridFeature.EXPORT) && exportRoot != null) {
-                exportRoot.setText(getTranslation("grid.export"));
-                var exportSub = exportRoot.getSubMenu();
-                if (exportSub != null && exportSub.getItems().size() >= 2) {
-                    exportSub.getItems().get(0).setText(getTranslation("grid.exportCsv"));
-                    exportSub.getItems().get(1).setText(getTranslation("grid.exportExcel"));
-                }
-                idx++;
-            }
-            // Views root and its children
-            if (features.contains(GridFeature.VIEWS) && viewsRoot != null) {
-                viewsRoot.setText(getTranslation("grid.views"));
-                var viewsSub = viewsRoot.getSubMenu();
-                // first item is save view
-                if (viewsSub != null && viewsSub.getItems().size() > 0) {
-                    viewsSub.getItems().get(0).setText(getTranslation("grid.saveView"));
-                }
-            }
-        }
-        // Update bulk action button caption to reflect current selection
-        if (bulkActionButton != null) {
-            int selected = grid.getSelectedItems().size();
-            bulkActionButton.setText(getTranslation("grid.selectedCount", selected));
-        }
+        applyTranslations();
     }
 
     /**
@@ -1166,7 +1204,7 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
             }
             name = name.trim();
             if (name.isEmpty()) {
-                name = "view" + System.currentTimeMillis();
+                name = getTranslation("grid.defaultViewName") + System.currentTimeMillis();
             }
             // Build a simple JSON string representing the view: columns order and visibility
             StringBuilder json = new StringBuilder();

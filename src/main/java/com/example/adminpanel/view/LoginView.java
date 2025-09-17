@@ -7,9 +7,10 @@ import com.vaadin.flow.component.login.LoginI18n;
 import com.vaadin.flow.component.login.LoginOverlay;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.i18n.LocaleChangeEvent;
+import com.vaadin.flow.i18n.LocaleChangeObserver;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,9 +27,8 @@ import java.util.Locale;
  * already authenticated users away from the login page.
  */
 @Route(value = "login")
-@PageTitle("Login")
 @PermitAll
-public class LoginView extends VerticalLayout implements BeforeEnterObserver {
+public class LoginView extends VerticalLayout implements BeforeEnterObserver, LocaleChangeObserver {
 
     private final SecurityService securityService;
     private final LoginOverlay loginOverlay;
@@ -41,6 +41,8 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         setSizeFull();
         setDefaultHorizontalComponentAlignment(FlexComponent.Alignment.CENTER);
         add(loginOverlay);
+
+        updatePageTitle();
 
         loginOverlay.addLoginListener(event -> {
             boolean success = securityService.authenticate(event.getUsername(), event.getPassword());
@@ -68,6 +70,13 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         overlay.setOpened(true);
         overlay.setAction("login");
         return overlay;
+    }
+
+    private void updatePageTitle() {
+        UI ui = UI.getCurrent();
+        if (ui != null) {
+            ui.getPage().setTitle(getTranslation("login.title"));
+        }
     }
 
     /**
@@ -98,5 +107,11 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         if (securityService.isAuthenticated()) {
             event.forwardTo("");
         }
+    }
+
+    @Override
+    public void localeChange(LocaleChangeEvent event) {
+        loginOverlay.setI18n(createI18n());
+        updatePageTitle();
     }
 }

@@ -1,6 +1,6 @@
 /// <reference path="../types/assets.d.ts" />
 import { LitElement, html } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -22,6 +22,27 @@ export class LocationPicker extends LitElement {
   private marker?: L.Marker;
   private resizeObserver?: ResizeObserver;
   private searchController?: AbortController;
+
+  @property({ type: String })
+  searchPlaceholder = '';
+
+  @property({ type: String })
+  searchLabel = '';
+
+  @property({ type: String })
+  searchingLabel = '';
+
+  @property({ type: String })
+  noResultsLabel = '';
+
+  @property({ type: String })
+  fetchErrorLabel = '';
+
+  @property({ type: String })
+  noSelectionLabel = '';
+
+  @property({ type: String })
+  selectedLabel = '';
 
   @state()
   private selectedLat: number | null = null;
@@ -151,13 +172,13 @@ export class LocationPicker extends LitElement {
         <div class="search-bar">
           <input
             type="text"
-            placeholder="Search for a place"
+            placeholder=${this.searchPlaceholder}
             .value=${this.searchQuery}
             @input=${this.handleSearchInput}
             @keydown=${this.handleSearchKeydown}
           />
           <button @click=${this.performSearch} ?disabled=${this.searching || this.searchQuery.trim().length < 3}>
-            ${this.searching ? 'Searching…' : 'Search'}
+            ${this.searching ? this.searchingLabel : this.searchLabel}
           </button>
         </div>
         ${this.searchError ? html`<div class="error">${this.searchError}</div>` : ''}
@@ -174,8 +195,8 @@ export class LocationPicker extends LitElement {
           : ''}
         <div class="status">
           ${this.selectedLat !== null && this.selectedLng !== null
-            ? html`Selected location: ${this.selectedLat.toFixed(5)}, ${this.selectedLng.toFixed(5)}`
-            : 'No location selected yet.'}
+            ? html`${this.selectedLabel} ${this.selectedLat.toFixed(5)}, ${this.selectedLng.toFixed(5)}`
+            : this.noSelectionLabel}
         </div>
         <div id="map"></div>
       </div>
@@ -234,7 +255,7 @@ export class LocationPicker extends LitElement {
       });
 
       if (!response.ok) {
-        throw new Error('Search failed');
+        throw new Error();
       }
 
       const payload = (await response.json()) as Array<{ lat: string; lon: string; display_name: string }>;
@@ -248,13 +269,13 @@ export class LocationPicker extends LitElement {
 
       this.searchResults = mapped;
       if (mapped.length === 0) {
-        this.searchError = 'No results found.';
+        this.searchError = this.noResultsLabel;
       }
     } catch (err: any) {
       if (err?.name === 'AbortError') {
         return;
       }
-      this.searchError = 'Unable to fetch locations. Please try again.';
+      this.searchError = this.fetchErrorLabel;
     } finally {
       this.searching = false;
     }
