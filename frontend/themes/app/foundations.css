@@ -1,6 +1,6 @@
 :root {
   /* Layout primitives */
-  --layout-max-width: 1120px;
+  --layout-max-width: 1280px;
   --layout-page-padding-inline: clamp(var(--space-4), 5vw, var(--space-8));
   --layout-page-padding-block: clamp(var(--space-6), 6vh, var(--space-10));
   --layout-section-gap: var(--space-7);
