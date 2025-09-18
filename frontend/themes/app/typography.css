@@ -1,1 +1,41 @@
-:root { font-family: var(--font-family-base); font-size: var(--font-size-base); } .tabular-nums { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+:root {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+}
+
+body {
+  color: var(--text-primary);
+  background: var(--surface-subtle);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--text-primary);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  margin: 0;
+}
+
+h1 { font-size: var(--font-size-display); }
+h2 { font-size: var(--font-size-xxl); }
+h3 { font-size: var(--font-size-xl); }
+h4 { font-size: var(--font-size-lg); }
+h5 { font-size: var(--font-size-md); }
+h6 { font-size: var(--font-size-sm); }
+
+p,
+span,
+label,
+div {
+  font-size: var(--font-size-md);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}

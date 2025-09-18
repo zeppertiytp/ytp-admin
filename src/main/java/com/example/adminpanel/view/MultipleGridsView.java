@@ -4,9 +4,11 @@ import com.example.adminpanel.component.ColumnDefinition;
 import com.example.adminpanel.component.FilterDefinition;
 import com.example.adminpanel.component.FilterablePaginatedGrid;
 import com.example.adminpanel.component.FilterablePaginatedGrid.GridFeature;
+import com.example.adminpanel.component.layout.AppPageLayout;
 import com.example.adminpanel.model.Person;
 import com.example.adminpanel.service.MockPersonService;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
@@ -22,16 +24,16 @@ import java.util.List;
  * coexist within a complex view without competing for space.
  */
 @Route(value = "multi-grids", layout = MainLayout.class)
-public class MultipleGridsView extends VerticalLayout implements LocaleChangeObserver {
+public class MultipleGridsView extends AppPageLayout implements LocaleChangeObserver {
 
     @Autowired
     public MultipleGridsView(MockPersonService personService) {
-        setSizeFull();
-        setPadding(true);
-        setSpacing(true);
+        pageTitle = createPageTitle(getTranslation("multipleGrids.title"));
         initTables(personService);
         updatePageTitle();
     }
+
+    private final H1 pageTitle;
 
     private void initTables(MockPersonService personService) {
         // Define common columns and filters
@@ -52,14 +54,18 @@ public class MultipleGridsView extends VerticalLayout implements LocaleChangeObs
         grid1.setExpandGrid(false);
         grid1.setMinHeight("250px");
         grid1.setMaxHeight("500px");
+        grid1.setWidthFull();
         // Grid 2: limited features (no export or views), different height
         EnumSet<GridFeature> features2 = EnumSet.of(GridFeature.COLUMN_CONFIG, GridFeature.ROW_SELECTION);
         FilterablePaginatedGrid<Person> grid2 = new FilterablePaginatedGrid<>(columns, filters, personService::fetchPage, 10, features2);
         grid2.setExpandGrid(false);
         grid2.setMinHeight("200px");
         grid2.setMaxHeight("400px");
-        // Add both grids to the layout. Do not expand; let each control its own height
-        add(grid1, grid2);
+        grid2.setWidthFull();
+
+        VerticalLayout gridCard = createCard(grid1, grid2);
+        gridCard.addClassName("stack-lg");
+        add(gridCard);
     }
 
     private void updatePageTitle() {
@@ -67,6 +73,7 @@ public class MultipleGridsView extends VerticalLayout implements LocaleChangeObs
         if (ui != null) {
             ui.getPage().setTitle(getTranslation("multipleGrids.title"));
         }
+        pageTitle.setText(getTranslation("multipleGrids.title"));
     }
 
     @Override

@@ -1,5 +1,6 @@
 /* Vaadin theme entry — REQUIRED */
 @import "tokens.css";
+@import "foundations.css";
 @import "light.css";
 @import "dark.css";
 @import "rtl.css";

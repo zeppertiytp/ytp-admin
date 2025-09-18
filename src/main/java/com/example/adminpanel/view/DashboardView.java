@@ -1,9 +1,10 @@
 package com.example.adminpanel.view;
 
+import com.example.adminpanel.component.layout.AppPageLayout;
 import com.example.adminpanel.security.SecurityService;
 import com.vaadin.flow.component.UI;
-import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
@@ -20,18 +21,28 @@ import org.springframework.beans.factory.annotation.Autowired;
  */
 @Route(value = "", layout = MainLayout.class)
 // The page title is set programmatically in the constructor and on locale changes
-public class DashboardView extends VerticalLayout implements LocaleChangeObserver, BeforeEnterObserver {
+public class DashboardView extends AppPageLayout implements LocaleChangeObserver, BeforeEnterObserver {
 
     private final SecurityService securityService;
     private H1 title;
+    private Span subtitle;
+    private Span heroMessage;
 
     @Autowired
     public DashboardView(SecurityService securityService) {
         this.securityService = securityService;
-        setSizeFull();
-        setDefaultHorizontalComponentAlignment(Alignment.CENTER);
-        title = new H1(getTranslation("dashboard.title"));
-        add(title);
+        title = createPageTitle(getTranslation("dashboard.title"));
+
+        subtitle = new Span(getTranslation("dashboard.subtitle"));
+        subtitle.addClassName("page-subtitle");
+        add(subtitle);
+
+        VerticalLayout hero = createCard();
+        hero.addClassNames("app-card--center", "stack-sm");
+        heroMessage = new Span(getTranslation("dashboard.welcome"));
+        heroMessage.addClassName("page-subtitle");
+        hero.add(heroMessage);
+        add(hero);
         // Set the browser tab title programmatically based on the current locale
         UI.getCurrent().getPage().setTitle(getTranslation("dashboard.title"));
     }
@@ -39,6 +50,8 @@ public class DashboardView extends VerticalLayout implements LocaleChangeObserve
     @Override
     public void localeChange(LocaleChangeEvent event) {
         title.setText(getTranslation("dashboard.title"));
+        subtitle.setText(getTranslation("dashboard.subtitle"));
+        heroMessage.setText(getTranslation("dashboard.welcome"));
         // Update the page title when the locale changes
         UI.getCurrent().getPage().setTitle(getTranslation("dashboard.title"));
     }

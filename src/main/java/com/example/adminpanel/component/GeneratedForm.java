@@ -14,10 +14,11 @@ import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
+import com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
-import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.datepicker.DatePicker;
@@ -25,19 +26,12 @@ import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
 import com.vaadin.flow.component.upload.receivers.MultiFileMemoryBuffer;
 import com.vaadin.flow.component.html.Image;
-import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.example.adminpanel.component.LocationPicker;
 import java.io.ByteArrayInputStream;
-import com.vaadin.flow.data.binder.BeanValidationBinder;
-import com.vaadin.flow.data.binder.Binder;
-import com.vaadin.flow.data.binder.ValidationException;
-import com.vaadin.flow.data.binder.Validator;
-import com.vaadin.flow.data.binder.ValueContext;
-import com.vaadin.flow.data.validator.EmailValidator;
-import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
 import org.springframework.util.StringUtils;
@@ -82,6 +76,8 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
     private final Map<String, Object> fieldValues = new HashMap<>();
     private final Map<String, List<Runnable>> visibilityWatchers = new HashMap<>();
     private final List<Runnable> localeUpdaters = new ArrayList<>();
+    private H3 formTitle;
+    private Button submitButton;
 
     /**
      * Create a form from a JSON specification file located on the classpath
@@ -118,12 +114,29 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
      */
     private void buildForm() {
         removeAll();
-        setSpacing(true);
-        setPadding(true);
-        // Title
+        localeUpdaters.clear();
+        fieldComponents.clear();
+        fieldValues.clear();
+        visibilityWatchers.clear();
+        setSpacing(false);
+        setPadding(false);
+        setWidthFull();
+        setDefaultHorizontalComponentAlignment(Alignment.STRETCH);
+        addClassNames("generated-form", "app-card", "stack-lg");
+
         String title = getTranslationFromNode(spec.get("title"));
         if (StringUtils.hasText(title)) {
-            add(new H3(title));
+            formTitle = new H3(title);
+            formTitle.addClassName("form-title");
+            add(formTitle);
+            localeUpdaters.add(() -> {
+                String t = getTranslationFromNode(spec.get("title"));
+                if (StringUtils.hasText(t) && formTitle != null) {
+                    formTitle.setText(t);
+                }
+            });
+        } else {
+            formTitle = null;
         }
         // Layout sections
         ArrayNode layout = (ArrayNode) spec.get("layout");
@@ -131,9 +144,18 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
             layout.forEach(sectionNode -> buildSection(sectionNode));
         }
         // Submit button
-        Button submit = new Button(getTranslation("form.submit"));
-        submit.addClickListener(e -> submit());
-        add(submit);
+        submitButton = new Button(getTranslation("form.submit"));
+        submitButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        submitButton.addClickListener(e -> submit());
+        localeUpdaters.add(() -> submitButton.setText(getTranslation("form.submit")));
+
+        HorizontalLayout actions = new HorizontalLayout(submitButton);
+        actions.setPadding(false);
+        actions.setSpacing(false);
+        actions.setWidthFull();
+        actions.addClassName("form-actions");
+        actions.setJustifyContentMode(JustifyContentMode.END);
+        add(actions);
     }
 
     /**
@@ -147,13 +169,16 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         if (!"section".equals(type)) {
             return;
         }
-        // Section title
+        VerticalLayout sectionLayout = new VerticalLayout();
+        sectionLayout.setPadding(false);
+        sectionLayout.setSpacing(false);
+        sectionLayout.setDefaultHorizontalComponentAlignment(Alignment.STRETCH);
+        sectionLayout.addClassNames("form-section", "stack-md");
+
         String title = getTranslationFromNode(section.get("title"));
         if (StringUtils.hasText(title)) {
-            // Use a local variable so we can update the title on locale change
             H4 h4 = new H4(title);
-            add(h4);
-            // Register a locale updater for this section title
+            sectionLayout.addComponentAsFirst(h4);
             localeUpdaters.add(() -> {
                 String t = getTranslationFromNode(section.get("title"));
                 if (t != null) {
@@ -161,11 +186,21 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                 }
             });
         }
+
         int columns = section.has("columns") ? section.get("columns").asInt(1) : 1;
         FormLayout formLayout = new FormLayout();
-        formLayout.setResponsiveSteps(List.of(new FormLayout.ResponsiveStep("0", columns)));
+        formLayout.addClassName("form-section__grid");
         formLayout.setWidthFull();
-        // Add a gap between columns to improve spacing, especially in RTL languages
+        List<FormLayout.ResponsiveStep> steps = new ArrayList<>();
+        steps.add(new FormLayout.ResponsiveStep("0", 1));
+        if (columns >= 2) {
+            steps.add(new FormLayout.ResponsiveStep("640px", Math.min(2, columns)));
+        }
+        if (columns >= 3) {
+            steps.add(new FormLayout.ResponsiveStep("960px", Math.min(3, columns)));
+        }
+        steps.add(new FormLayout.ResponsiveStep("1200px", Math.max(1, columns)));
+        formLayout.setResponsiveSteps(steps);
         formLayout.getStyle().set("column-gap", "var(--lumo-space-m)");
         formLayout.getStyle().set("row-gap", "var(--lumo-space-m)");
         // Fields
@@ -178,508 +213,563 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                 }
             });
         }
-        add(formLayout);
+        sectionLayout.add(formLayout);
+        add(sectionLayout);
     }
 
+
     /**
-     * Create a Vaadin component for a single field definition. Supported
-     * field types include text, email, tel, number, select and switch.
-     * Required and pattern validations are applied client‑side; backend
-     * validation will be triggered on submit.
+     * Create a Vaadin component for a single field definition. Supported field types include
+     * text, email, tel, number, select, switch, radio buttons and various upload inputs.
+     * Required and pattern validations are applied client-side; backend validation will be
+     * triggered on submit.
      *
      * @param field the JSON node describing the field
      * @return the created component or {@code null} if type is unknown
      */
-    /**
- * Create a Vaadin component for a single field definition.
- */
-private Component createField(JsonNode field) {
-    String name = field.get("name").asText();
-    String type = field.get("type").asText();
-    String label = getTranslationFromNode(field.get("label"));
-    boolean required = field.has("required") && field.get("required").asBoolean(false);
+    private Component createField(JsonNode field) {
+        String name = field.get("name").asText();
+        String type = field.has("type") ? field.get("type").asText() : "text";
+        String label = getTranslationFromNode(field.get("label"));
+        boolean required = field.has("required") && field.get("required").asBoolean(false);
 
-    Component comp;
+        Component comp;
 
-    switch (type) {
-
-        case "text": {
-            TextField tf = new TextField(label);
-            tf.setClearButtonVisible(true);
-            tf.setWidthFull();
-            if (required) tf.setRequiredIndicatorVisible(true);
-            applyValidators(tf, field);
-            tf.addValueChangeListener(ev -> {
-                fieldValues.put(name, ev.getValue());
-                validateField(tf, name, required, field);
-                runVisibilityWatchers(name);
-            });
-            comp = tf;
-            break;
-        }
-
-        case "email": {
-            EmailField ef = new EmailField(label);
-            ef.setClearButtonVisible(true);
-            ef.setWidthFull();
-            if (required) ef.setRequiredIndicatorVisible(true);
-            applyValidators(ef, field);
-            ef.addValueChangeListener(ev -> {
-                fieldValues.put(name, ev.getValue());
-                validateField(ef, name, required, field);
-                runVisibilityWatchers(name);
-            });
-            comp = ef;
-            break;
-        }
-
-        case "tel": {
-            TextField tf = new TextField(label);
-            tf.setClearButtonVisible(true);
-            tf.setWidthFull();
-            if (required) tf.setRequiredIndicatorVisible(true);
-            applyValidators(tf, field);
-            tf.addValueChangeListener(ev -> {
-                fieldValues.put(name, ev.getValue());
-                validateField(tf, name, required, field);
-                runVisibilityWatchers(name);
-            });
-            comp = tf;
-            break;
-        }
-
-        case "number": {
-            NumberField nf = new NumberField(label);
-            nf.setClearButtonVisible(true);
-            nf.setWidthFull();
-            if (required) nf.setRequiredIndicatorVisible(true);
-            applyValidators(nf, field);
-            nf.addValueChangeListener(ev -> {
-                fieldValues.put(name, ev.getValue());
-                validateField(nf, name, required, field);
-                runVisibilityWatchers(name);
-            });
-            comp = nf;
-            break;
-        }
-
-        case "select": {
-            ComboBox<String> cb = new ComboBox<>(label);
-            cb.setWidthFull();
-            java.util.List<String> values = new java.util.ArrayList<>();
-            java.util.Map<String, String> display = new java.util.HashMap<>();
-            if (field.has("options") && field.get("options").isArray()) {
-                for (JsonNode opt : (ArrayNode) field.get("options")) {
-                    String value = opt.get("value").asText();
-                    String lbl = getTranslationFromNode(opt.get("label"));
-                    values.add(value);
-                    display.put(value, lbl);
-                }
-            }
-            cb.setItems(values);
-            cb.setItemLabelGenerator(item -> display.getOrDefault(item, item));
-            if (required) cb.setRequiredIndicatorVisible(true);
-            cb.addValueChangeListener(ev -> {
-                fieldValues.put(name, ev.getValue());
-                validateField(cb, name, required, field);
-                runVisibilityWatchers(name);
-            });
-            comp = cb;
-            break;
-        }
-
-        case "switch": {
-            Checkbox cb = new Checkbox(label);
-            cb.addValueChangeListener(ev -> {
-                fieldValues.put(name, ev.getValue());
-                validateField(cb, name, required, field);
-                runVisibilityWatchers(name);
-            });
-            comp = cb;
-            break;
-        }
-
-        case "date": {
-            DatePicker dp = new DatePicker(label);
-            dp.setWidthFull();
-            if (required) dp.setRequiredIndicatorVisible(true);
-            dp.addValueChangeListener(ev -> {
-                fieldValues.put(name, ev.getValue());
+        switch (type) {
+            case "text" -> {
+                TextField tf = new TextField(label);
+                tf.setClearButtonVisible(true);
+                tf.setWidthFull();
                 if (required) {
-                    if (ev.getValue() == null) setError(dp, getTranslation("form.required"));
-                    else clearError(dp);
+                    tf.setRequiredIndicatorVisible(true);
                 }
-                runVisibilityWatchers(name);
-            });
-            comp = dp;
-            break;
-        }
-
-        case "file": {
-            MemoryBuffer buffer = new MemoryBuffer();
-            Upload upload = new Upload(buffer);
-            upload.setAcceptedFileTypes("*/*");
-            upload.setMaxFiles(1);
-            upload.setDropLabel(new Span(label));
-            upload.setUploadButton(new Button(label));
-
-            Span info = new Span();
-            info.setVisible(false);
-
-            upload.addSucceededListener(ev -> {
-                try {
-                    byte[] data = buffer.getInputStream().readAllBytes();
-                    String human = humanReadableByteCount(data.length);
-                    info.setText(ev.getFileName() + " (" + human + ")");
-                } catch (Exception ex) {
-                    info.setText(ev.getFileName());
-                }
-                info.setVisible(true);
-                fieldValues.put(name, ev.getFileName());
-                runVisibilityWatchers(name);
-            });
-
-            onFileRemove(upload, removed -> {
-                info.setText("");
-                info.setVisible(false);
-                fieldValues.put(name, null);
-                runVisibilityWatchers(name);
-            });
-
-            VerticalLayout wrapper = new VerticalLayout(upload, info);
-            wrapper.setPadding(false);
-            wrapper.setSpacing(true);
-            comp = wrapper;
-            break;
-        }
-
-        case "multiFile": {
-            MultiFileMemoryBuffer buffer = new MultiFileMemoryBuffer();
-            Upload upload = new Upload(buffer);
-            upload.setAcceptedFileTypes("*/*");
-            upload.setDropLabel(new Span(label));
-            upload.setUploadButton(new Button(label));
-
-            java.util.List<String> files = new java.util.ArrayList<>();
-            Span namesInfo = new Span();
-            namesInfo.setVisible(false);
-            Runnable updateNames = () -> {
-                if (files.isEmpty()) { namesInfo.setText(""); namesInfo.setVisible(false); }
-                else { namesInfo.setText(String.join(", ", files)); namesInfo.setVisible(true); }
-            };
-
-            upload.addSucceededListener(ev -> {
-                files.add(ev.getFileName());
-                fieldValues.put(name, new java.util.ArrayList<>(files));
-                updateNames.run();
-                runVisibilityWatchers(name);
-            });
-
-            onFileRemove(upload, removed -> {
-                files.remove(removed);
-                fieldValues.put(name, new java.util.ArrayList<>(files));
-                updateNames.run();
-                runVisibilityWatchers(name);
-            });
-
-            VerticalLayout wrapper = new VerticalLayout(upload, namesInfo);
-            wrapper.setPadding(false);
-            wrapper.setSpacing(true);
-            comp = wrapper;
-            break;
-        }
-
-        case "image": {
-            MemoryBuffer buffer = new MemoryBuffer();
-            Upload upload = new Upload(buffer);
-            upload.setAcceptedFileTypes("image/*");
-            upload.setMaxFiles(1);
-            upload.setDropLabel(new Span(label));
-            upload.setUploadButton(new Button(label));
-
-            Image preview = new Image();
-            preview.setWidth("100px");
-            preview.setHeight("100px");
-            preview.getStyle().set("object-fit", "cover");
-            preview.setVisible(false);
-
-            upload.addSucceededListener(ev -> {
-                try {
-                    byte[] data = buffer.getInputStream().readAllBytes();
-                    StreamResource res = new StreamResource(ev.getFileName(), () -> new java.io.ByteArrayInputStream(data));
-                    preview.setSrc(res);
-                } catch (Exception ex) {
-                    preview.setSrc("");
-                }
-                preview.setVisible(true);
-                fieldValues.put(name, ev.getFileName());
-                runVisibilityWatchers(name);
-            });
-
-            onFileRemove(upload, removed -> {
-                preview.setSrc("");
-                preview.setVisible(false);
-                fieldValues.put(name, null);
-                runVisibilityWatchers(name);
-            });
-
-            VerticalLayout wrap = new VerticalLayout(upload, preview);
-            wrap.setPadding(false);
-            wrap.setSpacing(true);
-            comp = wrap;
-            break;
-        }
-
-        case "multiImage": {
-            MultiFileMemoryBuffer buffer = new MultiFileMemoryBuffer();
-            Upload upload = new Upload(buffer);
-            upload.setAcceptedFileTypes("image/*");
-            upload.setDropLabel(new Span(label));
-            upload.setUploadButton(new Button(label));
-
-            java.util.List<String> images = new java.util.ArrayList<>();
-            java.util.Map<String, Image> thumbs = new java.util.HashMap<>();
-            HorizontalLayout previewContainer = new HorizontalLayout();
-            previewContainer.setSpacing(true);
-            previewContainer.setVisible(false);
-
-            upload.addSucceededListener(ev -> {
-                String fname = ev.getFileName();
-                images.add(fname);
-                try {
-                    byte[] data = buffer.getInputStream(fname).readAllBytes();
-                    StreamResource res = new StreamResource(fname, () -> new java.io.ByteArrayInputStream(data));
-                    Image img = new Image(res, fname);
-                    img.setWidth("100px");
-                    img.setHeight("100px");
-                    img.getStyle().set("object-fit", "cover");
-                    thumbs.put(fname, img);
-                    previewContainer.add(img);
-                    previewContainer.setVisible(true);
-                    fieldValues.put(name, new java.util.ArrayList<>(images));
+                applyValidators(tf, field);
+                tf.addValueChangeListener(ev -> {
+                    fieldValues.put(name, ev.getValue());
+                    validateField(tf, name, required, field);
                     runVisibilityWatchers(name);
-                } catch (Exception ex) { /* ignore */ }
-            });
-
-            onFileRemove(upload, removed -> {
-                images.remove(removed);
-                Image img = thumbs.remove(removed);
-                if (img != null) previewContainer.remove(img);
-                if (images.isEmpty()) previewContainer.setVisible(false);
-                fieldValues.put(name, new java.util.ArrayList<>(images));
-                runVisibilityWatchers(name);
-            });
-
-            VerticalLayout wrapper = new VerticalLayout(upload, previewContainer);
-            wrapper.setPadding(false);
-            wrapper.setSpacing(true);
-            comp = wrapper;
-            break;
-        }
-
-        case "map": {
-            Button open = new Button(getTranslation("form.pickLocation"));
-            Span selected = new Span(getTranslation("form.noLocationSelected"));
-
-            Dialog dialog = new Dialog();
-            dialog.setWidth("820px");
-            dialog.setHeight("620px");
-
-            LocationPicker picker = new LocationPicker();
-            picker.addLocationSelectedListener(ev -> {
-                String textPos = ev.getLat() + ", " + ev.getLng();
-                selected.setText(getTranslation("form.selectedLocation") + ": " + textPos);
-                fieldValues.put(name, java.util.Map.of("lat", ev.getLat(), "lng", ev.getLng()));
-                runVisibilityWatchers(name);
-                dialog.close();
-            });
-            dialog.add(picker);
-
-            open.addClickListener(e -> dialog.open());
-
-            VerticalLayout wrapper = new VerticalLayout(open, selected);
-            wrapper.setPadding(false);
-            wrapper.setSpacing(true);
-            comp = wrapper;
-            break;
-        }
-
-        case "group": {
-            VerticalLayout groupContainer = new VerticalLayout();
-            groupContainer.setPadding(false);
-            groupContainer.setSpacing(true);
-            int minItems = field.has("minItems") ? field.get("minItems").asInt() : 0;
-            int maxItems = field.has("maxItems") ? field.get("maxItems").asInt() : Integer.MAX_VALUE;
-            java.util.List<java.util.Map<String, Object>> items = new java.util.ArrayList<>();
-            Button addBtn = new Button("+");
-
-            Runnable refreshGroupButtons = () -> {
-                addBtn.setEnabled(items.size() < maxItems);
-                groupContainer.getChildren().forEach(child -> {
-                    if (child instanceof HorizontalLayout hl) {
-                        hl.getChildren().forEach(c -> {
-                            if (c instanceof Button b && b.getElement().getThemeList().contains("error")) {
-                                b.setEnabled(items.size() > minItems);
-                            }
-                        });
-                    }
                 });
-            };
-
-            java.util.function.Consumer<Void> addRow = unused -> {
-                if (items.size() >= maxItems) return;
-                HorizontalLayout row = new HorizontalLayout();
-                row.setWidthFull();
-                row.setSpacing(true);
-                java.util.Map<String, Object> itemValues = new java.util.HashMap<>();
-                if (field.has("fields") && field.get("fields").isArray()) {
-                    for (JsonNode sub : (ArrayNode) field.get("fields")) {
-                        String subName = sub.get("name").asText();
-                        String subType = sub.get("type").asText();
-                        String subLabel = getTranslationFromNode(sub.get("label"));
-                        boolean subReq = sub.has("required") && sub.get("required").asBoolean(false);
-                        Component fcomp;
-                        switch (subType) {
-                            case "text": {
-                                TextField tf = new TextField(subLabel);
-                                if (subReq) tf.setRequiredIndicatorVisible(true);
-                                tf.setClearButtonVisible(true);
-                                tf.addValueChangeListener(ev -> itemValues.put(subName, ev.getValue()));
-                                fcomp = tf;
-                                break;
-                            }
-                            case "number": {
-                                NumberField nf = new NumberField(subLabel);
-                                if (subReq) nf.setRequiredIndicatorVisible(true);
-                                nf.setClearButtonVisible(true);
-                                nf.addValueChangeListener(ev -> itemValues.put(subName, ev.getValue()));
-                                fcomp = nf;
-                                break;
-                            }
-                            case "email": {
-                                EmailField ef = new EmailField(subLabel);
-                                if (subReq) ef.setRequiredIndicatorVisible(true);
-                                ef.setClearButtonVisible(true);
-                                ef.addValueChangeListener(ev -> itemValues.put(subName, ev.getValue()));
-                                fcomp = ef;
-                                break;
-                            }
-                            case "tel": {
-                                TextField tf2 = new TextField(subLabel);
-                                if (subReq) tf2.setRequiredIndicatorVisible(true);
-                                tf2.setClearButtonVisible(true);
-                                tf2.addValueChangeListener(ev -> itemValues.put(subName, ev.getValue()));
-                                fcomp = tf2;
-                                break;
-                            }
-                            default: {
-                                TextField def = new TextField(subLabel);
-                                def.addValueChangeListener(ev -> itemValues.put(subName, ev.getValue()));
-                                fcomp = def;
-                                break;
-                            }
+                comp = tf;
+            }
+            case "email" -> {
+                EmailField ef = new EmailField(label);
+                ef.setClearButtonVisible(true);
+                ef.setWidthFull();
+                if (required) {
+                    ef.setRequiredIndicatorVisible(true);
+                }
+                applyValidators(ef, field);
+                ef.addValueChangeListener(ev -> {
+                    fieldValues.put(name, ev.getValue());
+                    validateField(ef, name, required, field);
+                    runVisibilityWatchers(name);
+                });
+                comp = ef;
+            }
+            case "tel" -> {
+                TextField tf = new TextField(label);
+                tf.setClearButtonVisible(true);
+                tf.setWidthFull();
+                if (required) {
+                    tf.setRequiredIndicatorVisible(true);
+                }
+                applyValidators(tf, field);
+                tf.addValueChangeListener(ev -> {
+                    fieldValues.put(name, ev.getValue());
+                    validateField(tf, name, required, field);
+                    runVisibilityWatchers(name);
+                });
+                comp = tf;
+            }
+            case "number" -> {
+                NumberField nf = new NumberField(label);
+                nf.setClearButtonVisible(true);
+                nf.setWidthFull();
+                if (required) {
+                    nf.setRequiredIndicatorVisible(true);
+                }
+                applyValidators(nf, field);
+                nf.addValueChangeListener(ev -> {
+                    fieldValues.put(name, ev.getValue());
+                    validateField(nf, name, required, field);
+                    runVisibilityWatchers(name);
+                });
+                comp = nf;
+            }
+            case "select" -> {
+                ComboBox<String> cb = new ComboBox<>(label);
+                cb.setWidthFull();
+                List<String> values = new ArrayList<>();
+                Map<String, String> display = new HashMap<>();
+                if (field.has("options") && field.get("options").isArray()) {
+                    for (JsonNode opt : (ArrayNode) field.get("options")) {
+                        String value = opt.get("value").asText();
+                        String lbl = getTranslationFromNode(opt.get("label"));
+                        values.add(value);
+                        display.put(value, lbl);
+                    }
+                }
+                cb.setItems(values);
+                cb.setItemLabelGenerator(item -> display.getOrDefault(item, item));
+                if (required) {
+                    cb.setRequiredIndicatorVisible(true);
+                }
+                cb.addValueChangeListener(ev -> {
+                    fieldValues.put(name, ev.getValue());
+                    validateField(cb, name, required, field);
+                    runVisibilityWatchers(name);
+                });
+                comp = cb;
+            }
+            case "switch" -> {
+                Checkbox cb = new Checkbox(label);
+                cb.setWidthFull();
+                cb.addValueChangeListener(ev -> {
+                    fieldValues.put(name, ev.getValue());
+                    validateField(cb, name, required, field);
+                    runVisibilityWatchers(name);
+                });
+                comp = cb;
+            }
+            case "date" -> {
+                DatePicker dp = new DatePicker(label);
+                dp.setWidthFull();
+                if (required) {
+                    dp.setRequiredIndicatorVisible(true);
+                }
+                dp.addValueChangeListener(ev -> {
+                    fieldValues.put(name, ev.getValue());
+                    if (required) {
+                        if (ev.getValue() == null) {
+                            setError(dp, getTranslation("form.required"));
+                        } else {
+                            clearError(dp);
                         }
-                        if (fcomp instanceof com.vaadin.flow.component.HasSize hs) hs.setWidth("200px");
-                        row.add(fcomp);
                     }
-                }
-                Button rem = new Button("-");
-                rem.getElement().getThemeList().add("error");
-                rem.addClickListener(ev -> {
-                    if (items.size() > minItems) {
-                        groupContainer.remove(row);
-                        items.remove(itemValues);
-                        fieldValues.put(name, new java.util.ArrayList<>(items));
-                        runVisibilityWatchers(name);
-                        refreshGroupButtons.run();
-                    }
+                    runVisibilityWatchers(name);
                 });
-                row.add(rem);
-                groupContainer.add(row);
-                items.add(itemValues);
-                fieldValues.put(name, new java.util.ArrayList<>(items));
-                runVisibilityWatchers(name);
-                refreshGroupButtons.run();
-            };
+                comp = dp;
+            }
+            case "file" -> {
+                MemoryBuffer buffer = new MemoryBuffer();
+                Upload upload = new Upload(buffer);
+                upload.setAcceptedFileTypes("*/*");
+                upload.setMaxFiles(1);
+                Span dropLabel = new Span(label);
+                Button uploadButton = new Button(label);
+                upload.setDropLabel(dropLabel);
+                upload.setUploadButton(uploadButton);
 
-            addBtn.addClickListener(ev -> addRow.accept(null));
-            VerticalLayout wrapper = new VerticalLayout(groupContainer, addBtn);
-            wrapper.setSpacing(true);
-            wrapper.setPadding(false);
-            int initial = Math.max(1, minItems);
-            for (int i = 0; i < initial; i++) addRow.accept(null);
-            comp = wrapper;
+                Span info = new Span();
+                info.setVisible(false);
 
-            localeUpdaters.add(() -> {
-                addBtn.setText(getTranslation("form.addItem"));
-                groupContainer.getChildren().forEach(child -> {
-                    if (child instanceof HorizontalLayout hl) {
-                        hl.getChildren().forEach(c -> {
-                            if (c instanceof Button b && b.getElement().getThemeList().contains("error")) {
-                                b.setText(getTranslation("form.removeItem"));
-                            }
-                        });
+                upload.addSucceededListener(ev -> {
+                    try {
+                        byte[] data = buffer.getInputStream().readAllBytes();
+                        String human = humanReadableByteCount(data.length);
+                        info.setText(ev.getFileName() + " (" + human + ")");
+                    } catch (Exception ex) {
+                        info.setText(ev.getFileName());
                     }
+                    info.setVisible(true);
+                    fieldValues.put(name, ev.getFileName());
+                    runVisibilityWatchers(name);
                 });
-            });
-            break;
-        }
 
-        case "radio": {
-            com.vaadin.flow.component.radiobutton.RadioButtonGroup<String> radio =
-                new com.vaadin.flow.component.radiobutton.RadioButtonGroup<>();
-            radio.setWidthFull();
-            radio.setLabel(label);
-            if (field.has("options") && field.get("options").isArray()) {
-                java.util.List<String> values = new java.util.ArrayList<>();
-                java.util.Map<String, String> display = new java.util.HashMap<>();
-                for (JsonNode opt : field.get("options")) {
-                    String val = opt.get("value").asText();
-                    values.add(val);
-                    String lbl = getTranslationFromNode(opt.get("label"));
-                    display.put(val, lbl);
-                }
-                radio.setItems(values);
-                radio.setItemLabelGenerator(item -> display.getOrDefault(item, item));
+                onFileRemove(upload, removed -> {
+                    info.setText("");
+                    info.setVisible(false);
+                    fieldValues.put(name, null);
+                    runVisibilityWatchers(name);
+                });
+
+                VerticalLayout wrapper = new VerticalLayout(upload, info);
+                wrapper.setPadding(false);
+                wrapper.setSpacing(false);
+                wrapper.addClassName("stack-sm");
+                comp = wrapper;
+
                 localeUpdaters.add(() -> {
-                    java.util.Map<String, String> disp = new java.util.HashMap<>();
+                    String translated = getTranslationFromNode(field.get("label"));
+                    dropLabel.setText(translated);
+                    uploadButton.setText(translated);
+                });
+            }
+            case "multiFile" -> {
+                MultiFileMemoryBuffer buffer = new MultiFileMemoryBuffer();
+                Upload upload = new Upload(buffer);
+                upload.setAcceptedFileTypes("*/*");
+                Span dropLabel = new Span(label);
+                Button uploadButton = new Button(label);
+                upload.setDropLabel(dropLabel);
+                upload.setUploadButton(uploadButton);
+
+                List<String> files = new ArrayList<>();
+                Span namesInfo = new Span();
+                namesInfo.setVisible(false);
+                Runnable updateNames = () -> {
+                    if (files.isEmpty()) {
+                        namesInfo.setText("");
+                        namesInfo.setVisible(false);
+                    } else {
+                        namesInfo.setText(String.join(", ", files));
+                        namesInfo.setVisible(true);
+                    }
+                };
+
+                upload.addSucceededListener(ev -> {
+                    files.add(ev.getFileName());
+                    fieldValues.put(name, new ArrayList<>(files));
+                    updateNames.run();
+                    runVisibilityWatchers(name);
+                });
+
+                onFileRemove(upload, removed -> {
+                    files.remove(removed);
+                    fieldValues.put(name, new ArrayList<>(files));
+                    updateNames.run();
+                    runVisibilityWatchers(name);
+                });
+
+                VerticalLayout wrapper = new VerticalLayout(upload, namesInfo);
+                wrapper.setPadding(false);
+                wrapper.setSpacing(false);
+                wrapper.addClassName("stack-sm");
+                comp = wrapper;
+
+                localeUpdaters.add(() -> {
+                    String translated = getTranslationFromNode(field.get("label"));
+                    dropLabel.setText(translated);
+                    uploadButton.setText(translated);
+                });
+            }
+            case "image" -> {
+                MemoryBuffer buffer = new MemoryBuffer();
+                Upload upload = new Upload(buffer);
+                upload.setAcceptedFileTypes("image/*");
+                upload.setMaxFiles(1);
+                Span dropLabel = new Span(label);
+                Button uploadButton = new Button(label);
+                upload.setDropLabel(dropLabel);
+                upload.setUploadButton(uploadButton);
+
+                Image preview = new Image();
+                preview.setWidth("100px");
+                preview.setHeight("100px");
+                preview.getStyle().set("object-fit", "cover");
+                preview.setVisible(false);
+
+                upload.addSucceededListener(ev -> {
+                    try {
+                        byte[] data = buffer.getInputStream().readAllBytes();
+                        StreamResource res = new StreamResource(ev.getFileName(), () -> new ByteArrayInputStream(data));
+                        preview.setSrc(res);
+                    } catch (Exception ex) {
+                        preview.setSrc("");
+                    }
+                    preview.setVisible(true);
+                    fieldValues.put(name, ev.getFileName());
+                    runVisibilityWatchers(name);
+                });
+
+                onFileRemove(upload, removed -> {
+                    preview.setSrc("");
+                    preview.setVisible(false);
+                    fieldValues.put(name, null);
+                    runVisibilityWatchers(name);
+                });
+
+                VerticalLayout wrapper = new VerticalLayout(upload, preview);
+                wrapper.setPadding(false);
+                wrapper.setSpacing(false);
+                wrapper.addClassName("stack-sm");
+                comp = wrapper;
+
+                localeUpdaters.add(() -> {
+                    String translated = getTranslationFromNode(field.get("label"));
+                    dropLabel.setText(translated);
+                    uploadButton.setText(translated);
+                });
+            }
+            case "multiImage" -> {
+                MultiFileMemoryBuffer buffer = new MultiFileMemoryBuffer();
+                Upload upload = new Upload(buffer);
+                upload.setAcceptedFileTypes("image/*");
+                Span dropLabel = new Span(label);
+                Button uploadButton = new Button(label);
+                upload.setDropLabel(dropLabel);
+                upload.setUploadButton(uploadButton);
+
+                List<String> images = new ArrayList<>();
+                Map<String, Image> thumbs = new HashMap<>();
+                HorizontalLayout previewContainer = new HorizontalLayout();
+                previewContainer.setSpacing(true);
+                previewContainer.setVisible(false);
+
+                upload.addSucceededListener(ev -> {
+                    String fname = ev.getFileName();
+                    images.add(fname);
+                    try {
+                        byte[] data = buffer.getInputStream(fname).readAllBytes();
+                        StreamResource res = new StreamResource(fname, () -> new ByteArrayInputStream(data));
+                        Image img = new Image(res, fname);
+                        img.setWidth("100px");
+                        img.setHeight("100px");
+                        img.getStyle().set("object-fit", "cover");
+                        thumbs.put(fname, img);
+                        previewContainer.add(img);
+                        previewContainer.setVisible(true);
+                        fieldValues.put(name, new ArrayList<>(images));
+                        runVisibilityWatchers(name);
+                    } catch (Exception ex) {
+                        // ignore failures when reading preview data
+                    }
+                });
+
+                onFileRemove(upload, removed -> {
+                    images.remove(removed);
+                    Image img = thumbs.remove(removed);
+                    if (img != null) {
+                        previewContainer.remove(img);
+                    }
+                    if (images.isEmpty()) {
+                        previewContainer.setVisible(false);
+                    }
+                    fieldValues.put(name, new ArrayList<>(images));
+                    runVisibilityWatchers(name);
+                });
+
+                VerticalLayout wrapper = new VerticalLayout(upload, previewContainer);
+                wrapper.setPadding(false);
+                wrapper.setSpacing(false);
+                wrapper.addClassName("stack-sm");
+                comp = wrapper;
+
+                localeUpdaters.add(() -> {
+                    String translated = getTranslationFromNode(field.get("label"));
+                    dropLabel.setText(translated);
+                    uploadButton.setText(translated);
+                });
+            }
+            case "map" -> {
+                Button open = new Button(getTranslation("form.pickLocation"));
+                Span selected = new Span(getTranslation("form.noLocationSelected"));
+
+                Dialog dialog = new Dialog();
+                dialog.setWidth("820px");
+                dialog.setHeight("620px");
+
+                LocationPicker picker = new LocationPicker();
+                picker.addLocationSelectedListener(ev -> {
+                    String textPos = ev.getLat() + ", " + ev.getLng();
+                    selected.setText(getTranslation("form.selectedLocation") + ": " + textPos);
+                    fieldValues.put(name, Map.of("lat", ev.getLat(), "lng", ev.getLng()));
+                    runVisibilityWatchers(name);
+                    dialog.close();
+                });
+                dialog.add(picker);
+
+                open.addClickListener(e -> dialog.open());
+
+                VerticalLayout wrapper = new VerticalLayout(open, selected);
+                wrapper.setPadding(false);
+                wrapper.setSpacing(false);
+                wrapper.addClassName("stack-sm");
+                comp = wrapper;
+
+                localeUpdaters.add(() -> {
+                    open.setText(getTranslation("form.pickLocation"));
+                    Object value = fieldValues.get(name);
+                    if (value instanceof Map<?, ?> coords && coords.containsKey("lat") && coords.containsKey("lng")) {
+                        selected.setText(getTranslation("form.selectedLocation") + ": " + coords.get("lat") + ", " + coords.get("lng"));
+                    } else {
+                        selected.setText(getTranslation("form.noLocationSelected"));
+                    }
+                });
+            }
+            case "group" -> {
+                VerticalLayout groupContainer = new VerticalLayout();
+                groupContainer.setPadding(false);
+                groupContainer.setSpacing(false);
+                groupContainer.addClassName("stack-sm");
+                int minItems = field.has("minItems") ? field.get("minItems").asInt() : 0;
+                int maxItems = field.has("maxItems") ? field.get("maxItems").asInt() : Integer.MAX_VALUE;
+                List<Map<String, Object>> items = new ArrayList<>();
+                Button addBtn = new Button(getTranslation("form.addItem"));
+
+                Runnable refreshGroupButtons = () -> {
+                    addBtn.setEnabled(items.size() < maxItems);
+                    groupContainer.getChildren().forEach(child -> {
+                        if (child instanceof HorizontalLayout hl) {
+                            hl.getChildren().forEach(c -> {
+                                if (c instanceof Button b && b.getElement().getThemeList().contains("error")) {
+                                    b.setEnabled(items.size() > minItems);
+                                }
+                            });
+                        }
+                    });
+                };
+
+                Consumer<Void> addRow = unused -> {
+                    if (items.size() >= maxItems) {
+                        return;
+                    }
+                    HorizontalLayout row = new HorizontalLayout();
+                    row.setWidthFull();
+                    row.setSpacing(true);
+                    Map<String, Object> itemValues = new HashMap<>();
+                    if (field.has("fields") && field.get("fields").isArray()) {
+                        for (JsonNode sub : (ArrayNode) field.get("fields")) {
+                            String subName = sub.get("name").asText();
+                            String subType = sub.get("type").asText();
+                            String subLabel = getTranslationFromNode(sub.get("label"));
+                            boolean subReq = sub.has("required") && sub.get("required").asBoolean(false);
+                            Component fcomp;
+                            switch (subType) {
+                                case "text" -> {
+                                    TextField tf = new TextField(subLabel);
+                                    if (subReq) {
+                                        tf.setRequiredIndicatorVisible(true);
+                                    }
+                                    tf.setClearButtonVisible(true);
+                                    tf.addValueChangeListener(ev -> itemValues.put(subName, ev.getValue()));
+                                    fcomp = tf;
+                                }
+                                case "number" -> {
+                                    NumberField nf = new NumberField(subLabel);
+                                    if (subReq) {
+                                        nf.setRequiredIndicatorVisible(true);
+                                    }
+                                    nf.setClearButtonVisible(true);
+                                    nf.addValueChangeListener(ev -> itemValues.put(subName, ev.getValue()));
+                                    fcomp = nf;
+                                }
+                                case "email" -> {
+                                    EmailField ef = new EmailField(subLabel);
+                                    if (subReq) {
+                                        ef.setRequiredIndicatorVisible(true);
+                                    }
+                                    ef.setClearButtonVisible(true);
+                                    ef.addValueChangeListener(ev -> itemValues.put(subName, ev.getValue()));
+                                    fcomp = ef;
+                                }
+                                case "tel" -> {
+                                    TextField tf = new TextField(subLabel);
+                                    if (subReq) {
+                                        tf.setRequiredIndicatorVisible(true);
+                                    }
+                                    tf.setClearButtonVisible(true);
+                                    tf.addValueChangeListener(ev -> itemValues.put(subName, ev.getValue()));
+                                    fcomp = tf;
+                                }
+                                default -> {
+                                    TextField def = new TextField(subLabel);
+                                    def.addValueChangeListener(ev -> itemValues.put(subName, ev.getValue()));
+                                    fcomp = def;
+                                }
+                            }
+                            if (fcomp instanceof com.vaadin.flow.component.HasSize size) {
+                                size.setWidth("200px");
+                            }
+                            row.add(fcomp);
+                        }
+                    }
+                    Button rem = new Button(getTranslation("form.removeItem"));
+                    rem.getElement().getThemeList().add("error");
+                    rem.addClickListener(ev -> {
+                        if (items.size() > minItems) {
+                            groupContainer.remove(row);
+                            items.remove(itemValues);
+                            fieldValues.put(name, new ArrayList<>(items));
+                            runVisibilityWatchers(name);
+                            refreshGroupButtons.run();
+                        }
+                    });
+                    row.add(rem);
+                    groupContainer.add(row);
+                    items.add(itemValues);
+                    fieldValues.put(name, new ArrayList<>(items));
+                    runVisibilityWatchers(name);
+                    refreshGroupButtons.run();
+                };
+
+                addBtn.addClickListener(ev -> addRow.accept(null));
+                VerticalLayout wrapper = new VerticalLayout(groupContainer, addBtn);
+                wrapper.setSpacing(false);
+                wrapper.setPadding(false);
+                wrapper.addClassName("stack-sm");
+                int initial = Math.max(1, minItems);
+                for (int i = 0; i < initial; i++) {
+                    addRow.accept(null);
+                }
+                comp = wrapper;
+
+                localeUpdaters.add(() -> {
+                    addBtn.setText(getTranslation("form.addItem"));
+                    groupContainer.getChildren().forEach(child -> {
+                        if (child instanceof HorizontalLayout hl) {
+                            hl.getChildren().forEach(c -> {
+                                if (c instanceof Button b && b.getElement().getThemeList().contains("error")) {
+                                    b.setText(getTranslation("form.removeItem"));
+                                }
+                            });
+                        }
+                    });
+                });
+            }
+            case "radio" -> {
+                RadioButtonGroup<String> radio = new RadioButtonGroup<>();
+                radio.setWidthFull();
+                radio.setLabel(label);
+                if (field.has("options") && field.get("options").isArray()) {
+                    List<String> values = new ArrayList<>();
+                    Map<String, String> display = new HashMap<>();
                     for (JsonNode opt : field.get("options")) {
                         String val = opt.get("value").asText();
+                        values.add(val);
                         String lbl = getTranslationFromNode(opt.get("label"));
-                        disp.put(val, lbl);
+                        display.put(val, lbl);
                     }
-                    radio.setItemLabelGenerator(item -> disp.getOrDefault(item, item));
-                    radio.setLabel(getTranslationFromNode(field.get("label")));
-                });
-            }
-            if (required) radio.setRequiredIndicatorVisible(true);
-            radio.addValueChangeListener(ev -> {
-                fieldValues.put(name, ev.getValue());
-                if (required) {
-                    if (ev.getValue() == null) setError(radio, getTranslation("form.required"));
-                    else clearError(radio);
+                    radio.setItems(values);
+                    radio.setItemLabelGenerator(item -> display.getOrDefault(item, item));
+                    localeUpdaters.add(() -> {
+                        Map<String, String> disp = new HashMap<>();
+                        for (JsonNode opt : field.get("options")) {
+                            disp.put(opt.get("value").asText(), getTranslationFromNode(opt.get("label")));
+                        }
+                        radio.setItemLabelGenerator(item -> disp.getOrDefault(item, item));
+                        radio.setLabel(getTranslationFromNode(field.get("label")));
+                    });
                 }
-                runVisibilityWatchers(name);
-            });
-            comp = radio;
-            break;
+                if (required) {
+                    radio.setRequiredIndicatorVisible(true);
+                }
+                radio.addValueChangeListener(ev -> {
+                    fieldValues.put(name, ev.getValue());
+                    if (required) {
+                        if (ev.getValue() == null) {
+                            setError(radio, getTranslation("form.required"));
+                        } else {
+                            clearError(radio);
+                        }
+                    }
+                    runVisibilityWatchers(name);
+                });
+                comp = radio;
+            }
+            default -> {
+                return null;
+            }
         }
 
-        default: {
-            return null;
+        fieldComponents.put(name, comp);
+        fieldValues.putIfAbsent(name, null);
+        if (field.has("visibleWhen")) {
+            setupVisibilityWatcher(name, field.get("visibleWhen"));
         }
+        localeUpdaters.add(() -> updateComponentLabel(comp, field));
+        return comp;
     }
-
-    fieldComponents.put(name, comp);
-    fieldValues.put(name, null);
-    if (field.has("visibleWhen")) {
-        JsonNode cond = field.get("visibleWhen");
-        setupVisibilityWatcher(name, cond);
-    }
-    localeUpdaters.add(() -> updateComponentLabel(comp, field));
-    return comp;
-}
-
     /**
      * Apply any additional validators defined in the field spec to the given
      * text component. Patterns specified under the "validators" array will
@@ -1069,15 +1159,10 @@ private Component createField(JsonNode field) {
 
     @Override
     public void localeChange(LocaleChangeEvent event) {
-        // Update title
-        String title = getTranslationFromNode(spec.get("title"));
-        if (StringUtils.hasText(title)) {
-            // The first child is expected to be the title H3
-            if (!getChildren().findFirst().isEmpty()) {
-                Component first = getChildren().findFirst().get();
-                if (first instanceof H3 h) {
-                    h.setText(title);
-                }
+        if (formTitle != null) {
+            String title = getTranslationFromNode(spec.get("title"));
+            if (StringUtils.hasText(title)) {
+                formTitle.setText(title);
             }
         }
         // Update section titles and field labels via localeUpdaters

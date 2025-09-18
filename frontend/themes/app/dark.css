@@ -1,4 +1,5 @@
 @import "tokens.css";
+
 :root[theme~="dark"] {
   color-scheme: dark;
   --lumo-base-color: var(--color-surface-inv);
@@ -13,14 +14,33 @@
   --lumo-space-l: var(--space-6);
   --lumo-line-height-m: 1.5;
   --lumo-font-family: var(--font-family-base);
+  --surface-card: #151A21;
+  --surface-subtle: #0F141C;
+  --divider-subtle: var(--color-border-inv);
+  --divider-strong: #2F3744;
+  --text-muted: var(--color-muted-inv);
 }
-:root[theme~="dark"] .app-card { background: #151A21; border-color: var(--color-border-inv); box-shadow: 0 2px 6px rgba(0,0,0,.08); }
-/* Focus ring rules */
+
+/* Badges --------------------------------------------------------------- */
+:root[theme~="dark"] [theme~="badge"] {
+  background: #1F2732;
+  color: var(--lumo-body-text-color);
+}
+
+:root[theme~="dark"] [theme~="badge"].primary   { background: color-mix(in srgb, var(--color-primary-600) 25%, transparent); }
+:root[theme~="dark"] [theme~="badge"].secondary { background: color-mix(in srgb, var(--color-secondary-500) 25%, transparent); }
+:root[theme~="dark"] [theme~="badge"].info      { background: color-mix(in srgb, var(--color-info-500) 25%, transparent); }
+:root[theme~="dark"] [theme~="badge"].success   { background: color-mix(in srgb, var(--color-success-500) 25%, transparent); }
+:root[theme~="dark"] [theme~="badge"].warning   { background: color-mix(in srgb, var(--color-warning-500) 25%, transparent); }
+:root[theme~="dark"] [theme~="badge"].danger    { background: color-mix(in srgb, var(--color-danger-500) 25%, transparent); }
+
+/* Focus ring rules ----------------------------------------------------- */
 vaadin-button::part(focus-ring),
 vaadin-menu-bar-button::part(focus-ring) {
   box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring-color);
 }
-/* Inputs when focused */
+
+/* Inputs when focused -------------------------------------------------- */
 vaadin-text-field[focused]::part(input-field),
 vaadin-text-area[focused]::part(input-field),
 vaadin-combo-box[focused]::part(input-field),
@@ -31,37 +51,14 @@ vaadin-select[focused]::part(input-field) {
   border-color: var(--focus-ring-color);
 }
 
-[theme~="dark"] .app-card h2{color:var(--lumo-body-text-color);}
-
-/* Strong dark override for cards and headings */
-html[theme~="dark"] .app-card,
-body[theme~="dark"] .app-card,
-:root[theme~="dark"] .app-card,
-[theme~="dark"] .app-card {
-  background: #151A21 !important;
-  border-color: var(--color-border-inv) !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,.08) !important;
-}
-html[theme~="dark"] .app-card h2,
-body[theme~="dark"] .app-card h2,
-:root[theme~="dark"] .app-card h2,
-[theme~="dark"] .app-card h2 {
-  color: var(--lumo-body-text-color) !important;
-}
-
-
-/* Navigation row styling for consistent icon-text spacing */
-.nav-row{
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+:root[theme~="dark"] vaadin-text-field::part(input-field),
+:root[theme~="dark"] vaadin-text-area::part(input-field),
+:root[theme~="dark"] vaadin-combo-box::part(input-field),
+:root[theme~="dark"] vaadin-number-field::part(input-field),
+:root[theme~="dark"] vaadin-date-picker::part(input-field),
+:root[theme~="dark"] vaadin-select::part(input-field) {
+  background: #1B2028;
   border-radius: var(--radius-m);
+  border-color: var(--divider-subtle);
+  color: var(--lumo-body-text-color);
 }
-.nav-row:hover{
-  background: color-mix(in oklab, var(--lumo-body-text-color) 6%, transparent);
-}
-
-/* Make nav rows fill drawer width */
-.nav-row{ width:100%; }

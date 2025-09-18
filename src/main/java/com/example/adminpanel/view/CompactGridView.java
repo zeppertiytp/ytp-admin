@@ -3,9 +3,11 @@ package com.example.adminpanel.view;
 import com.example.adminpanel.component.ColumnDefinition;
 import com.example.adminpanel.component.FilterDefinition;
 import com.example.adminpanel.component.FilterablePaginatedGrid;
+import com.example.adminpanel.component.layout.AppPageLayout;
 import com.example.adminpanel.model.Person;
 import com.example.adminpanel.service.MockPersonService;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
@@ -21,15 +23,16 @@ import java.util.List;
  * are many rows, it will scroll within the specified maximum height.
  */
 @Route(value = "compact-grid", layout = MainLayout.class)
-public class CompactGridView extends VerticalLayout implements LocaleChangeObserver {
+public class CompactGridView extends AppPageLayout implements LocaleChangeObserver {
 
     @Autowired
     public CompactGridView(MockPersonService personService) {
-        setSizeFull();
-        setPadding(true);
+        this.pageTitle = createPageTitle(getTranslation("compactGrid.title"));
         initTable(personService);
         updatePageTitle();
     }
+
+    private final H1 pageTitle;
 
     private void initTable(MockPersonService personService) {
         // Define columns
@@ -65,8 +68,11 @@ public class CompactGridView extends VerticalLayout implements LocaleChangeObser
         grid.setExpandGrid(false);
         grid.setMinHeight("200px");
         grid.setMaxHeight("400px");
-        add(grid);
-        // Do not call expand(grid) so that height constraints are respected
+        grid.setWidthFull();
+
+        VerticalLayout gridCard = createCard(grid);
+        gridCard.addClassName("stack-lg");
+        add(gridCard);
     }
 
     private void updatePageTitle() {
@@ -74,6 +80,7 @@ public class CompactGridView extends VerticalLayout implements LocaleChangeObser
         if (ui != null) {
             ui.getPage().setTitle(getTranslation("compactGrid.title"));
         }
+        pageTitle.setText(getTranslation("compactGrid.title"));
     }
 
     @Override
