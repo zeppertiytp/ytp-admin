@@ -18,7 +18,27 @@
   --surface-subtle: #0F141C;
   --divider-subtle: var(--color-border-inv);
   --divider-strong: #2F3744;
-  --text-muted: var(--color-muted-inv);
+  --text-primary: var(--text-inverse);
+  --text-secondary: color-mix(in srgb, var(--text-inverse) 80%, transparent);
+  --text-muted: color-mix(in srgb, var(--text-inverse) 60%, transparent);
+}
+
+:root[theme~="dark"] body {
+  color: var(--text-primary);
+}
+
+:root[theme~="dark"] .page-title {
+  color: var(--text-primary);
+}
+
+:root[theme~="dark"] .nav-section-title {
+  color: var(--text-muted);
+}
+
+:root[theme~="dark"] .nav-row,
+:root[theme~="dark"] .nav-row span,
+:root[theme~="dark"] vaadin-details.nav-accordion::part(summary) {
+  color: var(--text-secondary);
 }
 
 /* Badges --------------------------------------------------------------- */
