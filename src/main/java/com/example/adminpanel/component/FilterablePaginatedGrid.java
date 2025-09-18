@@ -11,6 +11,7 @@ import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.renderer.TextRenderer;
 import com.vaadin.flow.component.menubar.MenuBar;
+import com.example.adminpanel.components.AppIcon;
 // Import the top-level MenuItem class from the context menu package.  In
 // Vaadin Flow 24+, MenuItem is not nested within MenuBar, so using
 // MenuBar.MenuItem will not compile.  Importing MenuItem explicitly
@@ -338,9 +339,10 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
         topControls.setAlignItems(Alignment.CENTER);
         topControls.getStyle().set("flex-wrap", "wrap");
 
-        // Add filter icon to the filter button
-        filterButton.setIcon(new com.example.adminpanel.components.AppIcon("filter", "18"));
-        filterButton.getElement().getStyle().set("margin-right", "0.25rem");
+        // Add filter icon to the filter button and ensure readable spacing in both LTR and RTL
+        AppIcon filterIcon = new AppIcon("filter", "18");
+        filterIcon.getElement().getStyle().set("margin-inline-end", "var(--space-2)");
+        filterButton.setIcon(filterIcon);
 
         // Arrange the filter row, top controls, grid, and pagination controls vertically.
         // The grid should take up the available vertical space within this layout,
@@ -767,8 +769,11 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
         menuBar.getElement().executeJs(
                 """
                         const host = this;
-                        const MIN_WIDTH = 240;
-                        let overlayInterval;
+                        if (host.__overlayMinWidthApplied) {
+                            return;
+                        }
+                        host.__overlayMinWidthApplied = true;
+                        const MIN_WIDTH = 260;
 
                         const resolveOverlay = () => {
                             const sub = host._subMenu;
@@ -777,38 +782,37 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
 
                         const applyWidth = () => {
                             const overlay = resolveOverlay();
-                            if (!overlay || !overlay.opened) {
+                            if (!overlay) {
                                 return;
                             }
                             const width = Math.max(host.offsetWidth, MIN_WIDTH);
                             overlay.style.minWidth = width + 'px';
+                            overlay.style.width = width + 'px';
+                            overlay.style.setProperty('--menu-overlay-min-width', width + 'px');
+                            host.style.setProperty('--menu-overlay-min-width', width + 'px');
                         };
 
-                        const startInterval = () => {
-                            applyWidth();
-                            if (overlayInterval) {
-                                clearInterval(overlayInterval);
-                            }
-                            overlayInterval = setInterval(() => {
-                                const overlay = resolveOverlay();
-                                if (!overlay || !overlay.opened) {
-                                    if (overlayInterval) {
-                                        clearInterval(overlayInterval);
-                                        overlayInterval = undefined;
-                                    }
-                                    return;
-                                }
+                        const scheduleApply = () => {
+                            requestAnimationFrame(() => {
                                 applyWidth();
-                            }, 120);
+                                const overlay = resolveOverlay();
+                                if (overlay) {
+                                    overlay.addEventListener('animationend', applyWidth, { once: true });
+                                }
+                            });
                         };
 
-                        host.addEventListener('vaadin-overlay-open', startInterval);
-                        host.addEventListener('vaadin-overlay-closed', () => {
-                            if (overlayInterval) {
-                                clearInterval(overlayInterval);
-                                overlayInterval = undefined;
+                        const openedListener = (event) => {
+                            if (event.type === 'opened-changed' && !(event.detail && event.detail.value)) {
+                                return;
                             }
-                        });
+                            scheduleApply();
+                        };
+
+                        ['vaadin-overlay-open', 'vaadin-overlay-opened', 'opened-changed']
+                            .forEach(evt => host.addEventListener(evt, openedListener));
+
+                        host.addEventListener('vaadin-overlay-close', () => requestAnimationFrame(applyWidth));
 
                         new ResizeObserver(() => applyWidth()).observe(host);
                 """

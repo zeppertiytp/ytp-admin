@@ -227,6 +227,7 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
                     details.setWidthFull();
                     details.setOpened(false);
                     details.addClassName("nav-accordion");
+                    details.setSummaryToggleVisible(false);
                     details.addOpenedChangeListener(event -> {
                         if (event.isOpened()) {
                             caret.removeClassName("nav-row__caret--closed");
@@ -401,8 +402,11 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
         menuBar.getElement().executeJs(
                 """
                         const host = this;
-                        const MIN_WIDTH = 240;
-                        let overlayInterval;
+                        if (host.__overlayMinWidthApplied) {
+                            return;
+                        }
+                        host.__overlayMinWidthApplied = true;
+                        const MIN_WIDTH = 260;
 
                         const resolveOverlay = () => {
                             const sub = host._subMenu;
@@ -411,38 +415,37 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
 
                         const applyWidth = () => {
                             const overlay = resolveOverlay();
-                            if (!overlay || !overlay.opened) {
+                            if (!overlay) {
                                 return;
                             }
                             const width = Math.max(host.offsetWidth, MIN_WIDTH);
                             overlay.style.minWidth = width + 'px';
+                            overlay.style.width = width + 'px';
+                            overlay.style.setProperty('--menu-overlay-min-width', width + 'px');
+                            host.style.setProperty('--menu-overlay-min-width', width + 'px');
                         };
 
-                        const startInterval = () => {
-                            applyWidth();
-                            if (overlayInterval) {
-                                clearInterval(overlayInterval);
-                            }
-                            overlayInterval = setInterval(() => {
-                                const overlay = resolveOverlay();
-                                if (!overlay || !overlay.opened) {
-                                    if (overlayInterval) {
-                                        clearInterval(overlayInterval);
-                                        overlayInterval = undefined;
-                                    }
-                                    return;
-                                }
+                        const scheduleApply = () => {
+                            requestAnimationFrame(() => {
                                 applyWidth();
-                            }, 120);
+                                const overlay = resolveOverlay();
+                                if (overlay) {
+                                    overlay.addEventListener('animationend', applyWidth, { once: true });
+                                }
+                            });
                         };
 
-                        host.addEventListener('vaadin-overlay-open', startInterval);
-                        host.addEventListener('vaadin-overlay-closed', () => {
-                            if (overlayInterval) {
-                                clearInterval(overlayInterval);
-                                overlayInterval = undefined;
+                        const openedListener = (event) => {
+                            if (event.type === 'opened-changed' && !(event.detail && event.detail.value)) {
+                                return;
                             }
-                        });
+                            scheduleApply();
+                        };
+
+                        ['vaadin-overlay-open', 'vaadin-overlay-opened', 'opened-changed']
+                            .forEach(evt => host.addEventListener(evt, openedListener));
+
+                        host.addEventListener('vaadin-overlay-close', () => requestAnimationFrame(applyWidth));
 
                         new ResizeObserver(() => applyWidth()).observe(host);
                 """
