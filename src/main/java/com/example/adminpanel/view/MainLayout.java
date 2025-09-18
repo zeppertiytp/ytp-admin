@@ -11,6 +11,7 @@ import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.details.Details;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H6;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.menubar.MenuBar;
@@ -172,13 +173,17 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
         grouped.forEach((group, items) -> {
             H6 groupHeader = new H6(getTranslation("menu." + group));
             groupHeader.addClassName("nav-section-title");
-            menuLayout.add(groupHeader);
 
             VerticalLayout groupLayout = new VerticalLayout();
             groupLayout.setPadding(false);
             groupLayout.setSpacing(false);
             groupLayout.setWidthFull();
             groupLayout.addClassName("nav-group");
+
+            Div section = new Div();
+            section.setWidthFull();
+            section.addClassName("nav-section");
+            section.add(groupHeader, groupLayout);
 
             for (MenuItem item : items) {
                 if (item.hasChildren()) {
@@ -248,7 +253,7 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
                 }
             }
 
-            menuLayout.add(groupLayout);
+            menuLayout.add(section);
         });
     }
 

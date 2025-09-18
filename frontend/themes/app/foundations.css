@@ -112,9 +112,16 @@ vaadin-vertical-layout.app-drawer {
   padding: var(--space-6) var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-5);
   box-sizing: border-box;
   background: var(--surface-subtle);
+}
+
+.nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
 }
 
 .nav-section-title {
@@ -123,12 +130,13 @@ vaadin-vertical-layout.app-drawer {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-secondary);
-  margin: var(--space-3) var(--space-3) var(--space-2);
-  padding-inline: var(--space-1);
+  margin: 0;
+  padding-inline: var(--space-3);
+  padding-block: var(--space-1) 0;
 }
 
 vaadin-vertical-layout.nav-group {
-  padding: var(--space-1) var(--space-2) var(--space-3);
+  padding: var(--space-1) 0 var(--space-2);
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -229,6 +237,14 @@ vaadin-details.nav-accordion::part(summary) {
 }
 
 vaadin-details.nav-accordion::part(summary)::before {
+  display: none;
+}
+
+vaadin-details.nav-accordion::part(summary)::after {
+  display: none;
+}
+
+vaadin-details.nav-accordion::part(toggle) {
   display: none;
 }
 
