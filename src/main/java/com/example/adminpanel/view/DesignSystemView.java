@@ -106,7 +106,8 @@ public class DesignSystemView extends AppPageLayout implements LocaleChangeObser
 
     private Button btn(String themeName) {
         Button b = new Button();
-        b.getElement().setAttribute("theme", themeName);
+        String appliedTheme = "primary".equals(themeName) ? "primary" : "primary " + themeName;
+        b.getElement().setAttribute("theme", appliedTheme);
         b.setWidthFull();
         return b;
     }
