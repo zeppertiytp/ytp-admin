@@ -1,0 +1,24 @@
+:host(.nav-accordion) [part='content'] {
+  padding: var(--space-1) 0 var(--space-2);
+}
+
+:host(.nav-accordion) [part='summary'] {
+  border-radius: var(--radius-m);
+  padding: 0;
+  list-style: none;
+}
+
+:host(.nav-accordion) [part='summary']::before,
+:host(.nav-accordion) [part='summary']::after {
+  display: none;
+}
+
+:host(.nav-accordion) [part='summary']::marker,
+:host(.nav-accordion) [part='summary']::-webkit-details-marker {
+  display: none;
+  content: "";
+}
+
+:host(.nav-accordion) [part='toggle'] {
+  display: none;
+}

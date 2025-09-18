@@ -11,6 +11,7 @@ import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.details.Details;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H6;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.menubar.MenuBar;
@@ -18,6 +19,8 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
 import com.vaadin.flow.server.VaadinSession;
@@ -96,6 +99,7 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
         // User menu
         userMenu = new MenuBar();
         userMenu.setOpenOnHover(true);
+        ensureMenuOverlayMinWidth(userMenu);
         var userMenuRoot = userMenu.addItem(userInfo);
         var subMenu = userMenuRoot.getSubMenu();
         subMenu.addItem(getTranslation("header.profile"));
@@ -152,6 +156,7 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
         menuLayout.setPadding(false);
         menuLayout.setSpacing(false);
         menuLayout.setSizeFull();
+        menuLayout.addClassName("app-drawer");
         buildMenu();
         addToDrawer(menuLayout);
     }
@@ -167,13 +172,18 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
 
         grouped.forEach((group, items) -> {
             H6 groupHeader = new H6(getTranslation("menu." + group));
-            groupHeader.getStyle().setMargin("var(--lumo-space-m)");
-            menuLayout.add(groupHeader);
+            groupHeader.addClassName("nav-section-title");
 
             VerticalLayout groupLayout = new VerticalLayout();
             groupLayout.setPadding(false);
             groupLayout.setSpacing(false);
             groupLayout.setWidthFull();
+            groupLayout.addClassName("nav-group");
+
+            Div section = new Div();
+            section.setWidthFull();
+            section.addClassName("nav-section");
+            section.add(groupHeader, groupLayout);
 
             for (MenuItem item : items) {
                 if (item.hasChildren()) {
@@ -181,35 +191,29 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
                     Component icon = item.getIcon() != null ? new AppIcon(mapIconName(item.getIcon()), "20") : null;
                     Span label = new Span(getTranslation(item.getLabelKey()));
 
-                    HorizontalLayout summary = new HorizontalLayout();
-                    summary.setSpacing(false);
-                    summary.setPadding(false);
-                    summary.setAlignItems(FlexComponent.Alignment.CENTER);
-                    // Make summary fill width and reserve space for the caret to avoid overlap
-                    summary.setWidthFull();
-                    summary.getStyle().set("padding-inline-end", "24px"); // space for caret
-                    if (icon != null) summary.add(icon);
-                    summary.add(label);
+                    HorizontalLayout summary = createNavRow(icon, label);
+                    summary.addClassName("nav-row--summary");
+                    summary.getStyle().set("cursor", "pointer");
+
+                    Icon caret = VaadinIcon.CHEVRON_DOWN.create();
+                    caret.addClassName("nav-row__caret");
+                    caret.addClassName("nav-row__caret--closed");
+                    caret.getElement().setAttribute("aria-hidden", "true");
+                    summary.add(caret);
 
                     VerticalLayout childrenLayout = new VerticalLayout();
                     childrenLayout.setPadding(false);
                     childrenLayout.setSpacing(false);
                     childrenLayout.setWidthFull();
+                    childrenLayout.addClassName("nav-children");
 
                     for (MenuItem child : item.getChildren()) {
                         Component childIcon = child.getIcon() != null ? new AppIcon(mapIconName(child.getIcon()), "18") : null;
                         Span childLabel = new Span(getTranslation(child.getLabelKey()));
 
-                        HorizontalLayout childRow = new HorizontalLayout();
-                        childRow.setSpacing(false);
-                        childRow.setPadding(false);
-                        childRow.setAlignItems(FlexComponent.Alignment.CENTER);
-                        childRow.setWidthFull();
-                        childRow.addClassName("nav-row");
+                        HorizontalLayout childRow = createNavRow(childIcon, childLabel);
+                        childRow.addClassName("nav-row--child");
                         childRow.getStyle().set("cursor", "pointer");
-
-                        if (childIcon != null) childRow.add(childIcon);
-                        childRow.add(childLabel);
 
                         if (child.getView() != null) {
                             childRow.addClickListener(e -> UI.getCurrent().navigate(child.getView()));
@@ -222,22 +226,23 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
                     Details details = new Details(summary, childrenLayout);
                     details.setWidthFull();
                     details.setOpened(false);
+                    details.addClassName("nav-accordion");
+                    details.addOpenedChangeListener(event -> {
+                        if (event.isOpened()) {
+                            caret.removeClassName("nav-row__caret--closed");
+                        } else {
+                            caret.addClassName("nav-row__caret--closed");
+                        }
+                    });
                     groupLayout.add(details);
                 } else {
                     // Leaf item row
                     Component icon = item.getIcon() != null ? new AppIcon(mapIconName(item.getIcon()), "20") : null;
                     Span label = new Span(getTranslation(item.getLabelKey()));
 
-                    HorizontalLayout row = new HorizontalLayout();
-                    row.setSpacing(false);
-                    row.setPadding(false);
-                    row.setAlignItems(FlexComponent.Alignment.CENTER);
-                    row.setWidthFull();
-                    row.addClassName("nav-row");
+                    HorizontalLayout row = createNavRow(icon, label);
+                    row.addClassName("nav-row--leaf");
                     row.getStyle().set("cursor", "pointer");
-
-                    if (icon != null) row.add(icon);
-                    row.add(label);
 
                     if (item.getView() != null) {
                         row.addClickListener(e -> UI.getCurrent().navigate(item.getView()));
@@ -248,7 +253,7 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
                 }
             }
 
-            menuLayout.add(groupLayout);
+            menuLayout.add(section);
         });
     }
 
@@ -367,5 +372,82 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
         );
 
         updateHeaderOrder();
+    }
+
+    private HorizontalLayout createNavRow(Component icon, Span label) {
+        HorizontalLayout row = new HorizontalLayout();
+        row.setSpacing(false);
+        row.setPadding(false);
+        row.setAlignItems(FlexComponent.Alignment.CENTER);
+        row.setWidthFull();
+        row.addClassName("nav-row");
+
+        if (icon != null) {
+            icon.getElement().getClassList().add("nav-row__icon");
+            row.add(icon);
+        }
+
+        label.addClassName("nav-row__label");
+        row.add(label);
+        row.setFlexGrow(1, label);
+
+        return row;
+    }
+
+    private void ensureMenuOverlayMinWidth(MenuBar menuBar) {
+        if (menuBar == null) {
+            return;
+        }
+        menuBar.getElement().executeJs(
+                """
+                        const host = this;
+                        if (host.__overlayMinWidthApplied) {
+                            return;
+                        }
+                        host.__overlayMinWidthApplied = true;
+                        const MIN_WIDTH = 260;
+
+                        const resolveOverlay = () => {
+                            const sub = host._subMenu;
+                            return sub && sub.$ && sub.$.overlay ? sub.$.overlay : null;
+                        };
+
+                        const applyWidth = () => {
+                            const overlay = resolveOverlay();
+                            if (!overlay) {
+                                return;
+                            }
+                            const width = Math.max(host.offsetWidth, MIN_WIDTH);
+                            overlay.style.minWidth = width + 'px';
+                            overlay.style.width = width + 'px';
+                            overlay.style.setProperty('--menu-overlay-min-width', width + 'px');
+                            host.style.setProperty('--menu-overlay-min-width', width + 'px');
+                        };
+
+                        const scheduleApply = () => {
+                            requestAnimationFrame(() => {
+                                applyWidth();
+                                const overlay = resolveOverlay();
+                                if (overlay) {
+                                    overlay.addEventListener('animationend', applyWidth, { once: true });
+                                }
+                            });
+                        };
+
+                        const openedListener = (event) => {
+                            if (event.type === 'opened-changed' && !(event.detail && event.detail.value)) {
+                                return;
+                            }
+                            scheduleApply();
+                        };
+
+                        ['vaadin-overlay-open', 'vaadin-overlay-opened', 'opened-changed']
+                            .forEach(evt => host.addEventListener(evt, openedListener));
+
+                        host.addEventListener('vaadin-overlay-close', () => requestAnimationFrame(applyWidth));
+
+                        new ResizeObserver(() => applyWidth()).observe(host);
+                """
+        );
     }
 }

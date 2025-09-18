@@ -109,38 +109,38 @@ vaadin-app-layout::part(navbar) {
 }
 
 vaadin-vertical-layout.app-drawer {
-  padding: var(--space-6) var(--space-4);
+  padding: var(--space-6) var(--space-3);
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
   box-sizing: border-box;
+  background: var(--surface-subtle);
+}
+
+.nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
 }
 
 .nav-section-title {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin: 0;
-}
-
-vaadin-vertical-layout.nav-section {
-  gap: var(--space-3);
-  padding: 0;
+  padding-inline: var(--space-3);
+  padding-block: var(--space-1) 0;
 }
 
 vaadin-vertical-layout.nav-group {
-  padding: 0;
+  padding: var(--space-1) 0 var(--space-2);
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-}
-
-.nav-divider {
-  height: 1px;
-  background: var(--divider-strong);
-  opacity: 0.4;
+  border-radius: var(--radius-l);
 }
 
 .nav-row {
@@ -151,17 +151,24 @@ vaadin-vertical-layout.nav-group {
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-m);
   color: var(--text-secondary);
-  transition: background-color 120ms ease, color 120ms ease;
+  font-weight: var(--font-weight-medium);
+  transition: background-color 140ms ease, color 140ms ease;
 }
 
-.nav-row:hover {
-  background: color-mix(in srgb, var(--lumo-primary-color) 8%, transparent);
-  color: var(--lumo-body-text-color);
+.nav-row:hover,
+.nav-row:focus-visible {
+  background: color-mix(in srgb, var(--lumo-primary-color) 10%, transparent);
+  color: var(--text-primary);
 }
 
 .nav-row__icon {
   flex: 0 0 auto;
-  margin-inline-end: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--text-secondary);
 }
 
 .nav-row__label {
@@ -172,24 +179,113 @@ vaadin-vertical-layout.nav-group {
   white-space: nowrap;
 }
 
+.nav-row--summary {
+  padding-inline: var(--space-3);
+}
+
+.nav-row--leaf {
+  padding-inline: var(--space-3);
+}
+
+.nav-row--child {
+  padding-inline-start: calc(var(--space-3) + var(--space-2));
+}
+
 .nav-children {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding-inline-start: var(--space-2);
+  margin-inline-start: var(--space-2);
+  padding-inline-start: var(--space-3);
+  border-inline-start: 1px solid color-mix(in srgb, var(--divider-subtle) 60%, transparent);
 }
 
-vaadin-details.nav-accordion::part(content) {
-  padding: var(--space-1) 0 var(--space-2);
+.nav-row__caret {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  margin-inline-start: var(--space-2);
+  color: var(--text-muted);
+  transition: transform 160ms ease, color 140ms ease;
 }
 
-vaadin-details.nav-accordion::part(summary) {
-  border-radius: var(--radius-m);
-  padding: 0;
+.nav-row:hover .nav-row__caret,
+.nav-row:focus-visible .nav-row__caret {
+  color: currentColor;
 }
 
-.nav-accordion .nav-row--summary {
-  padding-inline-end: var(--space-6);
+.nav-row__caret vaadin-icon {
+  width: 100%;
+  height: 100%;
+}
+
+[dir='ltr'] .nav-row__caret--closed {
+  transform: rotate(-90deg);
+}
+
+[dir='rtl'] .nav-row__caret--closed {
+  transform: rotate(90deg);
+}
+
+/* Navigation group styling */
+.nav-section-title {
+  color: color-mix(in srgb, var(--text-secondary) 30%, var(--text-primary) 70%);
+}
+
+vaadin-vertical-layout.nav-group {
+  background: color-mix(in srgb, var(--surface-card) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--divider-subtle) 70%, transparent);
+  padding-block: var(--space-2);
+  padding-inline: var(--space-1);
+}
+
+.nav-row:hover .nav-row__icon,
+.nav-row:focus-visible .nav-row__icon {
+  color: currentColor;
+}
+
+/* MenuBar overlays ----------------------------------------------------- */
+vaadin-menu-bar-overlay::part(overlay) {
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-lg);
+}
+
+vaadin-menu-bar-overlay::part(content) {
+  min-width: var(--menu-overlay-min-width, 260px);
+  padding: var(--space-2) 0;
+}
+
+vaadin-menu-bar-overlay vaadin-menu-bar-item {
+  min-width: 100%;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+vaadin-menu-bar-overlay vaadin-menu-bar-item::part(prefix) {
+  margin-inline-end: var(--space-2);
+  color: var(--text-secondary);
+}
+
+vaadin-menu-bar-overlay vaadin-menu-bar-item::part(label) {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: start;
+}
+
+vaadin-menu-bar-overlay vaadin-menu-bar-item::part(suffix) {
+  margin-inline-start: auto;
+  padding-inline-start: var(--space-3);
+}
+
+[dir='rtl'] vaadin-menu-bar-overlay vaadin-menu-bar-item::part(label) {
+  text-align: end;
+}
+
+[dir='rtl'] vaadin-menu-bar-overlay vaadin-menu-bar-item {
+  flex-direction: row;
 }
 
 .app-drawer vaadin-button {
