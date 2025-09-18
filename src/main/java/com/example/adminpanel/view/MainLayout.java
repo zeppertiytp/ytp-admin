@@ -227,7 +227,6 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
                     details.setWidthFull();
                     details.setOpened(false);
                     details.addClassName("nav-accordion");
-                    details.setSummaryToggleVisible(false);
                     details.addOpenedChangeListener(event -> {
                         if (event.isOpened()) {
                             caret.removeClassName("nav-row__caret--closed");
