@@ -230,27 +230,6 @@ vaadin-vertical-layout.nav-group {
   transform: rotate(90deg);
 }
 
-vaadin-details.nav-accordion::part(content) {
-  padding: var(--space-1) 0 var(--space-2);
-}
-
-vaadin-details.nav-accordion::part(summary) {
-  border-radius: var(--radius-m);
-  padding: 0;
-}
-
-vaadin-details.nav-accordion::part(summary)::before {
-  display: none;
-}
-
-vaadin-details.nav-accordion::part(summary)::after {
-  display: none;
-}
-
-vaadin-details.nav-accordion::part(toggle) {
-  display: none;
-}
-
 /* Navigation group styling */
 .nav-section-title {
   color: color-mix(in srgb, var(--text-secondary) 30%, var(--text-primary) 70%);
