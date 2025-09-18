@@ -693,6 +693,7 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
         if (hasConfigFeatures) {
             configMenu = new MenuBar();
             configMenu.setOpenOnHover(true);
+            ensureMenuOverlayMinWidth(configMenu);
             // Clear any existing items
             configMenu.getItems().clear();
             configRoot = configMenu.addItem(getTranslation("grid.config"));
@@ -757,6 +758,61 @@ public class FilterablePaginatedGrid<T> extends VerticalLayout implements Locale
                 topControls.add(pageSizeGroup, filterButton);
             }
         }
+    }
+
+    private void ensureMenuOverlayMinWidth(MenuBar menuBar) {
+        if (menuBar == null) {
+            return;
+        }
+        menuBar.getElement().executeJs(
+                """
+                        const host = this;
+                        const MIN_WIDTH = 240;
+                        let overlayInterval;
+
+                        const resolveOverlay = () => {
+                            const sub = host._subMenu;
+                            return sub && sub.$ && sub.$.overlay ? sub.$.overlay : null;
+                        };
+
+                        const applyWidth = () => {
+                            const overlay = resolveOverlay();
+                            if (!overlay || !overlay.opened) {
+                                return;
+                            }
+                            const width = Math.max(host.offsetWidth, MIN_WIDTH);
+                            overlay.style.minWidth = width + 'px';
+                        };
+
+                        const startInterval = () => {
+                            applyWidth();
+                            if (overlayInterval) {
+                                clearInterval(overlayInterval);
+                            }
+                            overlayInterval = setInterval(() => {
+                                const overlay = resolveOverlay();
+                                if (!overlay || !overlay.opened) {
+                                    if (overlayInterval) {
+                                        clearInterval(overlayInterval);
+                                        overlayInterval = undefined;
+                                    }
+                                    return;
+                                }
+                                applyWidth();
+                            }, 120);
+                        };
+
+                        host.addEventListener('vaadin-overlay-open', startInterval);
+                        host.addEventListener('vaadin-overlay-closed', () => {
+                            if (overlayInterval) {
+                                clearInterval(overlayInterval);
+                                overlayInterval = undefined;
+                            }
+                        });
+
+                        new ResizeObserver(() => applyWidth()).observe(host);
+                """
+        );
     }
 
     private void refresh() {
