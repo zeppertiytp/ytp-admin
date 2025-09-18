@@ -1,0 +1,17 @@
+:host(.nav-accordion) [part='content'] {
+  padding: var(--space-1) 0 var(--space-2);
+}
+
+:host(.nav-accordion) [part='summary'] {
+  border-radius: var(--radius-m);
+  padding: 0;
+}
+
+:host(.nav-accordion) [part='summary']::before,
+:host(.nav-accordion) [part='summary']::after {
+  display: none;
+}
+
+:host(.nav-accordion) [part='toggle'] {
+  display: none;
+}
