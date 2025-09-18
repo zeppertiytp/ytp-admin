@@ -227,6 +227,7 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
                     details.setWidthFull();
                     details.setOpened(false);
                     details.addClassName("nav-accordion");
+                    hideNativeToggle(details);
                     details.addOpenedChangeListener(event -> {
                         if (event.isOpened()) {
                             caret.removeClassName("nav-row__caret--closed");
@@ -447,6 +448,37 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
                         host.addEventListener('vaadin-overlay-close', () => requestAnimationFrame(applyWidth));
 
                         new ResizeObserver(() => applyWidth()).observe(host);
+                """
+        );
+    }
+
+    private void hideNativeToggle(Details details) {
+        if (details == null) {
+            return;
+        }
+        details.getElement().executeJs(
+                """
+                        const host = this;
+                        if (host.__nativeToggleHidden) {
+                            return;
+                        }
+                        host.__nativeToggleHidden = true;
+                        const hide = () => {
+                            const root = host.shadowRoot;
+                            if (!root) {
+                                return;
+                            }
+                            const toggle = root.querySelector('[part="toggle"]');
+                            if (toggle) {
+                                toggle.style.display = 'none';
+                                toggle.setAttribute('aria-hidden', 'true');
+                            }
+                        };
+                        hide();
+                        if (host.shadowRoot) {
+                            new MutationObserver(hide).observe(host.shadowRoot, { childList: true, subtree: true });
+                        }
+                        host.addEventListener('opened-changed', hide);
                 """
         );
     }

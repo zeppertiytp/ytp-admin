@@ -19,6 +19,11 @@
   content: "";
 }
 
+:host(.nav-accordion)::part(toggle),
 :host(.nav-accordion) [part='toggle'] {
-  display: none;
+  display: none !important;
+  width: 0;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
 }
