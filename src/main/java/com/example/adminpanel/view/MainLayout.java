@@ -1,8 +1,9 @@
 package com.example.adminpanel.view;
 
-import com.example.adminpanel.security.SecurityService;
 import com.example.adminpanel.components.AppIcon;
-
+import com.example.adminpanel.security.SecurityService;
+import com.example.adminpanel.service.MenuItem;
+import com.example.adminpanel.service.MenuService;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
@@ -14,22 +15,18 @@ import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H6;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.menubar.MenuBar;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.icon.Icon;
-import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
 import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.theme.lumo.Lumo;
-
 import org.springframework.beans.factory.annotation.Autowired;
-
-import com.example.adminpanel.service.MenuItem;
-import com.example.adminpanel.service.MenuService;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -227,6 +224,7 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
                     details.setWidthFull();
                     details.setOpened(false);
                     details.addClassName("nav-accordion");
+                    details.addThemeName("menu"); // <— important: used to scope CSS
                     details.addOpenedChangeListener(event -> {
                         if (event.isOpened()) {
                             caret.removeClassName("nav-row__caret--closed");
@@ -450,4 +448,5 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
                 """
         );
     }
+
 }

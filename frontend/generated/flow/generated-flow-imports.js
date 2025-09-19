@@ -1,12 +1,15 @@
 import { injectGlobalCss } from 'Frontend/generated/jar-resources/theme-util.js';
 
 import { css, unsafeCSS, registerStyles } from '@vaadin/vaadin-themable-mixin';
-import $cssFromFile_0 from 'Frontend/generated/jar-resources/styles/vazir-font.css?inline';
+import $cssFromFile_0 from 'Frontend/styles/hide-details-caret.css?inline';
+const $css_0 = typeof $cssFromFile_0  === 'string' ? unsafeCSS($cssFromFile_0) : $cssFromFile_0;
+registerStyles('vaadin-details-summary', $css_0, {moduleId: 'flow_css_mod_0'});
+import $cssFromFile_1 from 'Frontend/generated/jar-resources/styles/vazir-font.css?inline';
 
-injectGlobalCss($cssFromFile_0.toString(), 'CSSImport end', document);
-import $cssFromFile_1 from 'Frontend/generated/jar-resources/styles/rtl-fix.css?inline';
-const $css_1 = typeof $cssFromFile_1  === 'string' ? unsafeCSS($cssFromFile_1) : $cssFromFile_1;
-registerStyles('vaadin-app-layout', $css_1, {moduleId: 'flow_css_mod_1'});
+injectGlobalCss($cssFromFile_1.toString(), 'CSSImport end', document);
+import $cssFromFile_2 from 'Frontend/generated/jar-resources/styles/rtl-fix.css?inline';
+const $css_2 = typeof $cssFromFile_2  === 'string' ? unsafeCSS($cssFromFile_2) : $cssFromFile_2;
+registerStyles('vaadin-app-layout', $css_2, {moduleId: 'flow_css_mod_2'});
 import 'Frontend/utils/digit-normalizer.js';
 import '@vaadin/polymer-legacy-adapter/style-modules.js';
 import '@vaadin/vertical-layout/src/vaadin-vertical-layout.js';

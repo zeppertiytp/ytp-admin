@@ -13,5 +13,40 @@
 }
 
 :host(.nav-accordion) [part='toggle'] {
-  display: none;
+  display: none !important;
+}
+
+
+
+/* Scope to your menu accordion only */
+:host([theme~='menu']) {
+  /* undo defaults from the injected <style> you showed */
+  white-space: normal;              /* was nowrap */
+  padding: 0;                       /* remove vertical padding */
+  color: var(--lumo-body-text-color);
+  line-height: var(--lumo-line-height-m);
+}
+
+/* Optional: hide the caret that <vaadin-details-summary> renders */
+:host([theme~='menu']) [part='toggle'] {
+  display: none !important;
+}
+
+/* If you do want the caret but control its spacing in RTL/LTR: */
+:host([theme~='menu']) [part='toggle'] {
+  margin: 0;
+}
+
+
+/* Auto-added by fix: hide built-in caret in menu accordions */
+:host(.nav-accordion)::part(toggle) {
+  display: none !important;
+}
+:host(.nav-accordion)::part(summary) {
+  white-space: normal !important;
+  padding: 0 !important;
+  line-height: var(--lumo-line-height-m);
+}
+:host(.nav-accordion)::part(content) {
+  padding: 0 !important;
 }

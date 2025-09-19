@@ -1,11 +1,13 @@
 package com.example.adminpanel;
 
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.dependency.JsModule;
 import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.component.page.Inline;
 import com.vaadin.flow.server.AppShellSettings;
 import com.vaadin.flow.theme.Theme;
 
+@CssImport(value = "./styles/hide-details-caret.css", themeFor = "vaadin-details-summary")
 @Theme(value = "app")
 @JsModule("./utils/digit-normalizer.js")
 public class AppShell implements AppShellConfigurator {
