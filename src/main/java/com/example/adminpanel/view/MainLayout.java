@@ -456,30 +456,44 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
         if (details == null) {
             return;
         }
-        details.getElement().executeJs(
-                """
-                        const host = this;
-                        if (host.__nativeToggleHidden) {
-                            return;
-                        }
-                        host.__nativeToggleHidden = true;
-                        const hide = () => {
-                            const root = host.shadowRoot;
-                            if (!root) {
-                                return;
-                            }
-                            const toggle = root.querySelector('[part="toggle"]');
-                            if (toggle) {
-                                toggle.style.display = 'none';
-                                toggle.setAttribute('aria-hidden', 'true');
-                            }
-                        };
-                        hide();
-                        if (host.shadowRoot) {
-                            new MutationObserver(hide).observe(host.shadowRoot, { childList: true, subtree: true });
-                        }
-                        host.addEventListener('opened-changed', hide);
-                """
+        details.getElement().getNode().runWhenAttached(ui ->
+                ui.beforeClientResponse(details, context ->
+                        details.getElement().executeJs(
+                                """
+                                        const host = this;
+                                        if (host.__nativeToggleHidden) {
+                                            return;
+                                        }
+                                        host.__nativeToggleHidden = true;
+
+                                        const removeToggle = () => {
+                                            const root = host.shadowRoot;
+                                            if (!root) {
+                                                return;
+                                            }
+                                            const toggle = root.querySelector('[part=\"toggle\"]');
+                                            if (toggle && !toggle.__removedByTheme) {
+                                                toggle.__removedByTheme = true;
+                                                toggle.remove();
+                                            }
+
+                                            const summary = root.querySelector('[part=\"summary\"]');
+                                            if (summary) {
+                                                summary.style.listStyle = 'none';
+                                                summary.style.paddingInlineStart = '0px';
+                                            }
+                                        };
+
+                                        removeToggle();
+
+                                        if (host.shadowRoot) {
+                                            new MutationObserver(removeToggle).observe(host.shadowRoot, { childList: true, subtree: true });
+                                        }
+
+                                        host.addEventListener('opened-changed', removeToggle);
+                                """
+                        )
+                )
         );
     }
 }
