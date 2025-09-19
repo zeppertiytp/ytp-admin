@@ -4,8 +4,9 @@ import com.example.adminpanel.component.GeneratedForm;
 import com.example.adminpanel.component.layout.AppPageLayout;
 import com.example.adminpanel.service.FormValidationService;
 import com.vaadin.flow.component.UI;
-import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
 import com.vaadin.flow.router.Route;
@@ -24,15 +25,16 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
     @Autowired
     public FormGenerationView(FormValidationService validationService) {
         pageTitle = createPageTitle(getTranslation("forms.title"));
-        // Create a generated form from the sample specification. The
-        // JSON file is located under src/main/resources/forms/user_form.json.
         GeneratedForm form = new GeneratedForm("user_form.json", validationService);
-        add(form);
-        setHorizontalComponentAlignment(Alignment.START, form);
+        GeneratedForm layoutForm = new GeneratedForm("user_form_with_layout.json", validationService);
+        add(defaultSampleHeading, form, layoutSampleHeading, layoutForm);
+        setHorizontalComponentAlignment(Alignment.START, defaultSampleHeading, form, layoutSampleHeading, layoutForm);
         updatePageTitle();
     }
 
     private final H1 pageTitle;
+    private final H2 defaultSampleHeading = new H2();
+    private final H2 layoutSampleHeading = new H2();
 
     private void updatePageTitle() {
         UI ui = UI.getCurrent();
@@ -40,6 +42,8 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
             ui.getPage().setTitle(getTranslation("forms.title"));
         }
         pageTitle.setText(getTranslation("forms.title"));
+        defaultSampleHeading.setText(getTranslation("forms.sample.basic"));
+        layoutSampleHeading.setText(getTranslation("forms.sample.layout"));
     }
 
     @Override

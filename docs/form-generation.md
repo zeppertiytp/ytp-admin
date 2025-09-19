@@ -11,8 +11,9 @@ A form definition is a JSON object with the following top‑level fields:
 - `layout`: An array of section definitions.  Each element must have:
   - `type`: The literal string `"section"`.
   - `title`: An object with language keys and translated section titles.
-  - `columns`: The number of columns to display in the form.  Fields will flow across this many columns on large screens.
   - `fields`: An array of field definitions.
+  - `columns` (optional): Number of columns to display when the section uses the default responsive form grid.
+  - `layout` (optional): An object that overrides the container type and flex properties for the section.  See [Section layout overrides](#section-layout-overrides).
 
 ### Field Definition
 
@@ -27,6 +28,46 @@ Each entry in the `fields` array describes a single input component.  Common pro
 | `validators`   | array (optional)                | Additional client‑side validators.  Currently only `pattern` is supported. |
 | `options`      | array (for `select`/`radio`)    | A list of choices.  Each entry has a `value` (submitted value) and a `label` (translations). |
 | `visibleWhen`  | object (optional)               | Defines conditional visibility.  Use `"all"` or `"any"` with an array of conditions.  Each condition has `field`, `op`, and `value`.  Currently `op` supports `EQ` (equals). |
+
+### Section layout overrides
+
+Sections render in a responsive `FormLayout` by default and honour the numeric `columns` value.  When you need more control—such as stacking fields vertically with custom spacing or arranging them in a wrapped horizontal row—add a `layout` object alongside the section definition.
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `type` | string | Container choice. Supported values are `"form"` (default, respects `columns`), `"horizontal"` (uses `HorizontalLayout`), and `"vertical"` (uses `VerticalLayout`). |
+| `align` | string | Maps to `setAlignItems` (`start`, `center`, `end`, `stretch`, `baseline`). |
+| `justify` | string | Maps to `setJustifyContentMode` (`start`, `center`, `end`, `between`, `around`, `evenly`). |
+| `spacing` | string/number | Controls the CSS gap between field components (for numbers the generator appends `px`). |
+| `width` | string | Optional explicit width for the section container (`"auto"`, `"100%"`, `"320px"`, etc.). |
+| `wrap` | boolean | Only for `type: "horizontal"`. When `true`, enables wrapping inside the horizontal layout. |
+| `classNames` | array | Extra CSS class names applied to the section container. |
+
+> **Note:** `columns` still only applies when `layout.type` is `"form"` (or omitted). Horizontal and vertical layouts ignore the column count but pick up other flex settings.
+
+Example (excerpt from `user_form_with_layout.json`):
+
+```json
+{
+  "type": "section",
+  "title": { "fa": "نمایش در یک ردیف", "en": "Inline layout" },
+  "layout": {
+    "type": "horizontal",
+    "align": "end",
+    "justify": "between",
+    "spacing": "var(--lumo-space-m)",
+    "wrap": true,
+    "classNames": ["inline-section"]
+  },
+  "fields": [
+    { "name": "firstName", "label": { "fa": "نام", "en": "First name" }, "type": "text", "required": true },
+    { "name": "lastName", "label": { "fa": "نام خانوادگی", "en": "Last name" }, "type": "text", "required": true },
+    { "name": "newsletter", "label": { "fa": "خبرنامه", "en": "Newsletter" }, "type": "switch" }
+  ]
+}
+```
+
+Use a horizontal layout for compact inline groups such as first/last-name pairs or filter toolbars, and a vertical layout when you need stacked cards but still want spacing control between field groups.
 
 ### Supported Field Types
 
@@ -148,6 +189,8 @@ The sample form `user_form.json` demonstrates many of the features:
 ```
 
 This form includes basic text/email fields, a select drop‑down, a boolean switch controlling the visibility of a dependent field, and examples of new types (date, file upload, multi‑file upload and radio buttons).
+
+For layout-specific behaviour, review `user_form_with_layout.json`.  It keeps the first section on the responsive grid, switches the second section to a wrapped horizontal layout for inline fields, and renders the final section in a stacked vertical container with custom spacing and width.
 
 ## Conclusion
 
