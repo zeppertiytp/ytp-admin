@@ -194,17 +194,6 @@ export class JalaliDateTimePicker extends LitElement {
       this.ensureSelectionWithinRange();
       this.requestUpdate();
     }
-    if (changed.has('opened')) {
-      this.addDocumentListenersIfNeeded();
-      if (this.opened) {
-        this.updateComplete.then(() => {
-          const surface = this.renderRoot.querySelector('.picker-surface');
-          if (surface instanceof HTMLElement) {
-            surface.focus({ preventScroll: true });
-          }
-        });
-      }
-    }
     if ((changed.has('disabled') || changed.has('readOnly')) && (this.disabled || this.readOnly)) {
       this.setOpened(false);
     }
@@ -1235,6 +1224,17 @@ export class JalaliDateTimePicker extends LitElement {
       return;
     }
     this.opened = next;
+    this.addDocumentListenersIfNeeded();
+    if (this.opened) {
+      void this.updateComplete.then(() => {
+        const surface = this.renderRoot.querySelector('.picker-surface');
+        if (surface instanceof HTMLElement) {
+          surface.focus({ preventScroll: true });
+        }
+      }).catch(() => {
+        /* no-op */
+      });
+    }
   }
 
   private addDocumentListenersIfNeeded(): void {
@@ -1250,9 +1250,8 @@ export class JalaliDateTimePicker extends LitElement {
   }
 
   disconnectedCallback(): void {
+    this.setOpened(false);
     super.disconnectedCallback();
-    this.opened = false;
-    this.addDocumentListenersIfNeeded();
   }
 }
 
