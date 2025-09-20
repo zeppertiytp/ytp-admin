@@ -48,6 +48,8 @@ public class JalaliDateTimePicker extends AbstractField<JalaliDateTimePicker, Lo
 
     private LocalDateTime min;
     private LocalDateTime max;
+    private Integer minYear;
+    private Integer maxYear;
     private boolean invalid;
     private String errorMessage = "";
     private PickerVariant pickerVariant = PickerVariant.DATE_TIME;
@@ -163,6 +165,52 @@ public class JalaliDateTimePicker extends AbstractField<JalaliDateTimePicker, Lo
         getElement().setProperty("max", max == null ? "" : formatValue(max));
     }
 
+    public Optional<Integer> getMinYear() {
+        return Optional.ofNullable(minYear);
+    }
+
+    public void setMinYear(Integer minYear) {
+        if (minYear != null && minYear < 1) {
+            throw new IllegalArgumentException("Minimum year must be at least 1");
+        }
+        Integer previous = this.minYear;
+        this.minYear = minYear;
+        try {
+            ensureYearRangeIsSane();
+        } catch (IllegalArgumentException ex) {
+            this.minYear = previous;
+            throw ex;
+        }
+        if (minYear == null) {
+            getElement().removeProperty("minYear");
+        } else {
+            getElement().setProperty("minYear", minYear);
+        }
+    }
+
+    public Optional<Integer> getMaxYear() {
+        return Optional.ofNullable(maxYear);
+    }
+
+    public void setMaxYear(Integer maxYear) {
+        if (maxYear != null && maxYear < 1) {
+            throw new IllegalArgumentException("Maximum year must be at least 1");
+        }
+        Integer previous = this.maxYear;
+        this.maxYear = maxYear;
+        try {
+            ensureYearRangeIsSane();
+        } catch (IllegalArgumentException ex) {
+            this.maxYear = previous;
+            throw ex;
+        }
+        if (maxYear == null) {
+            getElement().removeProperty("maxYear");
+        } else {
+            getElement().setProperty("maxYear", maxYear);
+        }
+    }
+
     public void setMinuteStep(int minuteStep) {
         if (minuteStep <= 0 || minuteStep > 60) {
             throw new IllegalArgumentException("Minute step must be between 1 and 60");
@@ -228,10 +276,6 @@ public class JalaliDateTimePicker extends AbstractField<JalaliDateTimePicker, Lo
                 getTranslation("component.jalaliDateTime.previousMonth"));
         getElement().setProperty("nextMonthLabel",
                 getTranslation("component.jalaliDateTime.nextMonth"));
-        getElement().setProperty("previousYearLabel",
-                getTranslation("component.jalaliDateTime.previousYear"));
-        getElement().setProperty("nextYearLabel",
-                getTranslation("component.jalaliDateTime.nextYear"));
         getElement().setProperty("yearLabel",
                 getTranslation("component.jalaliDateTime.year"));
         getElement().setProperty("noValueLabel",
@@ -259,6 +303,12 @@ public class JalaliDateTimePicker extends AbstractField<JalaliDateTimePicker, Lo
     private void ensureRangeIsSane() {
         if (min != null && max != null && min.isAfter(max)) {
             throw new IllegalArgumentException("Minimum value must not be after maximum value");
+        }
+    }
+
+    private void ensureYearRangeIsSane() {
+        if (minYear != null && maxYear != null && minYear > maxYear) {
+            throw new IllegalArgumentException("Minimum year must not be after maximum year");
         }
     }
 

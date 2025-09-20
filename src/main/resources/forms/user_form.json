@@ -148,6 +148,8 @@
           "type": "jalaliDateTime",
           "minuteStep": 5,
           "min": "2020-01-01T00:00:00",
+          "minYear": 1398,
+          "maxYear": 1410,
           "openLabel": {
             "fa": "انتخاب تاریخ و زمان",
             "en": "Pick last login"
@@ -164,6 +166,7 @@
             "fa": "انتخاب تاریخ",
             "en": "Pick interview date"
           },
+          "minYear": 1400,
           "max": "2025-12-31T00:00:00"
         },
         {

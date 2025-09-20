@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v4.6.6
+### Jalali picker year range controls
+
+* **Dropdown-only year selection:** Removed the duplicated year arrow buttons
+  so the Jalali picker now relies on the dropdown for cross-year navigation,
+  preventing reversed controls in RTL layouts.
+* **Configurable bounds:** Added `minYear`/`maxYear` options (alongside the
+  existing ISO `min`/`max`) so developers can trim the available years without
+  defining full date-time limits. The component enforces these bounds across
+  day availability and the dropdown itself.
+* **Guidance & samples:** Documented the new options, refreshed the generated
+  form guide, and updated the sample JSON so both date and date-time Jalali
+  fields demonstrate year capping.
+
 ## v4.6.5
 ### Jalali picker year navigation
 
