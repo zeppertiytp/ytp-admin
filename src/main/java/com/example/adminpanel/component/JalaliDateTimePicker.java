@@ -130,7 +130,7 @@ public class JalaliDateTimePicker extends AbstractField<JalaliDateTimePicker, Lo
     }
 
     @Override
-    protected void onEnabledStateChanged(boolean enabled) {
+    public void onEnabledStateChanged(boolean enabled) {
         super.onEnabledStateChanged(enabled);
         getElement().setProperty("disabled", !enabled);
     }
