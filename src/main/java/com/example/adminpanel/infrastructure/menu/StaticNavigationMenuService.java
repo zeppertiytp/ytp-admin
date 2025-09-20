@@ -3,8 +3,7 @@ package com.example.adminpanel.infrastructure.menu;
 import com.example.adminpanel.application.menu.NavigationMenuService;
 import com.example.adminpanel.domain.menu.MenuItem;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,11 +14,9 @@ import java.util.List;
  * instead of Vaadin view classes so the UI can remain decoupled from concrete
  * navigation targets.
  */
+@Slf4j
 @Service
 public class StaticNavigationMenuService implements NavigationMenuService {
-
-    private static final Logger log = LoggerFactory.getLogger(StaticNavigationMenuService.class);
-
     @Override
     public List<MenuItem> getMenuItemsForCurrentUser() {
         log.debug("Building static navigation menu for current user");

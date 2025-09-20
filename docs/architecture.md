@@ -49,8 +49,9 @@ Follow these rules when adding new code to preserve a clean architecture.
 
 ## Logging
 
-* Use SLF4J (`org.slf4j.Logger`) for all application and infrastructure
-  components. Avoid `System.out.println` and similar console utilities.
+* Use Lombok's `@Slf4j` annotation (backed by SLF4J) for all application and
+  infrastructure components. Avoid `System.out.println` and similar console
+  utilities.
 * Emit logs at the lowest level that provides actionable insight. Prefer
   `DEBUG` for verbose data (e.g. mock datasets, validation flow) and reserve
   `INFO`/`WARN` for notable events or problems.

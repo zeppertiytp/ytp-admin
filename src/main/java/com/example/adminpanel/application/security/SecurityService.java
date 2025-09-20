@@ -2,8 +2,7 @@ package com.example.adminpanel.application.security;
 
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.server.VaadinSession;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
@@ -12,13 +11,12 @@ import org.springframework.stereotype.Service;
  * replaced or extended to delegate authentication to an external
  * provider (e.g. Keycloak) via Spring Security.
  */
+@Slf4j
 @Service
 public class SecurityService {
 
     /** Session attribute name used to store the authentication flag. */
     private static final String AUTH_SESSION_ATTR = "authenticated";
-
-    private static final Logger log = LoggerFactory.getLogger(SecurityService.class);
 
     /**
      * Attempts to authenticate the user.  For this demo the only

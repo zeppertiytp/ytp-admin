@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## v4.6.2
+### Lombok-based logging refinements
+
+* **Consistent logger injection:** Replaced manual `LoggerFactory` usage with
+  Lombok's `@Slf4j` annotation across security and demo infrastructure
+  services to standardise how loggers are obtained.
+* **Guidance update:** Documented the Lombok logging convention in the
+  architecture guide so future contributors follow the same pattern.
+
 ## v4.6.1
 ### Structured logging for demo services
 
