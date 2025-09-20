@@ -1,0 +1,183 @@
+package com.example.adminpanel.ui.component;
+
+import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.dom.ThemeList;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
+/**
+ * Branded notification component used across the application. It enlarges the
+ * default Vaadin notification, applies consistent iconography and allows
+ * callers to select the screen corner that should host the toast.
+ */
+public class AppNotification extends Notification {
+
+    private static final String BASE_THEME = "app-notification";
+    private static final String VARIANT_PREFIX = BASE_THEME + "--";
+    private static final Set<String> RTL_LANGS = Set.of("ar", "fa", "he", "ur");
+
+    public enum Variant {
+        INFO,
+        SUCCESS,
+        WARNING,
+        ERROR
+    }
+
+    public enum Corner {
+        TOP_LEFT,
+        TOP_RIGHT,
+        BOTTOM_LEFT,
+        BOTTOM_RIGHT
+    }
+
+    private final Span title;
+    private final Span description;
+    private final Div iconContainer;
+    private final Button closeButton;
+    private Variant variant;
+
+    public AppNotification(String titleText, String descriptionText, Variant initialVariant) {
+        super();
+        getElement().getThemeList().add(BASE_THEME);
+        setPosition(Position.TOP_END);
+        setDuration(0);
+        getElement().setAttribute("role", "alert");
+        getElement().setAttribute("aria-live", "polite");
+
+        Div wrapper = new Div();
+        wrapper.addClassName("app-notification__wrapper");
+
+        iconContainer = new Div();
+        iconContainer.addClassName("app-notification__icon");
+        iconContainer.getElement().setAttribute("aria-hidden", "true");
+        wrapper.add(iconContainer);
+
+        Div body = new Div();
+        body.addClassName("app-notification__body");
+
+        title = new Span();
+        title.addClassName("app-notification__title");
+        body.add(title);
+
+        description = new Span();
+        description.addClassName("app-notification__description");
+        body.add(description);
+
+        wrapper.add(body);
+
+        closeButton = new Button(VaadinIcon.CLOSE_SMALL.create(), event -> close());
+        closeButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_ICON);
+        closeButton.addClassName("app-notification__close");
+        setCloseButtonAriaLabel("Close notification");
+        wrapper.add(closeButton);
+
+        add(wrapper);
+
+        setTitle(titleText);
+        setDescription(descriptionText);
+        setVariant(initialVariant != null ? initialVariant : Variant.INFO);
+    }
+
+    public void setTitle(String text) {
+        title.setText(text == null ? "" : text);
+        title.setVisible(text != null && !text.isBlank());
+    }
+
+    public void setDescription(String text) {
+        description.setText(text == null ? "" : text);
+        description.setVisible(text != null && !text.isBlank());
+    }
+
+    public void setVariant(Variant newVariant) {
+        if (newVariant == null) {
+            return;
+        }
+        variant = newVariant;
+        refreshVariantTheme();
+        iconContainer.removeAll();
+        Icon icon = createIcon(newVariant);
+        iconContainer.add(icon);
+    }
+
+    public Variant getVariant() {
+        return variant;
+    }
+
+    public void setCorner(Corner corner) {
+        if (corner == null) {
+            return;
+        }
+        boolean rtl = isCurrentDirectionRtl();
+        Position position = switch (corner) {
+            case TOP_LEFT -> rtl ? Position.TOP_END : Position.TOP_START;
+            case TOP_RIGHT -> rtl ? Position.TOP_START : Position.TOP_END;
+            case BOTTOM_LEFT -> rtl ? Position.BOTTOM_END : Position.BOTTOM_START;
+            case BOTTOM_RIGHT -> rtl ? Position.BOTTOM_START : Position.BOTTOM_END;
+        };
+        setPosition(position);
+    }
+
+    public void setCloseButtonAriaLabel(String label) {
+        String value = label == null ? "" : label;
+        closeButton.getElement().setAttribute("aria-label", value);
+        closeButton.getElement().setProperty("title", value);
+    }
+
+    public static AppNotification show(String title, String description, Variant variant, Corner corner) {
+        AppNotification notification = new AppNotification(title, description, variant);
+        notification.setCorner(corner);
+        notification.open();
+        return notification;
+    }
+
+    private void refreshVariantTheme() {
+        ThemeList themeList = getElement().getThemeList();
+        List<String> toRemove = new ArrayList<>();
+        for (String theme : themeList) {
+            if (theme.startsWith(VARIANT_PREFIX)) {
+                toRemove.add(theme);
+            }
+        }
+        toRemove.forEach(themeList::remove);
+        themeList.add(VARIANT_PREFIX + variant.name().toLowerCase(Locale.ENGLISH));
+    }
+
+    private Icon createIcon(Variant type) {
+        VaadinIcon vaadinIcon = switch (type) {
+            case INFO -> VaadinIcon.INFO_CIRCLE_O;
+            case SUCCESS -> VaadinIcon.CHECK_CIRCLE_O;
+            case WARNING -> VaadinIcon.ALERT;
+            case ERROR -> VaadinIcon.CLOSE_CIRCLE;
+        };
+        Icon icon = vaadinIcon.create();
+        icon.addClassName("app-notification__icon-graphic");
+        icon.setSize("24px");
+        return icon;
+    }
+
+    private boolean isCurrentDirectionRtl() {
+        UI ui = UI.getCurrent();
+        if (ui == null) {
+            return false;
+        }
+        String dir = ui.getElement().getAttribute("dir");
+        if (dir != null && !dir.isBlank()) {
+            return "rtl".equalsIgnoreCase(dir);
+        }
+        Locale locale = ui.getLocale();
+        if (locale == null) {
+            return false;
+        }
+        String language = locale.getLanguage();
+        return RTL_LANGS.contains(language);
+    }
+}
