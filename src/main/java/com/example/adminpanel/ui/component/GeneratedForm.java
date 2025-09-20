@@ -38,6 +38,8 @@ import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -354,6 +356,138 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         };
     }
 
+    private LocalDateTime parseIsoDateTime(JsonNode fieldSpec, String property, String fieldName) {
+        JsonNode node = fieldSpec.get(property);
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (!node.isTextual()) {
+            throw new IllegalArgumentException(
+                    "Field '" + fieldName + "' property '" + property + "' must be a string in ISO-8601 format");
+        }
+        String text = node.asText();
+        if (!StringUtils.hasText(text)) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(text);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException(
+                    "Field '" + fieldName + "' property '" + property + "' must use ISO_LOCAL_DATE_TIME format", ex);
+        }
+    }
+
+    private Integer parseIntegerProperty(JsonNode fieldSpec, String property, String fieldName) {
+        JsonNode node = fieldSpec.get(property);
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (node.isNumber()) {
+            return node.intValue();
+        }
+        if (node.isTextual()) {
+            String text = node.asText();
+            if (!StringUtils.hasText(text)) {
+                return null;
+            }
+            try {
+                return Integer.parseInt(text);
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException(
+                        "Field '" + fieldName + "' property '" + property + "' must be an integer", ex);
+            }
+        }
+        throw new IllegalArgumentException(
+                "Field '" + fieldName + "' property '" + property + "' must be numeric or string");
+    }
+
+
+    private JalaliDateTimePicker createJalaliPicker(JsonNode field, String name, String label,
+            boolean required, JalaliDateTimePicker.PickerVariant defaultVariant) {
+        JalaliDateTimePicker picker = new JalaliDateTimePicker();
+        picker.setLabel(label);
+        picker.setWidthFull();
+        JalaliDateTimePicker.PickerVariant variant = resolveJalaliVariant(field, defaultVariant);
+        picker.setPickerVariant(variant);
+        if (required) {
+            picker.setRequiredIndicatorVisible(true);
+        }
+        LocalDateTime min = parseIsoDateTime(field, "min", name);
+        if (min != null) {
+            picker.setMin(min);
+        }
+        LocalDateTime max = parseIsoDateTime(field, "max", name);
+        if (max != null) {
+            picker.setMax(max);
+        }
+        if (variant == JalaliDateTimePicker.PickerVariant.DATE_TIME) {
+            Integer minuteStep = parseIntegerProperty(field, "minuteStep", name);
+            if (minuteStep != null) {
+                try {
+                    picker.setMinuteStep(minuteStep);
+                } catch (IllegalArgumentException ex) {
+                    throw new IllegalArgumentException(
+                            "Field '" + name + "' has invalid minuteStep " + minuteStep, ex);
+                }
+            }
+        }
+        String openLabel = getTranslationFromNode(field.get("openLabel"));
+        if (StringUtils.hasText(openLabel)) {
+            picker.setOpenButtonLabel(openLabel);
+            localeUpdaters.add(() -> {
+                String translated = getTranslationFromNode(field.get("openLabel"));
+                picker.setOpenButtonLabel(StringUtils.hasText(translated) ? translated : null);
+            });
+        }
+        picker.addValueChangeListener(ev -> {
+            fieldValues.put(name, ev.getValue());
+            if (required) {
+                if (ev.getValue() == null) {
+                    setError(picker, getTranslation("form.required"));
+                } else {
+                    clearError(picker);
+                }
+            }
+            runVisibilityWatchers(name);
+        });
+        return picker;
+    }
+
+    private JalaliDateTimePicker.PickerVariant resolveJalaliVariant(JsonNode fieldSpec,
+            JalaliDateTimePicker.PickerVariant defaultVariant) {
+        if (fieldSpec == null) {
+            return defaultVariant;
+        }
+        JalaliDateTimePicker.PickerVariant variant = defaultVariant;
+        if (fieldSpec.has("pickerVariant")) {
+            variant = parseJalaliVariantValue(fieldSpec.get("pickerVariant").asText(), variant);
+        } else if (fieldSpec.has("pickerMode")) {
+            variant = parseJalaliVariantValue(fieldSpec.get("pickerMode").asText(), variant);
+        } else if (fieldSpec.has("mode")) {
+            variant = parseJalaliVariantValue(fieldSpec.get("mode").asText(), variant);
+        }
+        if (fieldSpec.has("showTime") && fieldSpec.get("showTime").isBoolean()) {
+            variant = fieldSpec.get("showTime").asBoolean(true)
+                    ? JalaliDateTimePicker.PickerVariant.DATE_TIME
+                    : JalaliDateTimePicker.PickerVariant.DATE;
+        }
+        return variant;
+    }
+
+    private JalaliDateTimePicker.PickerVariant parseJalaliVariantValue(String value,
+            JalaliDateTimePicker.PickerVariant fallback) {
+        if (!StringUtils.hasText(value)) {
+            return fallback;
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT).replace('_', '-');
+        return switch (normalized) {
+            case "date", "date-only", "dateonly" -> JalaliDateTimePicker.PickerVariant.DATE;
+            case "date-time", "datetime", "dateandtime", "date-time-picker" ->
+                    JalaliDateTimePicker.PickerVariant.DATE_TIME;
+            default -> fallback;
+        };
+    }
+
 
     /**
      * Create a Vaadin component for a single field definition. Supported field types include
@@ -487,6 +621,10 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                 });
                 comp = dp;
             }
+            case "jalaliDateTime" -> comp = createJalaliPicker(field, name, label, required,
+                    JalaliDateTimePicker.PickerVariant.DATE_TIME);
+            case "jalaliDate" -> comp = createJalaliPicker(field, name, label, required,
+                    JalaliDateTimePicker.PickerVariant.DATE);
             case "file" -> {
                 MemoryBuffer buffer = new MemoryBuffer();
                 Upload upload = new Upload(buffer);
@@ -1011,6 +1149,9 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         } else if (comp instanceof com.vaadin.flow.component.datepicker.DatePicker dp) {
             dp.setInvalid(true);
             dp.setErrorMessage(message);
+        } else if (comp instanceof JalaliDateTimePicker jalali) {
+            jalali.setInvalid(true);
+            jalali.setErrorMessage(message);
         } else if (comp instanceof com.vaadin.flow.component.radiobutton.RadioButtonGroup<?> rg) {
             rg.setInvalid(true);
             rg.setErrorMessage(message);
@@ -1038,6 +1179,9 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         } else if (comp instanceof com.vaadin.flow.component.datepicker.DatePicker dp) {
             dp.setInvalid(false);
             dp.setErrorMessage(null);
+        } else if (comp instanceof JalaliDateTimePicker jalali) {
+            jalali.setInvalid(false);
+            jalali.setErrorMessage(null);
         } else if (comp instanceof com.vaadin.flow.component.radiobutton.RadioButtonGroup<?> rg) {
             rg.setInvalid(false);
             rg.setErrorMessage(null);
@@ -1186,6 +1330,8 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
             }
         } else if (comp instanceof Checkbox cb) {
             cb.setLabel(label);
+        } else if (comp instanceof JalaliDateTimePicker jalali) {
+            jalali.setLabel(label);
         }
     }
 
@@ -1250,6 +1396,8 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                 if (nf.isInvalid()) hasErrors = true;
             } else if (comp instanceof ComboBox<?> cb) {
                 if (cb.isInvalid()) hasErrors = true;
+            } else if (comp instanceof JalaliDateTimePicker jalali) {
+                if (jalali.isInvalid()) hasErrors = true;
             }
         }
         if (hasErrors) {
