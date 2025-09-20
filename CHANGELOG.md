@@ -1,5 +1,45 @@
 # CHANGELOG
 
+## v4.6.2
+### Lombok-based logging refinements
+
+* **Consistent logger injection:** Replaced manual `LoggerFactory` usage with
+  Lombok's `@Slf4j` annotation across security and demo infrastructure
+  services to standardise how loggers are obtained.
+* **Guidance update:** Documented the Lombok logging convention in the
+  architecture guide so future contributors follow the same pattern.
+
+## v4.6.1
+### Structured logging for demo services
+
+* **SLF4J adoption:** Replaced console prints in the in-memory infrastructure
+  services with `org.slf4j.Logger` usage and added contextual log messages for
+  form validation, menu construction and pagination helpers.
+* **Security service instrumentation:** Added authentication and logout log
+  statements while guarding against missing Vaadin session or UI contexts.
+* **Consistent configuration:** Defined baseline log levels and a key-value
+  console pattern in `application.properties` so environments share the same
+  log structure.
+* **Documentation:** Extended `docs/architecture.md` with logging guidance for
+  future contributors.
+
+## v4.6.0
+### Enforce layered architecture and SOLID boundaries
+
+* **Package restructuring:** Moved domain models into `domain.*`, extracted
+  application-layer interfaces (`NavigationMenuService`, `PersonDirectory`,
+  `FormValidationService`, pagination contracts) and relocated Vaadin views and
+  components under `ui.*`. Infrastructure implementations now live under
+  `infrastructure.*`, keeping the UI focused on abstractions.
+* **Navigation decoupling:** Replaced view-class based menu configuration with
+  route-driven `MenuItem`s so the UI depends on the `NavigationMenuService`
+  interface instead of concrete view classes.
+* **Documentation:** Added `docs/architecture.md` detailing the layered
+  structure and dependency rules, plus ADR `docs/ADR-20250920-architecture-refactor.md`.
+* **Architecture tests:** Added ArchUnit tests that fail the build whenever the
+  documented package boundaries are violated.
+* **Version bump:** Updated `version.txt` to `v4.6.0`.
+
 ## v4.5.0
 ### Enhanced form generator and new input types
 
