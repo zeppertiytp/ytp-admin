@@ -18,7 +18,7 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.component.orderedlayout.FlexLayout.WrapMode;
+import com.vaadin.flow.component.orderedlayout.FlexLayout.FlexWrap;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
@@ -216,7 +216,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                     }
                 }
                 boolean wrap = layoutConfig != null && layoutConfig.has("wrap") && layoutConfig.get("wrap").asBoolean(false);
-                row.setWrapMode(wrap ? WrapMode.WRAP : WrapMode.NO_WRAP);
+                row.setFlexWrap(wrap ? FlexWrap.WRAP : FlexWrap.NOWRAP);
                 fieldContainer = row;
             }
             case "vertical" -> {
