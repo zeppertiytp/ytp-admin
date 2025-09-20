@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v4.6.4
+### Jalali picker range normalisation
+
+* **Date-only sanitisation:** Normalised the Jalali picker so date-only mode
+  now trims ISO inputs without times, clears lingering hour/minute data when
+  switching modes, and treats plain `YYYY-MM-DD` values as midnight entries.
+* **Range boundary fixes:** Re-applied min/max constraints using date-aware
+  comparisons, ensuring boundary minutes remain selectable for date-time mode
+  while respecting zeroed times for pure date pickers.
+
 ## v4.6.3
 ### Jalali picker overlay and date-only mode
 

@@ -190,6 +190,8 @@ export class JalaliDateTimePicker extends LitElement {
         this.selectedHour = 0;
         this.selectedMinute = 0;
       }
+      this.updateRangeState();
+      this.ensureSelectionWithinRange();
       this.requestUpdate();
     }
     if (changed.has('opened')) {
@@ -246,8 +248,8 @@ export class JalaliDateTimePicker extends LitElement {
   }
 
   private updateRangeState(): void {
-    this.minParts = this.parseIso(this.min);
-    this.maxParts = this.parseIso(this.max);
+    this.minParts = this.normalizeRangeParts(this.parseIso(this.min));
+    this.maxParts = this.normalizeRangeParts(this.parseIso(this.max));
   }
 
   private ensureSelectionWithinRange(): void {
@@ -260,7 +262,11 @@ export class JalaliDateTimePicker extends LitElement {
       second: this.selectedSecond
     });
     const constrained = this.applyConstraints(parts);
-    if (!this.arePartsEqual(parts, constrained)) {
+    const currentValueParts = this.parseIso(this.value);
+    const needsDateNormalization = this.mode === 'date'
+      && currentValueParts !== null
+      && (currentValueParts.hour !== 0 || currentValueParts.minute !== 0);
+    if (!this.arePartsEqual(parts, constrained) || needsDateNormalization) {
       this.applySelectionFromGregorian(constrained, this.isAtBoundary(constrained));
       this.commitValue(constrained, false);
     }
@@ -277,7 +283,7 @@ export class JalaliDateTimePicker extends LitElement {
     } else {
       this.selectedHour = this.normalizeHour(parts.hour);
       this.selectedMinute = preserveMinute
-        ? Math.max(0, Math.min(59, Math.trunc(parts.minute)))
+        ? this.clampMinute(parts.minute)
         : this.normalizeMinute(parts.minute);
     }
     this.selectedSecond = 0;
@@ -295,9 +301,16 @@ export class JalaliDateTimePicker extends LitElement {
     if (!Number.isFinite(minute)) {
       return 0;
     }
-    const bounded = Math.max(0, Math.min(59, Math.trunc(minute)));
+    const bounded = this.clampMinute(minute);
     const stepAligned = Math.floor(bounded / step) * step;
     return Math.max(0, Math.min(59, stepAligned));
+  }
+
+  private clampMinute(minute: number): number {
+    if (!Number.isFinite(minute)) {
+      return 0;
+    }
+    return Math.max(0, Math.min(59, Math.trunc(minute)));
   }
 
   private getMinuteStep(): number {
@@ -319,6 +332,18 @@ export class JalaliDateTimePicker extends LitElement {
     if (!trimmed) {
       return null;
     }
+    const dateOnlyMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateOnlyMatch) {
+      const [, y, m, d] = dateOnlyMatch;
+      return {
+        year: Number(y),
+        month: Number(m),
+        day: Number(d),
+        hour: 0,
+        minute: 0,
+        second: 0
+      };
+    }
     const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?$/);
     if (!match) {
       return null;
@@ -334,13 +359,25 @@ export class JalaliDateTimePicker extends LitElement {
     };
   }
 
+  private normalizeRangeParts(parts: DateParts | null): DateParts | null {
+    if (!parts) {
+      return null;
+    }
+    return {
+      ...parts,
+      hour: this.mode === 'date' ? 0 : this.normalizeHour(parts.hour),
+      minute: this.mode === 'date' ? 0 : this.clampMinute(parts.minute),
+      second: 0
+    };
+  }
+
   private composeGregorianParts(date: JalaliDate, time: { hour: number; minute: number; second: number }): DateParts {
     const gregorian = toGregorian(date.jy, date.jm, date.jd);
     return {
       year: gregorian.gy,
       month: gregorian.gm,
       day: gregorian.gd,
-      hour: this.normalizeHour(time.hour),
+      hour: this.mode === 'date' ? 0 : this.normalizeHour(time.hour),
       minute: this.mode === 'date' ? 0 : this.normalizeMinute(time.minute),
       second: 0
     };
@@ -348,7 +385,7 @@ export class JalaliDateTimePicker extends LitElement {
 
   private applyConstraints(parts: DateParts): DateParts {
     let result: DateParts = { ...parts };
-    result.hour = this.normalizeHour(result.hour);
+    result.hour = this.mode === 'date' ? 0 : this.normalizeHour(result.hour);
     result.minute = this.mode === 'date' ? 0 : this.normalizeMinute(result.minute);
     result.second = 0;
 
@@ -362,12 +399,14 @@ export class JalaliDateTimePicker extends LitElement {
     }
 
     const boundary = this.isAtBoundary(result);
-    result.hour = this.normalizeHour(result.hour);
-    result.minute = this.mode === 'date'
-      ? 0
-      : boundary
-        ? Math.max(0, Math.min(59, Math.trunc(result.minute)))
-        : this.normalizeMinute(result.minute);
+    result.hour = this.mode === 'date' ? 0 : this.normalizeHour(result.hour);
+    if (this.mode === 'date') {
+      result.minute = 0;
+    } else if (boundary) {
+      result.minute = this.clampMinute(result.minute);
+    } else {
+      result.minute = this.normalizeMinute(result.minute);
+    }
     result.second = 0;
     return result;
   }
@@ -388,6 +427,9 @@ export class JalaliDateTimePicker extends LitElement {
     if (a.year !== b.year) return a.year - b.year;
     if (a.month !== b.month) return a.month - b.month;
     if (a.day !== b.day) return a.day - b.day;
+    if (this.mode === 'date') {
+      return 0;
+    }
     if (a.hour !== b.hour) return a.hour - b.hour;
     if (a.minute !== b.minute) return a.minute - b.minute;
     return 0;
@@ -404,8 +446,9 @@ export class JalaliDateTimePicker extends LitElement {
     if (parts) {
       const mm = this.pad(parts.month);
       const dd = this.pad(parts.day);
-      const hh = this.pad(this.normalizeHour(parts.hour));
-      const minuteValue = Math.max(0, Math.min(59, Math.trunc(parts.minute)));
+      const hourValue = this.mode === 'date' ? 0 : this.normalizeHour(parts.hour);
+      const hh = this.pad(hourValue);
+      const minuteValue = this.mode === 'date' ? 0 : this.clampMinute(parts.minute);
       const min = this.pad(minuteValue);
       iso = `${parts.year}-${mm}-${dd}T${hh}:${min}:00`;
     }
