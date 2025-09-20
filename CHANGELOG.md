@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v4.6.1
+### Structured logging for demo services
+
+* **SLF4J adoption:** Replaced console prints in the in-memory infrastructure
+  services with `org.slf4j.Logger` usage and added contextual log messages for
+  form validation, menu construction and pagination helpers.
+* **Security service instrumentation:** Added authentication and logout log
+  statements while guarding against missing Vaadin session or UI contexts.
+* **Consistent configuration:** Defined baseline log levels and a key-value
+  console pattern in `application.properties` so environments share the same
+  log structure.
+* **Documentation:** Extended `docs/architecture.md` with logging guidance for
+  future contributors.
+
 ## v4.6.0
 ### Enforce layered architecture and SOLID boundaries
 

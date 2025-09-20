@@ -1,6 +1,8 @@
 package com.example.adminpanel.infrastructure.form;
 
 import com.example.adminpanel.application.form.FormValidationService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -8,7 +10,7 @@ import java.util.Map;
 
 /**
  * A mock implementation of {@link FormValidationService} used for
- * demonstrations. This class simulates server‑side validation by
+ * demonstrations. This class simulates server-side validation by
  * performing simple checks on known form identifiers. In a real
  * application, you might call a backend service or database to
  * validate the form data.
@@ -16,25 +18,32 @@ import java.util.Map;
 @Service
 public class InMemoryFormValidationService implements FormValidationService {
 
+    private static final Logger log = LoggerFactory.getLogger(InMemoryFormValidationService.class);
+
     @Override
     public Map<String, String> validate(String formId, Map<String, Object> fields) {
         Map<String, String> errors = new HashMap<>();
-        // Log submitted values to the server console.  This helps developers
-        // verify that the dynamic form is collecting values from all field
-        // types, including custom uploads, map selectors, groups, etc.
-        // In a production system you might inject a logger instead of using
-        // System.out.println().
-        System.out.println("Form submission (" + formId + "): " + fields);
+        Map<String, Object> safeFields = fields != null ? fields : Map.of();
+        int fieldCount = safeFields.size();
+        log.debug("Validating form '{}' with {} field(s)", formId, fieldCount);
+
         // Example validation: for the user form, disallow specific email
         if ("user-form-v1".equals(formId)) {
-            Object email = fields.get("email");
+            Object email = safeFields.get("email");
             if (email != null) {
                 String emailStr = email.toString().trim().toLowerCase();
-                // Simulate server‑side uniqueness check
+                // Simulate server-side uniqueness check
                 if ("admin@example.com".equals(emailStr) || "test@invalid.com".equals(emailStr)) {
                     errors.put("email", "email.taken");
+                    log.info("Form '{}' rejected reserved email '{}'", formId, emailStr);
                 }
             }
+        }
+
+        if (errors.isEmpty()) {
+            log.debug("Form '{}' passed validation", formId);
+        } else {
+            log.warn("Form '{}' failed validation with {} issue(s)", formId, errors.size());
         }
         return errors;
     }

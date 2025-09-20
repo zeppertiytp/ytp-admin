@@ -46,3 +46,16 @@ Run `mvn test` to execute them.
   defined in the application layer; infrastructure supplies the concrete beans.
 
 Follow these rules when adding new code to preserve a clean architecture.
+
+## Logging
+
+* Use SLF4J (`org.slf4j.Logger`) for all application and infrastructure
+  components. Avoid `System.out.println` and similar console utilities.
+* Emit logs at the lowest level that provides actionable insight. Prefer
+  `DEBUG` for verbose data (e.g. mock datasets, validation flow) and reserve
+  `INFO`/`WARN` for notable events or problems.
+* Keep messages contextual by including stable identifiers (form IDs, menu
+  sections) but never log secrets or raw credentials.
+* Central configuration lives in `src/main/resources/application.properties`.
+  The console pattern is key-value oriented and uses ISO-8601 timestamps so
+  logs can be parsed or ingested easily across environments.

@@ -3,6 +3,8 @@ package com.example.adminpanel.infrastructure.person;
 import com.example.adminpanel.application.pagination.PageResult;
 import com.example.adminpanel.application.person.PersonDirectory;
 import com.example.adminpanel.domain.person.Person;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -18,6 +20,8 @@ import java.util.stream.Collectors;
  */
 @Service
 public class InMemoryPersonDirectory implements PersonDirectory {
+
+    private static final Logger log = LoggerFactory.getLogger(InMemoryPersonDirectory.class);
 
     private final List<Person> people;
 
@@ -54,6 +58,7 @@ public class InMemoryPersonDirectory implements PersonDirectory {
             }
             people.add(new Person("User" + i, "Test", "user" + i + "@example.com", 20 + (i % 30), city, country));
         }
+        log.info("Initialised in-memory person directory with {} demo entries", people.size());
     }
 
     /**
@@ -61,10 +66,15 @@ public class InMemoryPersonDirectory implements PersonDirectory {
      * pagination is handled outside the {@link PageResult} abstraction.
      */
     public List<Person> fetch(int offset, int limit, Map<String, String> filters) {
-        return applyFilters(filters).stream()
+        Map<String, String> safeFilters = filters != null ? filters : Map.of();
+        List<Person> filtered = applyFilters(safeFilters);
+        List<Person> result = filtered.stream()
                 .skip(offset)
                 .limit(limit)
                 .collect(Collectors.toList());
+        log.debug("Fetched {} person record(s) from offset {} with limit {} using {} filter(s)",
+                result.size(), offset, limit, safeFilters.size());
+        return result;
     }
 
     /**
@@ -73,66 +83,134 @@ public class InMemoryPersonDirectory implements PersonDirectory {
      * {@link PageResult}.
      */
     public int count(Map<String, String> filters) {
-        return applyFilters(filters).size();
+        Map<String, String> safeFilters = filters != null ? filters : Map.of();
+        int count = applyFilters(safeFilters).size();
+        log.debug("Counted {} person record(s) using {} filter(s)", count, safeFilters.size());
+        return count;
     }
 
     private List<Person> applyFilters(Map<String, String> filters) {
+        if (filters.isEmpty()) {
+            return people;
+        }
+
+        Integer ageFilter = null;
+        Integer minAgeFilter = null;
+        Integer maxAgeFilter = null;
+
+        if (filters.containsKey("age")) {
+            ageFilter = parseIntegerFilter(filters.get("age"), "age");
+            if (ageFilter == null && hasText(filters.get("age"))) {
+                return List.of();
+            }
+        }
+        if (filters.containsKey("age.min")) {
+            minAgeFilter = parseIntegerFilter(filters.get("age.min"), "minimum age");
+            if (minAgeFilter == null && hasText(filters.get("age.min"))) {
+                return List.of();
+            }
+        }
+        if (filters.containsKey("age.max")) {
+            maxAgeFilter = parseIntegerFilter(filters.get("age.max"), "maximum age");
+            if (maxAgeFilter == null && hasText(filters.get("age.max"))) {
+                return List.of();
+            }
+        }
+
+        String firstNameFilter = normalize(filters.get("firstName"));
+        String lastNameFilter = normalize(filters.get("lastName"));
+        String emailFilter = normalize(filters.get("email"));
+        String cityFilter = normalize(filters.get("city"));
+        String countryFilter = normalize(filters.get("country"));
+
+        Integer exactAge = ageFilter;
+        Integer minAge = minAgeFilter;
+        Integer maxAge = maxAgeFilter;
+
         return people.stream().filter(person -> {
-            boolean matches = true;
-            for (Map.Entry<String, String> entry : filters.entrySet()) {
-                String property = entry.getKey();
-                String value = entry.getValue().toLowerCase();
-                switch (property) {
-                    case "firstName" ->
-                            matches &= person.getFirstName() != null && person.getFirstName().toLowerCase().contains(value);
-                    case "lastName" ->
-                            matches &= person.getLastName() != null && person.getLastName().toLowerCase().contains(value);
-                    case "email" ->
-                            matches &= person.getEmail() != null && person.getEmail().toLowerCase().contains(value);
-                    case "age" -> {
-                        try {
-                            int intVal = Integer.parseInt(value);
-                            matches &= person.getAge() != null && person.getAge() == intVal;
-                        } catch (NumberFormatException e) {
-                            matches = false;
-                        }
-                    }
-                    case "age.min" -> {
-                        try {
-                            int minVal = Integer.parseInt(value);
-                            matches &= person.getAge() != null && person.getAge() >= minVal;
-                        } catch (NumberFormatException e) {
-                            matches = false;
-                        }
-                    }
-                    case "age.max" -> {
-                        try {
-                            int maxVal = Integer.parseInt(value);
-                            matches &= person.getAge() != null && person.getAge() <= maxVal;
-                        } catch (NumberFormatException e) {
-                            matches = false;
-                        }
-                    }
-                    case "city" ->
-                            matches &= person.getCity() != null && person.getCity().equalsIgnoreCase(value);
-                    case "country" ->
-                            matches &= person.getCountry() != null && person.getCountry().equalsIgnoreCase(value);
-                    default -> {
-                    }
-                }
-                if (!matches) {
+            if (firstNameFilter != null) {
+                String firstName = person.getFirstName();
+                if (firstName == null || !firstName.toLowerCase().contains(firstNameFilter)) {
                     return false;
                 }
             }
-            return matches;
+            if (lastNameFilter != null) {
+                String lastName = person.getLastName();
+                if (lastName == null || !lastName.toLowerCase().contains(lastNameFilter)) {
+                    return false;
+                }
+            }
+            if (emailFilter != null) {
+                String email = person.getEmail();
+                if (email == null || !email.toLowerCase().contains(emailFilter)) {
+                    return false;
+                }
+            }
+            if (exactAge != null) {
+                Integer age = person.getAge();
+                if (age == null || age != exactAge) {
+                    return false;
+                }
+            }
+            if (minAge != null) {
+                Integer age = person.getAge();
+                if (age == null || age < minAge) {
+                    return false;
+                }
+            }
+            if (maxAge != null) {
+                Integer age = person.getAge();
+                if (age == null || age > maxAge) {
+                    return false;
+                }
+            }
+            if (cityFilter != null) {
+                String city = person.getCity();
+                if (city == null || !city.toLowerCase().equals(cityFilter)) {
+                    return false;
+                }
+            }
+            if (countryFilter != null) {
+                String country = person.getCountry();
+                if (country == null || !country.toLowerCase().equals(countryFilter)) {
+                    return false;
+                }
+            }
+            return true;
         }).collect(Collectors.toList());
+    }
+
+    private Integer parseIntegerFilter(String rawValue, String description) {
+        if (!hasText(rawValue)) {
+            return null;
+        }
+        String trimmed = rawValue.trim();
+        try {
+            return Integer.parseInt(trimmed);
+        } catch (NumberFormatException e) {
+            log.warn("Ignoring non-numeric {} filter '{}'", description, rawValue);
+            return null;
+        }
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private String normalize(String value) {
+        if (!hasText(value)) {
+            return null;
+        }
+        return value.trim().toLowerCase();
     }
 
     @Override
     public PageResult<Person> fetchPage(int offset, int limit, Map<String, String> filters) {
-        List<Person> filtered = applyFilters(filters);
+        Map<String, String> safeFilters = filters != null ? filters : Map.of();
+        List<Person> filtered = applyFilters(safeFilters);
         int total = filtered.size();
         List<Person> items = filtered.stream().skip(offset).limit(limit).collect(Collectors.toList());
+        log.debug("Returning page with {} item(s) (offset={}, limit={}, total={})", items.size(), offset, limit, total);
         return new PageResult<>(items, total);
     }
 }

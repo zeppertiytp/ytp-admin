@@ -3,6 +3,8 @@ package com.example.adminpanel.infrastructure.menu;
 import com.example.adminpanel.application.menu.NavigationMenuService;
 import com.example.adminpanel.domain.menu.MenuItem;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,8 +18,11 @@ import java.util.List;
 @Service
 public class StaticNavigationMenuService implements NavigationMenuService {
 
+    private static final Logger log = LoggerFactory.getLogger(StaticNavigationMenuService.class);
+
     @Override
     public List<MenuItem> getMenuItemsForCurrentUser() {
+        log.debug("Building static navigation menu for current user");
         MenuItem personsMenu = new MenuItem(
                 "general",
                 "menu.persons",
@@ -51,12 +56,14 @@ public class StaticNavigationMenuService implements NavigationMenuService {
                 )
         );
 
-        return List.of(
+        List<MenuItem> menu = List.of(
                 new MenuItem("general", "menu.dashboard", VaadinIcon.DASHBOARD, ""),
                 personsMenu,
                 examplesMenu,
                 formsMenu,
                 new MenuItem("other", "menu.placeholder", VaadinIcon.CLIPBOARD_TEXT, null)
         );
+        log.debug("Navigation menu built with {} root item(s)", menu.size());
+        return menu;
     }
 }
