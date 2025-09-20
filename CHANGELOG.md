@@ -1,29 +1,5 @@
 # CHANGELOG
 
-## v4.4.0
-### Form generation feature and dynamic forms
-* **Dynamic form generator:** Introduced a new `GeneratedForm` component that builds Vaadin forms from JSON specifications stored under `src/main/resources/forms`.  The component reads a specification file, creates form sections and fields on the fly, applies client‑side validations (required, pattern), handles conditional visibility (`visibleWhen` expressions), and updates labels based on the current locale.  Field values are bound to an internal map and validated server‑side via a new `FormValidationService`.
-* **Validation service:** Added the `FormValidationService` interface and a `MockFormValidationService` implementation.  The service provides backend validation for generated forms and demonstrates how to return field‑level error messages (e.g. checking if an email is already taken).  Errors are displayed inline on the corresponding form fields when returned from the service.
-* **Form specification example:** Added `user_form.json` under `src/main/resources/forms`, defining a sample user registration form with translated labels, required fields, pattern validators, a select field with options, and conditional visibility (phone number appears only when two‑factor authentication is enabled).  The specification includes both English and Farsi labels.
-* **Generated form view:** Added `FormGenerationView` with route `/forms` to showcase the dynamic form.  It autowires the validation service, loads the `user_form.json` specification, and displays the generated form.  A success notification appears upon valid submission.
-* **Menu update:** Added a new `forms` group to the menu with a single item linking to the form generation demo.  Updated `MenuService` to include this group and used an appropriate icon for form pages.
-* **Translations:** Added new translation keys in both English and Farsi for form labels, validation messages (`form.required`, `form.correctErrors`, `form.success`, `form.submit`) and backend validation errors (e.g. `email.taken`).  Added translations for the new menu items (`menu.forms`, `menu.formgeneration`).
-* **Version bump:** Updated `version.txt` to `v4.4.0` and marked `v4.3.0` as the stable baseline in the changelog.
-
-## v4.3.0
-### Dynamic grid height and demonstration views
-* **Dynamic height:** Added configurable height support to `FilterablePaginatedGrid`.  New properties `expandGrid`, `minHeight` and `maxHeight` control how the grid occupies vertical space.  When `expandGrid` is `true` (default) the grid expands to fill the available space.  When `false`, the grid uses the specified minimum and maximum heights and scrolls internally if its content exceeds the limit.  Setter methods and an internal style helper apply these options on the fly.
-* **Layout update:** The layout logic in `initLayout()` now respects the `expandGrid` flag instead of unconditionally calling `expand(grid)`.  The grid's flex‐grow, min/max height and overflow are updated via the new helper method.
-* **Example views:** Added three new views under an "Examples" menu section:
-  * **FullGridView** – shows a full‑height grid that expands to fill the page.
-  * **CompactGridView** – demonstrates a grid constrained by minimum and maximum heights (e.g. 200–400 px) so it doesn’t dominate the page.
-  * **MultipleGridsView** – displays two grids on the same page, each with its own height constraints and feature set.
-* **Menu and translations:** Added a new `examples` group in `MenuService` and corresponding translation keys (`menu.examples`, `menu.fullgrid`, `menu.compactgrid`, `menu.multigrids`) with English and Farsi translations.
-* **Version bump:** Updated `version.txt` to `v4.3.0` to reflect these enhancements.
-
-This release has been **marked as stable**.  Future changelog entries will note
-that v4.3.0 is a stable baseline for the project.
-
 ## v4.5.0
 ### Enhanced form generator and new input types
 
@@ -203,6 +179,30 @@ that v4.3.0 is a stable baseline for the project.
   values correctly.
 * **Version bump:** Updated `version.txt` to `v4.5.6` to reflect these
   refinements.
+
+## v4.4.0
+### Form generation feature and dynamic forms
+* **Dynamic form generator:** Introduced a new `GeneratedForm` component that builds Vaadin forms from JSON specifications stored under `src/main/resources/forms`.  The component reads a specification file, creates form sections and fields on the fly, applies client‑side validations (required, pattern), handles conditional visibility (`visibleWhen` expressions), and updates labels based on the current locale.  Field values are bound to an internal map and validated server‑side via a new `FormValidationService`.
+* **Validation service:** Added the `FormValidationService` interface and a `MockFormValidationService` implementation.  The service provides backend validation for generated forms and demonstrates how to return field‑level error messages (e.g. checking if an email is already taken).  Errors are displayed inline on the corresponding form fields when returned from the service.
+* **Form specification example:** Added `user_form.json` under `src/main/resources/forms`, defining a sample user registration form with translated labels, required fields, pattern validators, a select field with options, and conditional visibility (phone number appears only when two‑factor authentication is enabled).  The specification includes both English and Farsi labels.
+* **Generated form view:** Added `FormGenerationView` with route `/forms` to showcase the dynamic form.  It autowires the validation service, loads the `user_form.json` specification, and displays the generated form.  A success notification appears upon valid submission.
+* **Menu update:** Added a new `forms` group to the menu with a single item linking to the form generation demo.  Updated `MenuService` to include this group and used an appropriate icon for form pages.
+* **Translations:** Added new translation keys in both English and Farsi for form labels, validation messages (`form.required`, `form.correctErrors`, `form.success`, `form.submit`) and backend validation errors (e.g. `email.taken`).  Added translations for the new menu items (`menu.forms`, `menu.formgeneration`).
+* **Version bump:** Updated `version.txt` to `v4.4.0` and marked `v4.3.0` as the stable baseline in the changelog.
+
+## v4.3.0
+### Dynamic grid height and demonstration views
+* **Dynamic height:** Added configurable height support to `FilterablePaginatedGrid`.  New properties `expandGrid`, `minHeight` and `maxHeight` control how the grid occupies vertical space.  When `expandGrid` is `true` (default) the grid expands to fill the available space.  When `false`, the grid uses the specified minimum and maximum heights and scrolls internally if its content exceeds the limit.  Setter methods and an internal style helper apply these options on the fly.
+* **Layout update:** The layout logic in `initLayout()` now respects the `expandGrid` flag instead of unconditionally calling `expand(grid)`.  The grid's flex‐grow, min/max height and overflow are updated via the new helper method.
+* **Example views:** Added three new views under an "Examples" menu section:
+  * **FullGridView** – shows a full‑height grid that expands to fill the page.
+  * **CompactGridView** – demonstrates a grid constrained by minimum and maximum heights (e.g. 200–400 px) so it doesn’t dominate the page.
+  * **MultipleGridsView** – displays two grids on the same page, each with its own height constraints and feature set.
+* **Menu and translations:** Added a new `examples` group in `MenuService` and corresponding translation keys (`menu.examples`, `menu.fullgrid`, `menu.compactgrid`, `menu.multigrids`) with English and Farsi translations.
+* **Version bump:** Updated `version.txt` to `v4.3.0` to reflect these enhancements.
+
+This release has been **marked as stable**.  Future changelog entries will note
+that v4.3.0 is a stable baseline for the project.
 
 ## v4.2.1
 ### Configurable grid features and improved table configuration
