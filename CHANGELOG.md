@@ -1,5 +1,38 @@
 # CHANGELOG
 
+## v4.6.5
+### Jalali picker year navigation
+
+* **Jump by year:** Added quick previous/next year buttons and a year dropdown
+  to the Jalali picker header so users can navigate long date ranges without
+  stepping month by month.
+* **Accessible labels:** Localised navigation labels for month and year
+  controls so screen readers describe the new shortcuts in both English and
+  Farsi.
+
+## v4.6.4
+### Jalali picker range normalisation
+
+* **Date-only sanitisation:** Normalised the Jalali picker so date-only mode
+  now trims ISO inputs without times, clears lingering hour/minute data when
+  switching modes, and treats plain `YYYY-MM-DD` values as midnight entries.
+* **Range boundary fixes:** Re-applied min/max constraints using date-aware
+  comparisons, ensuring boundary minutes remain selectable for date-time mode
+  while respecting zeroed times for pure date pickers.
+
+## v4.6.3
+### Jalali picker overlay and date-only mode
+
+* **Overlay trigger:** Reworked the Jalali picker so it opens from a button
+  and displays the chosen value outside the overlay, improving layout density
+  and usability in custom views.
+* **Date-only support:** Added a dedicated `jalaliDate` field type plus
+  `showTime`/`pickerVariant` hints, allowing generated forms (and standalone
+  usages) to hide the time controls while keeping min/max constraints.
+* **Configurable captions:** Introduced an `openLabel` option alongside new
+  translations and documented configuration options. Sample JSON and the form
+  generation guide were updated accordingly.
+
 ## v4.6.2
 ### Lombok-based logging refinements
 
