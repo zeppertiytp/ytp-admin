@@ -59,6 +59,8 @@ public class JsonNavigationMenuService implements NavigationMenuService {
         }
         return scopes.stream()
                 .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(scope -> !scope.isEmpty())
                 .collect(Collectors.toUnmodifiableSet());
     }
 
@@ -122,7 +124,8 @@ public class JsonNavigationMenuService implements NavigationMenuService {
             String icon,
             String navigationTarget,
             List<MenuItemDefinition> children,
-            List<String> requiredScopes
+            List<String> requiredScopes,
+            String requiredScopesLogic
     ) {
         List<MenuItemDefinition> childrenOrEmpty() {
             return children == null ? List.of() : children;
@@ -143,11 +146,49 @@ public class JsonNavigationMenuService implements NavigationMenuService {
         }
 
         boolean isAccessibleFor(Set<String> scopes) {
-            List<String> required = requiredScopesOrEmpty();
+            List<String> required = normalizedRequiredScopes();
             if (required.isEmpty()) {
                 return true;
             }
-            return scopes.containsAll(required);
+            return scopeLogic().isSatisfied(scopes, required);
+        }
+
+        private List<String> normalizedRequiredScopes() {
+            return requiredScopesOrEmpty().stream()
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(scope -> !scope.isEmpty())
+                    .toList();
+        }
+
+        private ScopeLogic scopeLogic() {
+            if (requiredScopesLogic == null || requiredScopesLogic.isBlank()) {
+                return ScopeLogic.AND;
+            }
+            String normalized = requiredScopesLogic.trim().toUpperCase(Locale.ROOT);
+            try {
+                return ScopeLogic.valueOf(normalized);
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalStateException("Unknown requiredScopesLogic '" + requiredScopesLogic +
+                        "' configured for navigation item '" + labelKey + "'", ex);
+            }
+        }
+
+        private enum ScopeLogic {
+            AND {
+                @Override
+                boolean isSatisfied(Set<String> scopes, List<String> requiredScopes) {
+                    return scopes.containsAll(requiredScopes);
+                }
+            },
+            OR {
+                @Override
+                boolean isSatisfied(Set<String> scopes, List<String> requiredScopes) {
+                    return requiredScopes.stream().anyMatch(scopes::contains);
+                }
+            };
+
+            abstract boolean isSatisfied(Set<String> scopes, List<String> requiredScopes);
         }
     }
 }
