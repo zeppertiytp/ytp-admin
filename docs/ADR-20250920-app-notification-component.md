@@ -9,10 +9,11 @@ The design system currently relies on Vaadin's default notification component, w
 ## Decision
 Introduce a dedicated `AppNotification` component that extends Vaadin `Notification`. The component:
 
-- applies a custom theme (`app-notification`) to enlarge the toast, include iconography, and expose semantic colour accents;
-- exposes an enum-based API for four variants (info, success, warning, error) and a corner placement abstraction that maps to Vaadin positions while respecting RTL layouts;
-- ships with matching theme styles in `vaadin-notification-card.css` so that the look is consistent in both LTR and RTL modes; and
+- applies a custom theme (`app-notification`) to enlarge the toast, include iconography, and expose semantic colour accents.
+- exposes an enum-based API for four variants (info, success, warning, error) and a corner placement abstraction that maps to Vaadin positions while respecting RTL layouts.
+- ships with matching theme styles in `vaadin-notification-card.css` so that the look is consistent in both LTR and RTL modes.
 - includes helper methods (e.g., `setCloseButtonAriaLabel`, `show`) to streamline usage.
+- resolves notification copy either via translation bundle keys or explicit bilingual payloads so ad-hoc messages remain localized.
 
 The design system view now showcases the component with translated copy and a placement selector so designers and developers can reference the supported variants.
 

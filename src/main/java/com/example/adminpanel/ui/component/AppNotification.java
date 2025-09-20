@@ -9,6 +9,8 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.dom.ThemeList;
+import com.vaadin.flow.i18n.LocaleChangeEvent;
+import com.vaadin.flow.i18n.LocaleChangeObserver;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -19,7 +21,7 @@ import java.util.Set;
  * default Vaadin notification, applies consistent iconography and allows
  * callers to select the screen corner that should host the toast.
  */
-public class AppNotification extends Notification {
+public class AppNotification extends Notification implements LocaleChangeObserver {
 
     private static final String BASE_THEME = "app-notification";
     private static final String VARIANT_PREFIX = BASE_THEME + "--";
@@ -44,8 +46,14 @@ public class AppNotification extends Notification {
     private final Div iconContainer;
     private final Button closeButton;
     private Variant variant;
+    private Message titleMessage;
+    private Message descriptionMessage;
 
-    public AppNotification(String titleText, String descriptionText, Variant initialVariant) {
+    public AppNotification(String titleKey, String descriptionKey, Variant initialVariant) {
+        this(Message.translationKey(titleKey), Message.translationKey(descriptionKey), initialVariant);
+    }
+
+    public AppNotification(Message titleMessage, Message descriptionMessage, Variant initialVariant) {
         super();
         getElement().getThemeList().add(BASE_THEME);
         setPosition(Position.TOP_END);
@@ -82,19 +90,27 @@ public class AppNotification extends Notification {
 
         add(wrapper);
 
-        setTitle(titleText);
-        setDescription(descriptionText);
+        setTitle(titleMessage);
+        setDescription(descriptionMessage);
         setVariant(initialVariant != null ? initialVariant : Variant.INFO);
     }
 
     public void setTitle(String text) {
-        title.setText(text == null ? "" : text);
-        title.setVisible(text != null && !text.isBlank());
+        setTitle(Message.translationKey(text));
     }
 
     public void setDescription(String text) {
-        description.setText(text == null ? "" : text);
-        description.setVisible(text != null && !text.isBlank());
+        setDescription(Message.translationKey(text));
+    }
+
+    public void setTitle(Message message) {
+        titleMessage = message;
+        applyLocalizedMessage(title, message);
+    }
+
+    public void setDescription(Message message) {
+        descriptionMessage = message;
+        applyLocalizedMessage(description, message);
     }
 
     public void setVariant(Variant newVariant) {
@@ -132,11 +148,40 @@ public class AppNotification extends Notification {
         closeButton.getElement().setProperty("title", value);
     }
 
-    public static AppNotification show(String title, String description, Variant variant, Corner corner) {
-        AppNotification notification = new AppNotification(title, description, variant);
+    public static AppNotification show(String titleKey, String descriptionKey, Variant variant, Corner corner) {
+        AppNotification notification = new AppNotification(titleKey, descriptionKey, variant);
         notification.setCorner(corner);
         notification.open();
         return notification;
+    }
+
+    public static AppNotification show(Message titleMessage, Message descriptionMessage, Variant variant, Corner corner) {
+        AppNotification notification = new AppNotification(titleMessage, descriptionMessage, variant);
+        notification.setCorner(corner);
+        notification.open();
+        return notification;
+    }
+
+    @Override
+    public void localeChange(LocaleChangeEvent event) {
+        applyLocalizedMessage(title, titleMessage);
+        applyLocalizedMessage(description, descriptionMessage);
+    }
+
+    private void applyLocalizedMessage(Span target, Message message) {
+        if (target == null) {
+            return;
+        }
+        String resolved = resolveMessage(message);
+        target.setText(resolved);
+        target.setVisible(resolved != null && !resolved.isBlank());
+    }
+
+    private String resolveMessage(Message message) {
+        if (message == null) {
+            return "";
+        }
+        return message.resolve(UI.getCurrent());
     }
 
     private void refreshVariantTheme() {
@@ -179,5 +224,81 @@ public class AppNotification extends Notification {
         }
         String language = locale.getLanguage();
         return RTL_LANGS.contains(language);
+    }
+    public static final class Message {
+
+        private final String key;
+        private final String en;
+        private final String fa;
+
+        private Message(String key, String en, String fa) {
+            this.key = key;
+            this.en = en;
+            this.fa = fa;
+        }
+
+        public static Message translationKey(String key) {
+            if (key == null || key.isBlank()) {
+                return new Message(null, null, null);
+            }
+            return new Message(key, null, null);
+        }
+
+        public static Message bilingual(String english, String farsi) {
+            if ((english == null || english.isBlank()) && (farsi == null || farsi.isBlank())) {
+                return new Message(null, null, null);
+            }
+            return new Message(null, english, farsi);
+        }
+
+        public static Message literal(String text) {
+            if (text == null || text.isBlank()) {
+                return new Message(null, null, null);
+            }
+            return new Message(null, text, text);
+        }
+
+        public String resolve(UI ui) {
+            if (key != null) {
+                if (ui != null) {
+                    String translation = ui.getTranslation(key);
+                    if (translation != null && !translation.isBlank()) {
+                        return translation;
+                    }
+                }
+                return key;
+            }
+            Locale locale = null;
+            if (ui != null) {
+                locale = ui.getLocale();
+            }
+            boolean isFa = locale != null && "fa".equalsIgnoreCase(locale.getLanguage());
+            if (isFa) {
+                return firstNonBlank(fa, en);
+            }
+            return firstNonBlank(en, fa);
+        }
+
+        public String getKey() {
+            return key;
+        }
+
+        public String getEn() {
+            return en;
+        }
+
+        public String getFa() {
+            return fa;
+        }
+
+        private static String firstNonBlank(String primary, String secondary) {
+            if (primary != null && !primary.isBlank()) {
+                return primary;
+            }
+            if (secondary != null && !secondary.isBlank()) {
+                return secondary;
+            }
+            return "";
+        }
     }
 }

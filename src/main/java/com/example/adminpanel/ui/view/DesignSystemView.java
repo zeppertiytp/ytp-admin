@@ -192,12 +192,25 @@ public class DesignSystemView extends AppPageLayout implements LocaleChangeObser
     }
 
     private void showNotification(AppNotification.Variant variant) {
-        String variantKey = variantKeyFor(variant);
-        AppNotification notification = new AppNotification(
-                getTranslation("designSystem.notificationTitle." + variantKey),
-                getTranslation("designSystem.notificationBody." + variantKey),
-                variant
-        );
+        AppNotification.Message titleMessage;
+        AppNotification.Message bodyMessage;
+
+        if (variant == AppNotification.Variant.WARNING) {
+            titleMessage = AppNotification.Message.bilingual(
+                    "Custom bilingual warning",
+                    "هشدار دو زبانه سفارشی"
+            );
+            bodyMessage = AppNotification.Message.bilingual(
+                    "Use bilingual values when you need ad-hoc localized text outside the bundle.",
+                    "وقتی به متن محلی خارج از بسته ترجمه نیاز دارید از مقادیر دو زبانه استفاده کنید."
+            );
+        } else {
+            String variantKey = variantKeyFor(variant);
+            titleMessage = AppNotification.Message.translationKey("designSystem.notificationTitle." + variantKey);
+            bodyMessage = AppNotification.Message.translationKey("designSystem.notificationBody." + variantKey);
+        }
+
+        AppNotification notification = new AppNotification(titleMessage, bodyMessage, variant);
         notification.setCloseButtonAriaLabel(getTranslation("designSystem.notificationClose"));
         AppNotification.Corner corner = notificationCornerSelect.getValue();
         if (corner != null) {
