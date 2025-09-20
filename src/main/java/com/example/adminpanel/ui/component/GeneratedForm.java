@@ -38,6 +38,8 @@ import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -354,6 +356,51 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         };
     }
 
+    private LocalDateTime parseIsoDateTime(JsonNode fieldSpec, String property, String fieldName) {
+        JsonNode node = fieldSpec.get(property);
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (!node.isTextual()) {
+            throw new IllegalArgumentException(
+                    "Field '" + fieldName + "' property '" + property + "' must be a string in ISO-8601 format");
+        }
+        String text = node.asText();
+        if (!StringUtils.hasText(text)) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(text);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException(
+                    "Field '" + fieldName + "' property '" + property + "' must use ISO_LOCAL_DATE_TIME format", ex);
+        }
+    }
+
+    private Integer parseIntegerProperty(JsonNode fieldSpec, String property, String fieldName) {
+        JsonNode node = fieldSpec.get(property);
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (node.isNumber()) {
+            return node.intValue();
+        }
+        if (node.isTextual()) {
+            String text = node.asText();
+            if (!StringUtils.hasText(text)) {
+                return null;
+            }
+            try {
+                return Integer.parseInt(text);
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException(
+                        "Field '" + fieldName + "' property '" + property + "' must be an integer", ex);
+            }
+        }
+        throw new IllegalArgumentException(
+                "Field '" + fieldName + "' property '" + property + "' must be numeric or string");
+    }
+
 
     /**
      * Create a Vaadin component for a single field definition. Supported field types include
@@ -486,6 +533,42 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                     runVisibilityWatchers(name);
                 });
                 comp = dp;
+            }
+            case "jalaliDateTime" -> {
+                JalaliDateTimePicker picker = new JalaliDateTimePicker();
+                picker.setLabel(label);
+                picker.setWidthFull();
+                if (required) {
+                    picker.setRequiredIndicatorVisible(true);
+                }
+                LocalDateTime min = parseIsoDateTime(field, "min", name);
+                if (min != null) {
+                    picker.setMin(min);
+                }
+                LocalDateTime max = parseIsoDateTime(field, "max", name);
+                if (max != null) {
+                    picker.setMax(max);
+                }
+                Integer minuteStep = parseIntegerProperty(field, "minuteStep", name);
+                if (minuteStep != null) {
+                    try {
+                        picker.setMinuteStep(minuteStep);
+                    } catch (IllegalArgumentException ex) {
+                        throw new IllegalArgumentException("Field '" + name + "' has invalid minuteStep " + minuteStep, ex);
+                    }
+                }
+                picker.addValueChangeListener(ev -> {
+                    fieldValues.put(name, ev.getValue());
+                    if (required) {
+                        if (ev.getValue() == null) {
+                            setError(picker, getTranslation("form.required"));
+                        } else {
+                            clearError(picker);
+                        }
+                    }
+                    runVisibilityWatchers(name);
+                });
+                comp = picker;
             }
             case "file" -> {
                 MemoryBuffer buffer = new MemoryBuffer();
@@ -1011,6 +1094,9 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         } else if (comp instanceof com.vaadin.flow.component.datepicker.DatePicker dp) {
             dp.setInvalid(true);
             dp.setErrorMessage(message);
+        } else if (comp instanceof JalaliDateTimePicker jalali) {
+            jalali.setInvalid(true);
+            jalali.setErrorMessage(message);
         } else if (comp instanceof com.vaadin.flow.component.radiobutton.RadioButtonGroup<?> rg) {
             rg.setInvalid(true);
             rg.setErrorMessage(message);
@@ -1038,6 +1124,9 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         } else if (comp instanceof com.vaadin.flow.component.datepicker.DatePicker dp) {
             dp.setInvalid(false);
             dp.setErrorMessage(null);
+        } else if (comp instanceof JalaliDateTimePicker jalali) {
+            jalali.setInvalid(false);
+            jalali.setErrorMessage(null);
         } else if (comp instanceof com.vaadin.flow.component.radiobutton.RadioButtonGroup<?> rg) {
             rg.setInvalid(false);
             rg.setErrorMessage(null);
@@ -1186,6 +1275,8 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
             }
         } else if (comp instanceof Checkbox cb) {
             cb.setLabel(label);
+        } else if (comp instanceof JalaliDateTimePicker jalali) {
+            jalali.setLabel(label);
         }
     }
 
@@ -1250,6 +1341,8 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                 if (nf.isInvalid()) hasErrors = true;
             } else if (comp instanceof ComboBox<?> cb) {
                 if (cb.isInvalid()) hasErrors = true;
+            } else if (comp instanceof JalaliDateTimePicker jalali) {
+                if (jalali.isInvalid()) hasErrors = true;
             }
         }
         if (hasErrors) {

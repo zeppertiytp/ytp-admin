@@ -80,11 +80,14 @@ Use a horizontal layout for compact inline groups such as first/last-name pairs 
 | `select`      | Drop‑down selection (`ComboBox`).  `options` must be provided. |
 | `switch`      | Boolean input (`Checkbox`) with on/off state. |
 | `date`        | Date picker (`DatePicker`) returning a `java.time.LocalDate`. |
+| `jalaliDateTime` | Jalali calendar date & time picker (`JalaliDateTimePicker`). Supports optional `min`/`max` ISO 8601 values and `minuteStep`. Returns a `java.time.LocalDateTime`. |
 | `file`        | Single file upload (`Upload`).  The uploaded file name is stored; extend if you need to persist content. |
 | `multiFile`   | Multiple file upload (`Upload`).  Stores a list of uploaded file names. |
 | `radio`       | Single selection radio group (`RadioButtonGroup`).  `options` must be provided. |
 
 Additional types (e.g. `time`, `dateTime`, `textArea`) can be added by extending `GeneratedForm.createField()`.
+
+When using the Jalali picker you may supply ISO 8601 strings for `min` and `max` (e.g. `"2024-01-01T00:00:00"`) and a numeric `minuteStep` to control the time selector granularity. Values are delivered to the backend as `java.time.LocalDateTime` instances.
 
 ### Conditional Visibility
 
@@ -178,6 +181,7 @@ The sample form `user_form.json` demonstrates many of the features:
       "columns":2,
       "fields":[
         {"name":"dob","label":{"fa":"تاریخ تولد","en":"Date of Birth"},"type":"date"},
+        {"name":"lastLogin","label":{"fa":"آخرین ورود","en":"Last login"},"type":"jalaliDateTime","minuteStep":5,"min":"2020-01-01T00:00:00"},
         {"name":"resume","label":{"fa":"رزومه","en":"Resume"},"type":"file"},
         {"name":"attachments","label":{"fa":"فایل‌ها","en":"Attachments"},"type":"multiFile"},
         {"name":"gender","label":{"fa":"جنسیت","en":"Gender"},"type":"radio","options":[{"value":"M","label":{"fa":"مرد","en":"Male"}},{"value":"F","label":{"fa":"زن","en":"Female"}},{"value":"O","label":{"fa":"دیگر","en":"Other"}}]}
@@ -188,7 +192,7 @@ The sample form `user_form.json` demonstrates many of the features:
 }
 ```
 
-This form includes basic text/email fields, a select drop‑down, a boolean switch controlling the visibility of a dependent field, and examples of new types (date, file upload, multi‑file upload and radio buttons).
+This form includes basic text/email fields, a select drop‑down, a boolean switch controlling the visibility of a dependent field, and examples of richer inputs such as the standard date picker, the Jalali date-time picker, file uploads (single and multi) and radio buttons.
 
 For layout-specific behaviour, review `user_form_with_layout.json`.  It keeps the first section on the responsive grid, switches the second section to a wrapped horizontal layout for inline fields, and renders the final section in a stacked vertical container with custom spacing and width.
 

@@ -140,6 +140,16 @@
           "type": "date"
         },
         {
+          "name": "lastLogin",
+          "label": {
+            "fa": "آخرین ورود",
+            "en": "Last login"
+          },
+          "type": "jalaliDateTime",
+          "minuteStep": 5,
+          "min": "2020-01-01T00:00:00"
+        },
+        {
           "name": "resume",
           "label": {
             "fa": "رزومه",
