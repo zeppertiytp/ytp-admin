@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## v4.6.0
+### Enforce layered architecture and SOLID boundaries
+
+* **Package restructuring:** Moved domain models into `domain.*`, extracted
+  application-layer interfaces (`NavigationMenuService`, `PersonDirectory`,
+  `FormValidationService`, pagination contracts) and relocated Vaadin views and
+  components under `ui.*`. Infrastructure implementations now live under
+  `infrastructure.*`, keeping the UI focused on abstractions.
+* **Navigation decoupling:** Replaced view-class based menu configuration with
+  route-driven `MenuItem`s so the UI depends on the `NavigationMenuService`
+  interface instead of concrete view classes.
+* **Documentation:** Added `docs/architecture.md` detailing the layered
+  structure and dependency rules, plus ADR `docs/ADR-20250920-architecture-refactor.md`.
+* **Architecture tests:** Added ArchUnit tests that fail the build whenever the
+  documented package boundaries are violated.
+* **Version bump:** Updated `version.txt` to `v4.6.0`.
+
 ## v4.5.0
 ### Enhanced form generator and new input types
 
