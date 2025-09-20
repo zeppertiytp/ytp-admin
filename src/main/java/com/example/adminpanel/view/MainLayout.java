@@ -1,6 +1,7 @@
 package com.example.adminpanel.view;
 
 import com.example.adminpanel.components.AppIcon;
+import com.example.adminpanel.i18n.LocaleDirectionService;
 import com.example.adminpanel.security.SecurityService;
 import com.example.adminpanel.service.MenuItem;
 import com.example.adminpanel.service.MenuService;
@@ -44,6 +45,7 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
 
     private final SecurityService securityService;
     private final MenuService menuService;
+    private final LocaleDirectionService localeDirectionService;
 
     // Header
     private DrawerToggle toggle;
@@ -65,9 +67,11 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
     }
 
     @Autowired
-    public MainLayout(SecurityService securityService, MenuService menuService) {
+    public MainLayout(SecurityService securityService, MenuService menuService,
+                      LocaleDirectionService localeDirectionService) {
         this.securityService = securityService;
         this.menuService = menuService;
+        this.localeDirectionService = localeDirectionService;
 
         // Drawer is the primary section
         setPrimarySection(Section.DRAWER);
@@ -76,8 +80,8 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
         createDrawer();
 
         // Make sure header side matches current direction
+        localeDirectionService.applyDirection(UI.getCurrent());
         updateHeaderOrder();
-        updateDirection(UI.getCurrent().getLocale());
     }
 
     /* ------------------- Header ------------------- */
@@ -107,19 +111,12 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
         // Language button shows the OTHER language (switch target)
         languageButton = new Button(getLanguageLabel());
         languageButton.addClickListener(click -> {
-            Locale current = UI.getCurrent().getLocale();
+            UI ui = UI.getCurrent();
+            Locale current = ui.getLocale();
             Locale next = "fa".equals(current.getLanguage()) ? Locale.ENGLISH : new Locale("fa");
-            UI.getCurrent().setLocale(next);
-            UI.getCurrent().getSession().setAttribute("preferred-locale", next);
-
-            updateDirection(next);
-            // Reflect dir/lang on DOM so AppLayout CSS flips drawer side
-            String dir = "fa".equals(next.getLanguage()) ? "rtl" : "ltr";
-            UI.getCurrent().getElement().setAttribute("dir", dir);
-            UI.getCurrent().getElement().setAttribute("lang", next.getLanguage());
-            UI.getCurrent().getPage().executeJs(
-                    "document.documentElement.setAttribute('dir',$0);document.body.setAttribute('dir',$0);", dir
-            );
+            localeDirectionService.applyLocale(ui, next);
+            ui.getSession().setAttribute("preferred-locale", next);
+            updateHeaderOrder();
         });
 
         header = new HorizontalLayout();
@@ -294,21 +291,11 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
         return getTranslation(isFa ? "language.english" : "language.farsi");
     }
 
-    /** Apply RTL/LTR and keep header aligned */
-    private void updateDirection(Locale locale) {
-        boolean rtl = locale != null && "fa".equals(locale.getLanguage());
-        UI.getCurrent().getElement().setAttribute("dir", rtl ? "rtl" : "ltr");
-        if (rtl) {
-            UI.getCurrent().getElement().getStyle().set("--lumo-font-family", "'Vazir', sans-serif");
-        } else {
-            UI.getCurrent().getElement().getStyle().remove("--lumo-font-family");
-        }
-        updateHeaderOrder();
-    }
-
     @Override
     public void localeChange(LocaleChangeEvent event) {
         toggle.getElement().setAttribute("aria-label", getTranslation("header.toggleMenu"));
+
+        localeDirectionService.applyDirection(UI.getCurrent());
 
         // Update submenu labels
         userMenu.getItems().forEach(item -> {
