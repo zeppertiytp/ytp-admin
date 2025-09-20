@@ -320,8 +320,9 @@ export class JalaliDateTimePicker extends LitElement {
   private isAtBoundary(parts: DateParts): boolean {
     const min = this.minParts;
     const max = this.maxParts;
-    return (min && this.compareParts(parts, min) === 0)
-      || (max && this.compareParts(parts, max) === 0);
+    const isAtMin = min !== null && this.compareParts(parts, min) === 0;
+    const isAtMax = max !== null && this.compareParts(parts, max) === 0;
+    return isAtMin || isAtMax;
   }
 
   private arePartsEqual(a: DateParts, b: DateParts): boolean {
