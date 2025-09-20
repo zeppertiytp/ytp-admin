@@ -402,6 +402,93 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
     }
 
 
+    private JalaliDateTimePicker createJalaliPicker(JsonNode field, String name, String label,
+            boolean required, JalaliDateTimePicker.PickerVariant defaultVariant) {
+        JalaliDateTimePicker picker = new JalaliDateTimePicker();
+        picker.setLabel(label);
+        picker.setWidthFull();
+        JalaliDateTimePicker.PickerVariant variant = resolveJalaliVariant(field, defaultVariant);
+        picker.setPickerVariant(variant);
+        if (required) {
+            picker.setRequiredIndicatorVisible(true);
+        }
+        LocalDateTime min = parseIsoDateTime(field, "min", name);
+        if (min != null) {
+            picker.setMin(min);
+        }
+        LocalDateTime max = parseIsoDateTime(field, "max", name);
+        if (max != null) {
+            picker.setMax(max);
+        }
+        if (variant == JalaliDateTimePicker.PickerVariant.DATE_TIME) {
+            Integer minuteStep = parseIntegerProperty(field, "minuteStep", name);
+            if (minuteStep != null) {
+                try {
+                    picker.setMinuteStep(minuteStep);
+                } catch (IllegalArgumentException ex) {
+                    throw new IllegalArgumentException(
+                            "Field '" + name + "' has invalid minuteStep " + minuteStep, ex);
+                }
+            }
+        }
+        String openLabel = getTranslationFromNode(field.get("openLabel"));
+        if (StringUtils.hasText(openLabel)) {
+            picker.setOpenButtonLabel(openLabel);
+            localeUpdaters.add(() -> {
+                String translated = getTranslationFromNode(field.get("openLabel"));
+                picker.setOpenButtonLabel(StringUtils.hasText(translated) ? translated : null);
+            });
+        }
+        picker.addValueChangeListener(ev -> {
+            fieldValues.put(name, ev.getValue());
+            if (required) {
+                if (ev.getValue() == null) {
+                    setError(picker, getTranslation("form.required"));
+                } else {
+                    clearError(picker);
+                }
+            }
+            runVisibilityWatchers(name);
+        });
+        return picker;
+    }
+
+    private JalaliDateTimePicker.PickerVariant resolveJalaliVariant(JsonNode fieldSpec,
+            JalaliDateTimePicker.PickerVariant defaultVariant) {
+        if (fieldSpec == null) {
+            return defaultVariant;
+        }
+        JalaliDateTimePicker.PickerVariant variant = defaultVariant;
+        if (fieldSpec.has("pickerVariant")) {
+            variant = parseJalaliVariantValue(fieldSpec.get("pickerVariant").asText(), variant);
+        } else if (fieldSpec.has("pickerMode")) {
+            variant = parseJalaliVariantValue(fieldSpec.get("pickerMode").asText(), variant);
+        } else if (fieldSpec.has("mode")) {
+            variant = parseJalaliVariantValue(fieldSpec.get("mode").asText(), variant);
+        }
+        if (fieldSpec.has("showTime") && fieldSpec.get("showTime").isBoolean()) {
+            variant = fieldSpec.get("showTime").asBoolean(true)
+                    ? JalaliDateTimePicker.PickerVariant.DATE_TIME
+                    : JalaliDateTimePicker.PickerVariant.DATE;
+        }
+        return variant;
+    }
+
+    private JalaliDateTimePicker.PickerVariant parseJalaliVariantValue(String value,
+            JalaliDateTimePicker.PickerVariant fallback) {
+        if (!StringUtils.hasText(value)) {
+            return fallback;
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT).replace('_', '-');
+        return switch (normalized) {
+            case "date", "date-only", "dateonly" -> JalaliDateTimePicker.PickerVariant.DATE;
+            case "date-time", "datetime", "dateandtime", "date-time-picker" ->
+                    JalaliDateTimePicker.PickerVariant.DATE_TIME;
+            default -> fallback;
+        };
+    }
+
+
     /**
      * Create a Vaadin component for a single field definition. Supported field types include
      * text, email, tel, number, select, switch, radio buttons and various upload inputs.
@@ -534,42 +621,10 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                 });
                 comp = dp;
             }
-            case "jalaliDateTime" -> {
-                JalaliDateTimePicker picker = new JalaliDateTimePicker();
-                picker.setLabel(label);
-                picker.setWidthFull();
-                if (required) {
-                    picker.setRequiredIndicatorVisible(true);
-                }
-                LocalDateTime min = parseIsoDateTime(field, "min", name);
-                if (min != null) {
-                    picker.setMin(min);
-                }
-                LocalDateTime max = parseIsoDateTime(field, "max", name);
-                if (max != null) {
-                    picker.setMax(max);
-                }
-                Integer minuteStep = parseIntegerProperty(field, "minuteStep", name);
-                if (minuteStep != null) {
-                    try {
-                        picker.setMinuteStep(minuteStep);
-                    } catch (IllegalArgumentException ex) {
-                        throw new IllegalArgumentException("Field '" + name + "' has invalid minuteStep " + minuteStep, ex);
-                    }
-                }
-                picker.addValueChangeListener(ev -> {
-                    fieldValues.put(name, ev.getValue());
-                    if (required) {
-                        if (ev.getValue() == null) {
-                            setError(picker, getTranslation("form.required"));
-                        } else {
-                            clearError(picker);
-                        }
-                    }
-                    runVisibilityWatchers(name);
-                });
-                comp = picker;
-            }
+            case "jalaliDateTime" -> comp = createJalaliPicker(field, name, label, required,
+                    JalaliDateTimePicker.PickerVariant.DATE_TIME);
+            case "jalaliDate" -> comp = createJalaliPicker(field, name, label, required,
+                    JalaliDateTimePicker.PickerVariant.DATE);
             case "file" -> {
                 MemoryBuffer buffer = new MemoryBuffer();
                 Upload upload = new Upload(buffer);

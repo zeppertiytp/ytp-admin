@@ -41,10 +41,17 @@ public class JalaliDateTimePicker extends AbstractField<JalaliDateTimePicker, Lo
     private static final List<String> ENGLISH_WEEKDAYS = List.of(
             "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat");
 
+    public enum PickerVariant {
+        DATE_TIME,
+        DATE
+    }
+
     private LocalDateTime min;
     private LocalDateTime max;
     private boolean invalid;
     private String errorMessage = "";
+    private PickerVariant pickerVariant = PickerVariant.DATE_TIME;
+    private String customOpenButtonLabel;
 
     public JalaliDateTimePicker() {
         this(null);
@@ -56,6 +63,7 @@ public class JalaliDateTimePicker extends AbstractField<JalaliDateTimePicker, Lo
         getElement().setProperty("min", "");
         getElement().setProperty("max", "");
         getElement().setProperty("minuteStep", 1);
+        getElement().setProperty("mode", "date-time");
 
         getElement().addPropertyChangeListener("value", "value-changed", event -> {
             if (isReadOnly()) {
@@ -166,6 +174,35 @@ public class JalaliDateTimePicker extends AbstractField<JalaliDateTimePicker, Lo
         return getElement().getProperty("minuteStep", 1);
     }
 
+    public PickerVariant getPickerVariant() {
+        return pickerVariant;
+    }
+
+    public void setPickerVariant(PickerVariant pickerVariant) {
+        PickerVariant resolved = pickerVariant == null ? PickerVariant.DATE_TIME : pickerVariant;
+        this.pickerVariant = resolved;
+        getElement().setProperty("mode", resolved == PickerVariant.DATE ? "date" : "date-time");
+        applyTranslations();
+    }
+
+    public void setOpenButtonLabel(String label) {
+        if (label == null || label.trim().isEmpty()) {
+            customOpenButtonLabel = null;
+            applyTranslations();
+        } else {
+            customOpenButtonLabel = label;
+            getElement().setProperty("openButtonLabel", label);
+        }
+    }
+
+    public void openPicker() {
+        getElement().callJsFunction("openPicker");
+    }
+
+    public void closePicker() {
+        getElement().callJsFunction("closePicker");
+    }
+
     private void applyTranslations() {
         Locale locale = getLocale();
         String language = locale != null ? locale.getLanguage() : "";
@@ -195,6 +232,13 @@ public class JalaliDateTimePicker extends AbstractField<JalaliDateTimePicker, Lo
                 getTranslation("component.jalaliDateTime.ariaToday"));
         getElement().setProperty("firstDayOfWeek", 6);
         getElement().setProperty("usePersianDigits", persian);
+        if (customOpenButtonLabel == null || customOpenButtonLabel.isBlank()) {
+            getElement().setProperty("openButtonLabel",
+                    getTranslation(pickerVariant == PickerVariant.DATE
+                            ? "component.jalaliDateTime.openDate"
+                            : "component.jalaliDateTime.openDateTime"));
+        }
+        getElement().setProperty("mode", pickerVariant == PickerVariant.DATE ? "date" : "date-time");
         if (persian) {
             getElement().setAttribute("dir", "rtl");
         } else {

@@ -22,6 +22,23 @@ export class JalaliDateTimePicker extends LitElement {
   private readonly handleSlotChange = () => {
     this.requestUpdate();
   };
+  private readonly handleDocumentPointerDown = (event: Event): void => {
+    if (!this.opened) {
+      return;
+    }
+    const path = event.composedPath();
+    if (!path.includes(this)) {
+      this.setOpened(false);
+    }
+  };
+  private readonly handleDocumentKeyDown = (event: KeyboardEvent): void => {
+    if (!this.opened) {
+      return;
+    }
+    if (event.key === 'Escape') {
+      this.setOpened(false);
+    }
+  };
 
   @property({ type: String })
   value = '';
@@ -52,6 +69,12 @@ export class JalaliDateTimePicker extends LitElement {
 
   @property({ type: String })
   helperText = '';
+
+  @property({ type: String })
+  openButtonLabel = '';
+
+  @property({ type: String })
+  mode: 'date-time' | 'date' = 'date-time';
 
   @property({ type: Array })
   monthNames: string[] = [
@@ -112,6 +135,9 @@ export class JalaliDateTimePicker extends LitElement {
   minuteStep = 1;
 
   @state()
+  private opened = false;
+
+  @state()
   private displayYear = 0;
 
   @state()
@@ -141,6 +167,7 @@ export class JalaliDateTimePicker extends LitElement {
     super.connectedCallback();
     this.syncFromValue(this.value);
     this.updateRangeState();
+    this.addDocumentListenersIfNeeded();
   }
 
   updated(changed: PropertyValueMap<JalaliDateTimePicker>): void {
@@ -157,6 +184,27 @@ export class JalaliDateTimePicker extends LitElement {
         this.minuteStep = step;
       }
       this.ensureSelectionWithinRange();
+    }
+    if (changed.has('mode')) {
+      if (this.mode === 'date') {
+        this.selectedHour = 0;
+        this.selectedMinute = 0;
+      }
+      this.requestUpdate();
+    }
+    if (changed.has('opened')) {
+      this.addDocumentListenersIfNeeded();
+      if (this.opened) {
+        this.updateComplete.then(() => {
+          const surface = this.renderRoot.querySelector('.picker-surface');
+          if (surface instanceof HTMLElement) {
+            surface.focus({ preventScroll: true });
+          }
+        });
+      }
+    }
+    if ((changed.has('disabled') || changed.has('readOnly')) && (this.disabled || this.readOnly)) {
+      this.setOpened(false);
     }
   }
 
@@ -207,8 +255,8 @@ export class JalaliDateTimePicker extends LitElement {
       return;
     }
     const parts = this.composeGregorianParts(this.selectedDate, {
-      hour: this.selectedHour,
-      minute: this.selectedMinute,
+      hour: this.mode === 'date' ? 0 : this.selectedHour,
+      minute: this.mode === 'date' ? 0 : this.selectedMinute,
       second: this.selectedSecond
     });
     const constrained = this.applyConstraints(parts);
@@ -223,10 +271,15 @@ export class JalaliDateTimePicker extends LitElement {
     this.selectedDate = { jy: jalali.jy, jm: jalali.jm, jd: jalali.jd };
     this.displayYear = jalali.jy;
     this.displayMonth = jalali.jm;
-    this.selectedHour = this.normalizeHour(parts.hour);
-    this.selectedMinute = preserveMinute
-      ? Math.max(0, Math.min(59, Math.trunc(parts.minute)))
-      : this.normalizeMinute(parts.minute);
+    if (this.mode === 'date') {
+      this.selectedHour = 0;
+      this.selectedMinute = 0;
+    } else {
+      this.selectedHour = this.normalizeHour(parts.hour);
+      this.selectedMinute = preserveMinute
+        ? Math.max(0, Math.min(59, Math.trunc(parts.minute)))
+        : this.normalizeMinute(parts.minute);
+    }
     this.selectedSecond = 0;
   }
 
@@ -288,7 +341,7 @@ export class JalaliDateTimePicker extends LitElement {
       month: gregorian.gm,
       day: gregorian.gd,
       hour: this.normalizeHour(time.hour),
-      minute: this.normalizeMinute(time.minute),
+      minute: this.mode === 'date' ? 0 : this.normalizeMinute(time.minute),
       second: 0
     };
   }
@@ -296,7 +349,7 @@ export class JalaliDateTimePicker extends LitElement {
   private applyConstraints(parts: DateParts): DateParts {
     let result: DateParts = { ...parts };
     result.hour = this.normalizeHour(result.hour);
-    result.minute = this.normalizeMinute(result.minute);
+    result.minute = this.mode === 'date' ? 0 : this.normalizeMinute(result.minute);
     result.second = 0;
 
     const min = this.minParts;
@@ -310,9 +363,11 @@ export class JalaliDateTimePicker extends LitElement {
 
     const boundary = this.isAtBoundary(result);
     result.hour = this.normalizeHour(result.hour);
-    result.minute = boundary
-      ? Math.max(0, Math.min(59, Math.trunc(result.minute)))
-      : this.normalizeMinute(result.minute);
+    result.minute = this.mode === 'date'
+      ? 0
+      : boundary
+        ? Math.max(0, Math.min(59, Math.trunc(result.minute)))
+        : this.normalizeMinute(result.minute);
     result.second = 0;
     return result;
   }
@@ -491,8 +546,8 @@ export class JalaliDateTimePicker extends LitElement {
     const jalali: JalaliDate = { jy: cell.jy, jm: cell.jm, jd: cell.jd };
     const parts = this.applyConstraints(
       this.composeGregorianParts(jalali, {
-        hour: this.selectedDate ? this.selectedHour : 0,
-        minute: this.selectedDate ? this.selectedMinute : 0,
+        hour: this.mode === 'date' ? 0 : this.selectedDate ? this.selectedHour : 0,
+        minute: this.mode === 'date' ? 0 : this.selectedDate ? this.selectedMinute : 0,
         second: 0
       })
     );
@@ -507,8 +562,8 @@ export class JalaliDateTimePicker extends LitElement {
     const now = new Date();
     const jalaliNow = toJalaali(now.getFullYear(), now.getMonth() + 1, now.getDate());
     const currentTime = {
-      hour: this.selectedHour,
-      minute: this.selectedMinute,
+      hour: this.mode === 'date' ? 0 : this.selectedHour,
+      minute: this.mode === 'date' ? 0 : this.selectedMinute,
       second: this.selectedSecond
     };
     const parts = this.applyConstraints(
@@ -519,7 +574,7 @@ export class JalaliDateTimePicker extends LitElement {
   };
 
   private handleNowClick = (): void => {
-    if (this.disabled || this.readOnly) {
+    if (this.disabled || this.readOnly || this.mode === 'date') {
       return;
     }
     const now = new Date();
@@ -547,7 +602,7 @@ export class JalaliDateTimePicker extends LitElement {
   };
 
   private handleHourChange = (event: Event): void => {
-    if (!this.selectedDate || this.disabled || this.readOnly) {
+    if (!this.selectedDate || this.disabled || this.readOnly || this.mode === 'date') {
       return;
     }
     const value = Number((event.target as HTMLSelectElement).value);
@@ -566,7 +621,7 @@ export class JalaliDateTimePicker extends LitElement {
   };
 
   private handleMinuteChange = (event: Event): void => {
-    if (!this.selectedDate || this.disabled || this.readOnly) {
+    if (!this.selectedDate || this.disabled || this.readOnly || this.mode === 'date') {
       return;
     }
     const value = Number((event.target as HTMLSelectElement).value);
@@ -591,6 +646,9 @@ export class JalaliDateTimePicker extends LitElement {
     const monthLabel = this.monthNames?.[this.selectedDate.jm - 1] ?? this.selectedDate.jm.toString();
     const dayText = this.formatNumber(this.selectedDate.jd);
     const yearText = this.formatNumber(this.selectedDate.jy, 4);
+    if (this.mode === 'date') {
+      return `${dayText} ${monthLabel} ${yearText}`;
+    }
     const timeText = `${this.formatNumber(this.selectedHour)}:${this.formatNumber(this.selectedMinute)}`;
     return `${dayText} ${monthLabel} ${yearText} – ${timeText}`;
   }
@@ -656,15 +714,17 @@ export class JalaliDateTimePicker extends LitElement {
       describedByIds.push(this.errorId);
     }
     const describedBy = describedByIds.join(' ');
-    const minuteOptions = this.getMinuteOptions();
+    const minuteOptions = this.mode === 'date-time' ? this.getMinuteOptions() : [];
     const hasLabel = this.hasLabelContent();
 
     return html`
       <style>
         :host {
-          display: inline-block;
+          display: inline-flex;
+          flex-direction: column;
           font-family: var(--lumo-font-family, inherit);
           color: var(--lumo-body-text-color, inherit);
+          gap: 0.5rem;
         }
 
         .field-wrapper {
@@ -673,6 +733,42 @@ export class JalaliDateTimePicker extends LitElement {
           gap: 0.5rem;
           min-width: 18rem;
           max-width: 24rem;
+          position: relative;
+        }
+
+        .control-row {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .toggle-button {
+          border: 1px solid var(--lumo-contrast-30pct, rgba(0, 0, 0, 0.2));
+          border-radius: var(--lumo-border-radius-m, 0.5rem);
+          padding: 0.45rem 0.95rem;
+          background: var(--lumo-base-color, #fff);
+          color: inherit;
+          cursor: pointer;
+          font: inherit;
+          min-width: 9rem;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.35rem;
+          box-shadow: var(--lumo-box-shadow-xs, 0 1px 3px rgba(0, 0, 0, 0.12));
+        }
+
+        .toggle-button:hover:not([disabled]),
+        .toggle-button:focus-visible:not([disabled]) {
+          border-color: var(--lumo-primary-color, #006ee6);
+          outline: none;
+          box-shadow: var(--lumo-box-shadow-s, 0 2px 6px rgba(0, 0, 0, 0.18));
+        }
+
+        .toggle-button[disabled] {
+          cursor: default;
+          opacity: 0.6;
         }
 
         .field-label {
@@ -687,6 +783,14 @@ export class JalaliDateTimePicker extends LitElement {
           color: var(--lumo-error-color, #c02020);
         }
 
+        .overlay {
+          position: absolute;
+          top: calc(100% + 0.35rem);
+          inset-inline-start: 0;
+          z-index: 1000;
+          min-width: 100%;
+        }
+
         .picker-surface {
           border: 1px solid var(--lumo-contrast-20pct, rgba(0, 0, 0, 0.15));
           border-radius: var(--lumo-border-radius-m, 0.5rem);
@@ -695,6 +799,7 @@ export class JalaliDateTimePicker extends LitElement {
           display: flex;
           flex-direction: column;
           gap: 0.75rem;
+          box-shadow: var(--lumo-box-shadow-m, 0 6px 18px rgba(0, 0, 0, 0.15));
         }
 
         :host([invalid]) .picker-surface {
@@ -877,6 +982,11 @@ export class JalaliDateTimePicker extends LitElement {
           text-align: right;
         }
 
+        :host([dir="rtl"]) .overlay {
+          inset-inline-start: auto;
+          inset-inline-end: 0;
+        }
+
         :host([dir="rtl"]) .calendar-header {
           flex-direction: row-reverse;
         }
@@ -897,57 +1007,88 @@ export class JalaliDateTimePicker extends LitElement {
         aria-describedby=${describedBy ? describedBy : nothing}
       >
         ${this.renderLabel()}
-        <div class="picker-surface" part="input">
-          <div class="calendar-section" part="calendar">
-            ${this.calendarHeading
-              ? html`<div class="section-heading">${this.calendarHeading}</div>`
-              : nothing}
-            <div class="calendar-header">
-              <button type="button" class="nav-button" @click=${this.handlePrevMonth} ?disabled=${this.disabled || this.readOnly}>◀</button>
-              <div class="month-label">${this.getMonthLabel()}</div>
-              <button type="button" class="nav-button" @click=${this.handleNextMonth} ?disabled=${this.disabled || this.readOnly}>▶</button>
-            </div>
-            <div class="weekday-row">
-              ${weekdays.map(weekday => html`<div class="weekday">${weekday}</div>`)}
-            </div>
-            <div class="calendar-grid">
-              ${cells.map(cell => this.renderDayCell(cell))}
-            </div>
-          </div>
-          <div class="time-section" part="time">
-            ${this.timeHeading ? html`<div class="time-heading">${this.timeHeading}</div>` : nothing}
-            <div class="time-controls">
-              <label class="time-control">
-                <span>${this.hourLabel}</span>
-                <select class="hour-select" @change=${this.handleHourChange} ?disabled=${this.disabled || this.readOnly || !this.selectedDate}>
-                  ${Array.from({ length: 24 }, (_, index) => index).map(hour => html`
-                    <option value=${hour} ?selected=${hour === this.selectedHour}>${this.formatNumber(hour)}</option>
-                  `)}
-                </select>
-              </label>
-              <label class="time-control">
-                <span>${this.minuteLabel}</span>
-                <select class="minute-select" @change=${this.handleMinuteChange} ?disabled=${this.disabled || this.readOnly || !this.selectedDate}>
-                  ${minuteOptions.map(minute => html`
-                    <option value=${minute} ?selected=${minute === this.selectedMinute}>${this.formatNumber(minute)}</option>
-                  `)}
-                </select>
-              </label>
-            </div>
-            <div class="actions">
-              <button type="button" class="primary-action" @click=${this.handleNowClick} ?disabled=${this.disabled || this.readOnly}>${this.nowLabel}</button>
-              <button type="button" class="secondary-action" @click=${this.handleTodayClick} ?disabled=${this.disabled || this.readOnly}>${this.todayLabel}</button>
-              <button type="button" class="secondary-action" @click=${this.handleClearClick} ?disabled=${this.disabled || this.readOnly || !this.selectedDate}>${this.clearLabel}</button>
-            </div>
-          </div>
+        <div class="control-row">
+          <button
+            type="button"
+            class="toggle-button"
+            part="toggle-button"
+            @click=${this.toggleOpened}
+            ?disabled=${this.disabled || this.readOnly}
+            aria-haspopup="dialog"
+            aria-expanded=${this.opened ? 'true' : 'false'}
+          >
+            ${this.getOpenButtonLabel()}
+          </button>
           <div class="preview" part="value">${this.formatPreview()}</div>
         </div>
+        ${this.opened
+          ? html`
+              <div class="overlay" part="overlay" role="dialog" aria-modal="false">
+                ${this.renderSurface(weekdays, cells, minuteOptions)}
+              </div>
+            `
+          : nothing}
         ${hasHelper
           ? html`<div class="helper-text" id=${this.helperId} part="helper"><slot name="helper" @slotchange=${this.handleSlotChange}>${this.helperText}</slot></div>`
           : nothing}
         ${this.invalid && this.errorMessage
           ? html`<div class="error-text" id=${this.errorId} part="error">${this.errorMessage}</div>`
           : null}
+      </div>
+    `;
+  }
+
+  private renderSurface(weekdays: string[], cells: DayCell[], minuteOptions: number[]) {
+    return html`
+      <div class="picker-surface" part="input" tabindex="-1">
+        <div class="calendar-section" part="calendar">
+          ${this.calendarHeading
+            ? html`<div class="section-heading">${this.calendarHeading}</div>`
+            : nothing}
+          <div class="calendar-header">
+            <button type="button" class="nav-button" @click=${this.handlePrevMonth} ?disabled=${this.disabled || this.readOnly}>◀</button>
+            <div class="month-label">${this.getMonthLabel()}</div>
+            <button type="button" class="nav-button" @click=${this.handleNextMonth} ?disabled=${this.disabled || this.readOnly}>▶</button>
+          </div>
+          <div class="weekday-row">
+            ${weekdays.map(weekday => html`<div class="weekday">${weekday}</div>`)}
+          </div>
+          <div class="calendar-grid">
+            ${cells.map(cell => this.renderDayCell(cell))}
+          </div>
+        </div>
+        ${this.mode === 'date-time'
+          ? html`
+              <div class="time-section" part="time">
+                ${this.timeHeading ? html`<div class="time-heading">${this.timeHeading}</div>` : nothing}
+                <div class="time-controls">
+                  <label class="time-control">
+                    <span>${this.hourLabel}</span>
+                    <select class="hour-select" @change=${this.handleHourChange} ?disabled=${this.disabled || this.readOnly || !this.selectedDate}>
+                      ${Array.from({ length: 24 }, (_, index) => index).map(hour => html`
+                        <option value=${hour} ?selected=${hour === this.selectedHour}>${this.formatNumber(hour)}</option>
+                      `)}
+                    </select>
+                  </label>
+                  <label class="time-control">
+                    <span>${this.minuteLabel}</span>
+                    <select class="minute-select" @change=${this.handleMinuteChange} ?disabled=${this.disabled || this.readOnly || !this.selectedDate}>
+                      ${minuteOptions.map(minute => html`
+                        <option value=${minute} ?selected=${minute === this.selectedMinute}>${this.formatNumber(minute)}</option>
+                      `)}
+                    </select>
+                  </label>
+                </div>
+              </div>
+            `
+          : nothing}
+        <div class="actions">
+          ${this.mode === 'date-time'
+            ? html`<button type="button" class="primary-action" @click=${this.handleNowClick} ?disabled=${this.disabled || this.readOnly}>${this.nowLabel}</button>`
+            : nothing}
+          <button type="button" class="secondary-action" @click=${this.handleTodayClick} ?disabled=${this.disabled || this.readOnly}>${this.todayLabel}</button>
+          <button type="button" class="secondary-action" @click=${this.handleClearClick} ?disabled=${this.disabled || this.readOnly || !this.selectedDate}>${this.clearLabel}</button>
+        </div>
       </div>
     `;
   }
@@ -1000,6 +1141,13 @@ export class JalaliDateTimePicker extends LitElement {
     return `${month} ${this.formatNumber(this.displayYear, 4)}`;
   }
 
+  private getOpenButtonLabel(): string {
+    if (this.openButtonLabel && this.openButtonLabel.trim().length > 0) {
+      return this.openButtonLabel;
+    }
+    return this.mode === 'date' ? 'Select date' : 'Select date & time';
+  }
+
   private getMinuteOptions(): number[] {
     const step = this.getMinuteStep();
     const options: number[] = [];
@@ -1018,6 +1166,50 @@ export class JalaliDateTimePicker extends LitElement {
 
   private hasHelperContent(): boolean {
     return Boolean(this.helperText) || Boolean(this.querySelector('[slot="helper"]'));
+  }
+
+  private toggleOpened = (): void => {
+    if (this.disabled || this.readOnly) {
+      return;
+    }
+    this.setOpened(!this.opened);
+  };
+
+  public openPicker(): void {
+    if (this.disabled || this.readOnly) {
+      return;
+    }
+    this.setOpened(true);
+  }
+
+  public closePicker(): void {
+    this.setOpened(false);
+  }
+
+  private setOpened(open: boolean): void {
+    const next = open && !this.disabled && !this.readOnly;
+    if (this.opened === next) {
+      return;
+    }
+    this.opened = next;
+  }
+
+  private addDocumentListenersIfNeeded(): void {
+    if (this.opened) {
+      document.addEventListener('mousedown', this.handleDocumentPointerDown, true);
+      document.addEventListener('touchstart', this.handleDocumentPointerDown, true);
+      document.addEventListener('keydown', this.handleDocumentKeyDown, true);
+    } else {
+      document.removeEventListener('mousedown', this.handleDocumentPointerDown, true);
+      document.removeEventListener('touchstart', this.handleDocumentPointerDown, true);
+      document.removeEventListener('keydown', this.handleDocumentKeyDown, true);
+    }
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this.opened = false;
+    this.addDocumentListenersIfNeeded();
   }
 }
 
