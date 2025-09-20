@@ -1,0 +1,90 @@
+{
+  "id": "user-form-with-layout",
+  "title": { "fa": "کاربر جدید", "en": "New User" },
+  "layout": [
+    {
+      "type": "section",
+      "title": { "fa": "اطلاعات اصلی", "en": "Main details" },
+      "columns": 2,
+      "fields": [
+        {
+          "name": "username",
+          "label": { "fa": "نام کاربری", "en": "Username" },
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "email",
+          "label": { "fa": "ایمیل", "en": "Email" },
+          "type": "email",
+          "required": true,
+          "validators": [
+            {
+              "type": "pattern",
+              "value": "^.+@.+\\..+$",
+              "message": { "fa": "ایمیل نامعتبر", "en": "Invalid email" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": { "fa": "نمایش در یک ردیف", "en": "Inline layout" },
+      "layout": {
+        "type": "horizontal",
+        "align": "end",
+        "justify": "between",
+        "spacing": "var(--lumo-space-m)",
+        "wrap": true,
+        "classNames": ["inline-section"]
+      },
+      "fields": [
+        {
+          "name": "firstName",
+          "label": { "fa": "نام", "en": "First name" },
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "lastName",
+          "label": { "fa": "نام خانوادگی", "en": "Last name" },
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "newsletter",
+          "label": { "fa": "خبرنامه", "en": "Newsletter" },
+          "type": "switch"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": { "fa": "جزئیات بیشتر", "en": "More details" },
+      "layout": {
+        "type": "vertical",
+        "spacing": "1.5rem",
+        "width": "100%"
+      },
+      "fields": [
+        {
+          "name": "bio",
+          "label": { "fa": "بیوگرافی", "en": "Biography" },
+          "type": "text",
+          "maxLength": 500
+        },
+        {
+          "name": "attachments",
+          "label": { "fa": "فایل‌ها", "en": "Attachments" },
+          "type": "multiFile"
+        }
+      ]
+    }
+  ],
+  "submit": {
+    "endpoint": "/api/users",
+    "method": "POST",
+    "backendValidation": true
+  }
+}

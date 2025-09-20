@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.HasComponents;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -17,6 +18,7 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout.WrapMode;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
@@ -188,33 +190,170 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         }
 
         int columns = section.has("columns") ? section.get("columns").asInt(1) : 1;
-        FormLayout formLayout = new FormLayout();
-        formLayout.addClassName("form-section__grid");
-        formLayout.setWidthFull();
-        List<FormLayout.ResponsiveStep> steps = new ArrayList<>();
-        steps.add(new FormLayout.ResponsiveStep("0", 1));
-        if (columns >= 2) {
-            steps.add(new FormLayout.ResponsiveStep("640px", Math.min(2, columns)));
+        JsonNode layoutConfig = section.get("layout");
+        String layoutType = layoutConfig != null && layoutConfig.has("type")
+                ? layoutConfig.get("type").asText()
+                : "form";
+
+        HasComponents fieldContainer;
+        switch (layoutType.toLowerCase(Locale.ROOT)) {
+            case "horizontal" -> {
+                HorizontalLayout row = new HorizontalLayout();
+                row.setPadding(false);
+                row.setSpacing(false);
+                row.setWidthFull();
+                row.getStyle().set("gap", resolveSpacing(layoutConfig, "var(--lumo-space-m)"));
+                if (layoutConfig != null && layoutConfig.has("align")) {
+                    Alignment alignment = parseAlignment(layoutConfig.get("align").asText());
+                    if (alignment != null) {
+                        row.setAlignItems(alignment);
+                    }
+                }
+                if (layoutConfig != null && layoutConfig.has("justify")) {
+                    JustifyContentMode justify = parseJustify(layoutConfig.get("justify").asText());
+                    if (justify != null) {
+                        row.setJustifyContentMode(justify);
+                    }
+                }
+                boolean wrap = layoutConfig != null && layoutConfig.has("wrap") && layoutConfig.get("wrap").asBoolean(false);
+                row.setWrapMode(wrap ? WrapMode.WRAP : WrapMode.NO_WRAP);
+                fieldContainer = row;
+            }
+            case "vertical" -> {
+                VerticalLayout column = new VerticalLayout();
+                column.setPadding(false);
+                column.setSpacing(false);
+                column.setWidthFull();
+                column.getStyle().set("gap", resolveSpacing(layoutConfig, "var(--lumo-space-m)"));
+                if (layoutConfig != null && layoutConfig.has("align")) {
+                    Alignment alignment = parseAlignment(layoutConfig.get("align").asText());
+                    if (alignment != null) {
+                        column.setAlignItems(alignment);
+                    }
+                }
+                if (layoutConfig != null && layoutConfig.has("justify")) {
+                    JustifyContentMode justify = parseJustify(layoutConfig.get("justify").asText());
+                    if (justify != null) {
+                        column.setJustifyContentMode(justify);
+                    }
+                }
+                fieldContainer = column;
+            }
+            default -> {
+                FormLayout formLayout = new FormLayout();
+                formLayout.addClassName("form-section__grid");
+                formLayout.setWidthFull();
+                List<FormLayout.ResponsiveStep> steps = new ArrayList<>();
+                steps.add(new FormLayout.ResponsiveStep("0", 1));
+                if (columns >= 2) {
+                    steps.add(new FormLayout.ResponsiveStep("640px", Math.min(2, columns)));
+                }
+                if (columns >= 3) {
+                    steps.add(new FormLayout.ResponsiveStep("960px", Math.min(3, columns)));
+                }
+                steps.add(new FormLayout.ResponsiveStep("1200px", Math.max(1, columns)));
+                formLayout.setResponsiveSteps(steps);
+                String spacing = resolveSpacing(layoutConfig, "var(--lumo-space-m)");
+                formLayout.getStyle().set("column-gap", spacing);
+                formLayout.getStyle().set("row-gap", spacing);
+                fieldContainer = formLayout;
+            }
         }
-        if (columns >= 3) {
-            steps.add(new FormLayout.ResponsiveStep("960px", Math.min(3, columns)));
-        }
-        steps.add(new FormLayout.ResponsiveStep("1200px", Math.max(1, columns)));
-        formLayout.setResponsiveSteps(steps);
-        formLayout.getStyle().set("column-gap", "var(--lumo-space-m)");
-        formLayout.getStyle().set("row-gap", "var(--lumo-space-m)");
-        // Fields
+
+        applyLayoutProperties((Component) fieldContainer, layoutConfig);
+
         ArrayNode fields = (ArrayNode) section.get("fields");
         if (fields != null) {
             fields.forEach(field -> {
                 Component comp = createField(field);
                 if (comp != null) {
-                    formLayout.add(comp);
+                    fieldContainer.add(comp);
                 }
             });
         }
-        sectionLayout.add(formLayout);
+        sectionLayout.add((Component) fieldContainer);
         add(sectionLayout);
+    }
+
+
+    private void applyLayoutProperties(Component container, JsonNode layoutConfig) {
+        if (container == null || layoutConfig == null) {
+            return;
+        }
+        if (layoutConfig.has("width")) {
+            String width = layoutConfig.get("width").asText();
+            if (StringUtils.hasText(width) && container instanceof com.vaadin.flow.component.HasSize sized) {
+                sized.setWidth(width);
+            }
+        }
+        if (layoutConfig.has("classNames") && layoutConfig.get("classNames").isArray()) {
+            layoutConfig.get("classNames").forEach(node -> {
+                if (node != null && node.isTextual()) {
+                    String className = node.asText();
+                    if (StringUtils.hasText(className)) {
+                        container.addClassName(className);
+                    }
+                }
+            });
+        }
+    }
+
+    private String resolveSpacing(JsonNode layoutConfig, String defaultValue) {
+        if (layoutConfig == null || !layoutConfig.has("spacing")) {
+            return defaultValue;
+        }
+        String parsed = parseSpacing(layoutConfig.get("spacing"));
+        return parsed != null ? parsed : defaultValue;
+    }
+
+    private String parseSpacing(JsonNode spacingNode) {
+        if (spacingNode == null) {
+            return null;
+        }
+        if (spacingNode.isNumber()) {
+            double value = spacingNode.asDouble();
+            if (Double.isNaN(value)) {
+                return null;
+            }
+            if (Math.floor(value) == value) {
+                return (long) value + "px";
+            }
+            return value + "px";
+        }
+        if (spacingNode.isTextual()) {
+            String text = spacingNode.asText();
+            return StringUtils.hasText(text) ? text : null;
+        }
+        return null;
+    }
+
+    private Alignment parseAlignment(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return switch (value.trim().toLowerCase(Locale.ROOT)) {
+            case "start" -> Alignment.START;
+            case "center" -> Alignment.CENTER;
+            case "end" -> Alignment.END;
+            case "stretch" -> Alignment.STRETCH;
+            case "baseline" -> Alignment.BASELINE;
+            default -> null;
+        };
+    }
+
+    private JustifyContentMode parseJustify(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return switch (value.trim().toLowerCase(Locale.ROOT)) {
+            case "start" -> JustifyContentMode.START;
+            case "center" -> JustifyContentMode.CENTER;
+            case "end" -> JustifyContentMode.END;
+            case "between" -> JustifyContentMode.BETWEEN;
+            case "around" -> JustifyContentMode.AROUND;
+            case "evenly" -> JustifyContentMode.EVENLY;
+            default -> null;
+        };
     }
 
 
