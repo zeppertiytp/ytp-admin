@@ -80,8 +80,8 @@ Use a horizontal layout for compact inline groups such as first/last-name pairs 
 | `select`      | Drop‑down selection (`ComboBox`).  `options` must be provided. |
 | `switch`      | Boolean input (`Checkbox`) with on/off state. |
 | `date`        | Date picker (`DatePicker`) returning a `java.time.LocalDate`. |
-| `jalaliDate`     | Jalali calendar date picker (`JalaliDateTimePicker` in date mode). Opens in an overlay via a button, honours optional `min`/`max` ISO values and an `openLabel`, and returns a `java.time.LocalDateTime` at midnight. |
-| `jalaliDateTime` | Jalali calendar date & time picker (`JalaliDateTimePicker`). Opens via the same overlay button, supports optional `min`/`max` ISO values, `minuteStep`, and `openLabel`, and can be switched to date-only mode with `showTime: false` or `pickerVariant: "date"`. Returns a `java.time.LocalDateTime`. |
+| `jalaliDate`     | Jalali calendar date picker (`JalaliDateTimePicker` in date mode). Opens in an overlay via a button, honours optional `min`/`max` ISO values, `minYear`/`maxYear` Jalali bounds, and an `openLabel`, and returns a `java.time.LocalDateTime` at midnight. |
+| `jalaliDateTime` | Jalali calendar date & time picker (`JalaliDateTimePicker`). Opens via the same overlay button, supports optional `min`/`max` ISO values, `minYear`/`maxYear`, `minuteStep`, and `openLabel`, and can be switched to date-only mode with `showTime: false` or `pickerVariant: "date"`. Returns a `java.time.LocalDateTime`. |
 | `file`        | Single file upload (`Upload`).  The uploaded file name is stored; extend if you need to persist content. |
 | `multiFile`   | Multiple file upload (`Upload`).  Stores a list of uploaded file names. |
 | `radio`       | Single selection radio group (`RadioButtonGroup`).  `options` must be provided. |
@@ -91,6 +91,7 @@ Additional types (e.g. `time`, `dateTime`, `textArea`) can be added by extending
 The Jalali pickers render a lightweight value preview next to a button. Clicking the button opens an overlay that contains the calendar (and optionally time controls). Common configuration keys:
 
 - `min` / `max`: ISO 8601 strings (e.g. `"2024-01-01T00:00:00"`) that constrain selectable dates.
+- `minYear` / `maxYear`: Jalali year numbers that trim the year dropdown even when full ISO bounds are unnecessary.
 - `minuteStep`: numeric value that limits the time selector granularity when the time panel is visible.
 - `openLabel`: string or translation object that replaces the default button caption.
 - `showTime` / `pickerVariant`: set `showTime` to `false` or `pickerVariant` to `"date"` to hide the time controls even when using the `jalaliDateTime` type.

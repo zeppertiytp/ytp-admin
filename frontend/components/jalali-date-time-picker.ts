@@ -128,11 +128,26 @@ export class JalaliDateTimePicker extends LitElement {
   @property({ type: String })
   ariaTodayLabel = '';
 
+  @property({ type: String })
+  previousMonthLabel = '';
+
+  @property({ type: String })
+  nextMonthLabel = '';
+
+  @property({ type: String })
+  yearLabel = '';
+
   @property({ type: Boolean })
   usePersianDigits = true;
 
   @property({ type: Number })
   minuteStep = 1;
+
+  @property({ type: Number })
+  minYear: number | null = null;
+
+  @property({ type: Number })
+  maxYear: number | null = null;
 
   @state()
   private opened = false;
@@ -174,7 +189,7 @@ export class JalaliDateTimePicker extends LitElement {
     if (changed.has('value') && !this.internalUpdate) {
       this.syncFromValue(this.value);
     }
-    if (changed.has('min') || changed.has('max')) {
+    if (changed.has('min') || changed.has('max') || changed.has('minYear') || changed.has('maxYear')) {
       this.updateRangeState();
       this.ensureSelectionWithinRange();
     }
@@ -237,8 +252,42 @@ export class JalaliDateTimePicker extends LitElement {
   }
 
   private updateRangeState(): void {
-    this.minParts = this.normalizeRangeParts(this.parseIso(this.min));
-    this.maxParts = this.normalizeRangeParts(this.parseIso(this.max));
+    const minFromIso = this.normalizeRangeParts(this.parseIso(this.min));
+    const maxFromIso = this.normalizeRangeParts(this.parseIso(this.max));
+
+    const minFromYear = this.buildYearBoundary(this.minYear, 'start');
+    const maxFromYear = this.buildYearBoundary(this.maxYear, 'end');
+
+    let resolvedMin = minFromIso;
+    let resolvedMax = maxFromIso;
+
+    if (minFromYear) {
+      resolvedMin = resolvedMin
+        ? this.compareDateOnly(resolvedMin, minFromYear) < 0
+          ? minFromYear
+          : resolvedMin
+        : minFromYear;
+    }
+
+    if (maxFromYear) {
+      resolvedMax = resolvedMax
+        ? this.compareDateOnly(resolvedMax, maxFromYear) > 0
+          ? maxFromYear
+          : resolvedMax
+        : maxFromYear;
+    }
+
+    if (resolvedMin && resolvedMax && this.compareDateOnly(resolvedMin, resolvedMax) > 0) {
+      if (!maxFromYear && maxFromIso) {
+        resolvedMin = maxFromIso;
+      } else {
+        resolvedMax = resolvedMin;
+      }
+    }
+
+    this.minParts = resolvedMin;
+    this.maxParts = resolvedMax;
+    this.displayYear = this.clampDisplayYear(this.displayYear);
   }
 
   private ensureSelectionWithinRange(): void {
@@ -549,6 +598,123 @@ export class JalaliDateTimePicker extends LitElement {
     return { year: jy, month: jm };
   }
 
+  private getJalaliYear(parts: DateParts | null): number | null {
+    if (!parts) {
+      return null;
+    }
+    const jalali = toJalaali(parts.year, parts.month, parts.day);
+    return jalali.jy;
+  }
+
+  private normalizeYearProperty(value: number | null | undefined): number | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+    const normalized = Math.trunc(value);
+    if (normalized < 1) {
+      return 1;
+    }
+    return normalized;
+  }
+
+  private buildYearBoundary(value: number | null | undefined, boundary: 'start' | 'end'): DateParts | null {
+    const normalized = this.normalizeYearProperty(value);
+    if (normalized === null) {
+      return null;
+    }
+    if (boundary === 'start') {
+      const gregorian = toGregorian(normalized, 1, 1);
+      return this.normalizeRangeParts({
+        year: gregorian.gy,
+        month: gregorian.gm,
+        day: gregorian.gd,
+        hour: 0,
+        minute: 0,
+        second: 0
+      });
+    }
+    const lastDay = jalaaliMonthLength(normalized, 12);
+    const gregorian = toGregorian(normalized, 12, lastDay);
+    const hour = this.mode === 'date' ? 0 : 23;
+    const minute = this.mode === 'date' ? 0 : 59;
+    return this.normalizeRangeParts({
+      year: gregorian.gy,
+      month: gregorian.gm,
+      day: gregorian.gd,
+      hour,
+      minute,
+      second: 0
+    });
+  }
+
+  private getMinYearLimit(): number | null {
+    const override = this.normalizeYearProperty(this.minYear);
+    const fromRange = this.getJalaliYear(this.minParts);
+    if (override !== null && fromRange !== null) {
+      return Math.max(override, fromRange);
+    }
+    return override ?? fromRange;
+  }
+
+  private getMaxYearLimit(): number | null {
+    const override = this.normalizeYearProperty(this.maxYear);
+    const fromRange = this.getJalaliYear(this.maxParts);
+    if (override !== null && fromRange !== null) {
+      return Math.min(override, fromRange);
+    }
+    return override ?? fromRange;
+  }
+
+  private clampDisplayYear(year: number): number {
+    if (!Number.isFinite(year)) {
+      return this.displayYear;
+    }
+    let result = Math.trunc(year);
+    const minYear = this.getMinYearLimit();
+    const maxYear = this.getMaxYearLimit();
+    if (minYear !== null && result < minYear) {
+      result = minYear;
+    }
+    if (maxYear !== null && result > maxYear) {
+      result = maxYear;
+    }
+    return result;
+  }
+
+  private getYearOptions(): number[] {
+    const defaultSpan = 50;
+    const now = new Date();
+    const fallback = toJalaali(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    const displayYear = this.displayYear || fallback.jy;
+    const minYear = this.getMinYearLimit();
+    const maxYear = this.getMaxYearLimit();
+
+    let start = minYear !== null ? minYear : displayYear - defaultSpan;
+    let end = maxYear !== null ? maxYear : displayYear + defaultSpan;
+
+    if (this.selectedDate) {
+      start = Math.min(start, this.selectedDate.jy);
+      end = Math.max(end, this.selectedDate.jy);
+    }
+
+    start = Math.min(start, displayYear);
+    end = Math.max(end, displayYear);
+
+    start = Math.max(1, start);
+    if (end < start) {
+      end = start;
+    }
+
+    const years: number[] = [];
+    for (let year = start; year <= end; year += 1) {
+      years.push(year);
+    }
+    return years;
+  }
+
   private modulo(value: number, divisor: number): number {
     return ((value % divisor) + divisor) % divisor;
   }
@@ -569,6 +735,21 @@ export class JalaliDateTimePicker extends LitElement {
     const next = this.getAdjacentMonth(this.displayYear, this.displayMonth, 1);
     this.displayYear = next.year;
     this.displayMonth = next.month;
+  };
+
+  private handleYearChange = (event: Event): void => {
+    if (this.disabled || this.readOnly) {
+      return;
+    }
+    const target = event.target as HTMLSelectElement | null;
+    if (!target) {
+      return;
+    }
+    const parsed = Number(target.value);
+    if (!Number.isFinite(parsed)) {
+      return;
+    }
+    this.displayYear = this.clampDisplayYear(Math.trunc(parsed));
   };
 
   private handleDayClick(cell: DayCell): void {
@@ -855,10 +1036,24 @@ export class JalaliDateTimePicker extends LitElement {
           align-items: center;
           justify-content: space-between;
           gap: 0.5rem;
+          flex-wrap: wrap;
+        }
+
+        .calendar-nav-group {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.25rem;
+        }
+
+        .month-year {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-weight: 600;
         }
 
         .month-label {
-          font-weight: 600;
+          font-weight: inherit;
         }
 
         .nav-button {
@@ -879,6 +1074,20 @@ export class JalaliDateTimePicker extends LitElement {
         .nav-button[disabled] {
           opacity: 0.5;
           cursor: default;
+        }
+
+        .year-select {
+          border: 1px solid var(--lumo-contrast-30pct, rgba(0, 0, 0, 0.2));
+          border-radius: var(--lumo-border-radius-s, 0.3rem);
+          padding: 0.25rem 0.5rem;
+          font: inherit;
+          background: var(--lumo-base-color, #fff);
+          color: inherit;
+        }
+
+        .year-select:focus-visible {
+          outline: 2px solid var(--lumo-primary-color, #006ee6);
+          outline-offset: 2px;
         }
 
         .weekday-row,
@@ -1071,6 +1280,14 @@ export class JalaliDateTimePicker extends LitElement {
   }
 
   private renderSurface(weekdays: string[], cells: DayCell[], minuteOptions: number[]) {
+    const yearOptions = this.getYearOptions();
+    const yearLabel = this.yearLabel && this.yearLabel.trim().length > 0 ? this.yearLabel : 'Year';
+    const prevMonthLabel = this.previousMonthLabel && this.previousMonthLabel.trim().length > 0
+      ? this.previousMonthLabel
+      : 'Previous month';
+    const nextMonthLabel = this.nextMonthLabel && this.nextMonthLabel.trim().length > 0
+      ? this.nextMonthLabel
+      : 'Next month';
     return html`
       <div class="picker-surface" part="input" tabindex="-1">
         <div class="calendar-section" part="calendar">
@@ -1078,9 +1295,41 @@ export class JalaliDateTimePicker extends LitElement {
             ? html`<div class="section-heading">${this.calendarHeading}</div>`
             : nothing}
           <div class="calendar-header">
-            <button type="button" class="nav-button" @click=${this.handlePrevMonth} ?disabled=${this.disabled || this.readOnly}>◀</button>
-            <div class="month-label">${this.getMonthLabel()}</div>
-            <button type="button" class="nav-button" @click=${this.handleNextMonth} ?disabled=${this.disabled || this.readOnly}>▶</button>
+            <div class="calendar-nav-group">
+              <button
+                type="button"
+                class="nav-button"
+                @click=${this.handlePrevMonth}
+                ?disabled=${this.disabled || this.readOnly}
+                aria-label=${prevMonthLabel}
+                title=${prevMonthLabel}
+              >
+◀</button>
+            </div>
+            <div class="month-year">
+              <span class="month-label">${this.getMonthLabel()}</span>
+              <select
+                class="year-select"
+                @change=${this.handleYearChange}
+                ?disabled=${this.disabled || this.readOnly}
+                aria-label=${yearLabel}
+              >
+                ${yearOptions.map(year => html`
+                  <option value=${year} ?selected=${year === this.displayYear}>${this.formatNumber(year, 4)}</option>
+                `)}
+              </select>
+            </div>
+            <div class="calendar-nav-group">
+              <button
+                type="button"
+                class="nav-button"
+                @click=${this.handleNextMonth}
+                ?disabled=${this.disabled || this.readOnly}
+                aria-label=${nextMonthLabel}
+                title=${nextMonthLabel}
+              >
+▶</button>
+            </div>
           </div>
           <div class="weekday-row">
             ${weekdays.map(weekday => html`<div class="weekday">${weekday}</div>`)}
@@ -1169,8 +1418,14 @@ export class JalaliDateTimePicker extends LitElement {
   }
 
   private getMonthLabel(): string {
-    const month = this.monthNames?.[this.displayMonth - 1] ?? this.displayMonth.toString();
-    return `${month} ${this.formatNumber(this.displayYear, 4)}`;
+    return this.monthNames?.[this.displayMonth - 1] ?? this.displayMonth.toString();
+  }
+
+  private getOpenButtonLabel(): string {
+    if (this.openButtonLabel && this.openButtonLabel.trim().length > 0) {
+      return this.openButtonLabel;
+    }
+    return this.mode === 'date' ? 'Select date' : 'Select date & time';
   }
 
   private getOpenButtonLabel(): string {

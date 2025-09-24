@@ -420,6 +420,24 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         if (max != null) {
             picker.setMax(max);
         }
+        Integer minYear = parseIntegerProperty(field, "minYear", name);
+        if (minYear != null) {
+            try {
+                picker.setMinYear(minYear);
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalArgumentException(
+                        "Field '" + name + "' has invalid minYear " + minYear, ex);
+            }
+        }
+        Integer maxYear = parseIntegerProperty(field, "maxYear", name);
+        if (maxYear != null) {
+            try {
+                picker.setMaxYear(maxYear);
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalArgumentException(
+                        "Field '" + name + "' has invalid maxYear " + maxYear, ex);
+            }
+        }
         if (variant == JalaliDateTimePicker.PickerVariant.DATE_TIME) {
             Integer minuteStep = parseIntegerProperty(field, "minuteStep", name);
             if (minuteStep != null) {
