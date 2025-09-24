@@ -14,7 +14,6 @@ import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.data.provider.ListDataView;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -50,7 +49,6 @@ public class DesignSystemView extends AppPageLayout implements LocaleChangeObser
     private final Button successNotificationButton;
     private final Button warningNotificationButton;
     private final Button errorNotificationButton;
-    private final ListDataView<AppNotification.Corner> notificationCornerDataView;
 
     public DesignSystemView() {
         pageTitle = createPageTitle(getTranslation("designSystem.title"));
@@ -110,7 +108,6 @@ public class DesignSystemView extends AppPageLayout implements LocaleChangeObser
 
         notificationCornerSelect = new Select<>();
         notificationCornerSelect.setItems(AppNotification.Corner.values());
-        notificationCornerDataView = notificationCornerSelect.getListDataView();
         notificationCornerSelect.setValue(AppNotification.Corner.TOP_RIGHT);
         notificationCornerSelect.setItemLabelGenerator(this::cornerLabel);
         notificationCornerSelect.setWidthFull();
@@ -184,7 +181,7 @@ public class DesignSystemView extends AppPageLayout implements LocaleChangeObser
         notificationsTitle.setText(getTranslation("designSystem.notificationsCard"));
         notificationsDescription.setText(getTranslation("designSystem.notificationsDescription"));
         notificationCornerSelect.setLabel(getTranslation("designSystem.notificationsCornerLabel"));
-        notificationCornerDataView.refreshAll();
+        notificationCornerSelect.getListDataView().refreshAll();
         infoNotificationButton.setText(getTranslation("designSystem.notificationTrigger.info"));
         successNotificationButton.setText(getTranslation("designSystem.notificationTrigger.success"));
         warningNotificationButton.setText(getTranslation("designSystem.notificationTrigger.warning"));

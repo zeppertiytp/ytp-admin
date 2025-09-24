@@ -200,7 +200,7 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         VaadinIcon vaadinIcon = switch (type) {
             case INFO -> VaadinIcon.INFO_CIRCLE_O;
             case SUCCESS -> VaadinIcon.CHECK_CIRCLE_O;
-            case WARNING -> VaadinIcon.ALERT;
+            case WARNING -> VaadinIcon.WARNING;
             case ERROR -> VaadinIcon.CLOSE_CIRCLE;
         };
         Icon icon = vaadinIcon.create();
