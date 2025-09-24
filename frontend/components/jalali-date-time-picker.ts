@@ -1428,13 +1428,6 @@ export class JalaliDateTimePicker extends LitElement {
     return this.mode === 'date' ? 'Select date' : 'Select date & time';
   }
 
-  private getOpenButtonLabel(): string {
-    if (this.openButtonLabel && this.openButtonLabel.trim().length > 0) {
-      return this.openButtonLabel;
-    }
-    return this.mode === 'date' ? 'Select date' : 'Select date & time';
-  }
-
   private getMinuteOptions(): number[] {
     const step = this.getMinuteStep();
     const options: number[] = [];
