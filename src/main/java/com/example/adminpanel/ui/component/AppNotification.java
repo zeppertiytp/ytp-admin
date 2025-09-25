@@ -47,6 +47,7 @@ public class AppNotification extends Notification implements LocaleChangeObserve
     private final Div iconContainer;
     private final Button closeButton;
     private Variant variant;
+    private Corner corner = Corner.TOP_RIGHT;
     private Message titleMessage;
     private Message descriptionMessage;
 
@@ -94,7 +95,7 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         setTitle(titleMessage);
         setDescription(descriptionMessage);
         setVariant(initialVariant != null ? initialVariant : Variant.INFO);
-        refreshDirectionAwareStyles();
+        setCorner(Corner.TOP_RIGHT);
     }
 
     public void setTitle(String text) {
@@ -134,15 +135,8 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         if (corner == null) {
             return;
         }
-        boolean rtl = isCurrentDirectionRtl();
-        Position position = switch (corner) {
-            case TOP_LEFT -> rtl ? Position.TOP_END : Position.TOP_START;
-            case TOP_RIGHT -> rtl ? Position.TOP_START : Position.TOP_END;
-            case BOTTOM_LEFT -> rtl ? Position.BOTTOM_END : Position.BOTTOM_START;
-            case BOTTOM_RIGHT -> rtl ? Position.BOTTOM_START : Position.BOTTOM_END;
-        };
-        setPosition(position);
-        refreshDirectionAwareStyles();
+        this.corner = corner;
+        applyCornerPosition();
     }
 
     public void setCloseButtonAriaLabel(String label) {
@@ -169,7 +163,7 @@ public class AppNotification extends Notification implements LocaleChangeObserve
     public void localeChange(LocaleChangeEvent event) {
         applyLocalizedMessage(title, titleMessage);
         applyLocalizedMessage(description, descriptionMessage);
-        refreshDirectionAwareStyles();
+        applyCornerPosition();
     }
 
     private void applyLocalizedMessage(Span target, Message message) {
@@ -198,6 +192,23 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         }
         toRemove.forEach(themeList::remove);
         themeList.add(VARIANT_PREFIX + variant.name().toLowerCase(Locale.ENGLISH));
+    }
+
+    private void applyCornerPosition() {
+        boolean rtl = isCurrentDirectionRtl();
+        Position position = determinePosition(corner, rtl);
+        setPosition(position);
+        refreshDirectionAwareStyles();
+    }
+
+    private Position determinePosition(Corner corner, boolean rtl) {
+        Corner safeCorner = corner != null ? corner : Corner.TOP_RIGHT;
+        return switch (safeCorner) {
+            case TOP_LEFT -> rtl ? Position.TOP_END : Position.TOP_START;
+            case TOP_RIGHT -> rtl ? Position.TOP_START : Position.TOP_END;
+            case BOTTOM_LEFT -> rtl ? Position.BOTTOM_END : Position.BOTTOM_START;
+            case BOTTOM_RIGHT -> rtl ? Position.BOTTOM_START : Position.BOTTOM_END;
+        };
     }
 
     private Icon createIcon(Variant type) {
