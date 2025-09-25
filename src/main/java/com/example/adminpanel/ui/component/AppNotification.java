@@ -41,6 +41,7 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         BOTTOM_RIGHT
     }
 
+    private final Div wrapper;
     private final Span title;
     private final Span description;
     private final Div iconContainer;
@@ -61,7 +62,7 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         getElement().setAttribute("role", "alert");
         getElement().setAttribute("aria-live", "polite");
 
-        Div wrapper = new Div();
+        wrapper = new Div();
         wrapper.addClassName("app-notification__wrapper");
 
         iconContainer = new Div();
@@ -93,6 +94,7 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         setTitle(titleMessage);
         setDescription(descriptionMessage);
         setVariant(initialVariant != null ? initialVariant : Variant.INFO);
+        refreshDirectionAwareStyles();
     }
 
     public void setTitle(String text) {
@@ -140,6 +142,7 @@ public class AppNotification extends Notification implements LocaleChangeObserve
             case BOTTOM_RIGHT -> rtl ? Position.BOTTOM_START : Position.BOTTOM_END;
         };
         setPosition(position);
+        refreshDirectionAwareStyles();
     }
 
     public void setCloseButtonAriaLabel(String label) {
@@ -166,6 +169,7 @@ public class AppNotification extends Notification implements LocaleChangeObserve
     public void localeChange(LocaleChangeEvent event) {
         applyLocalizedMessage(title, titleMessage);
         applyLocalizedMessage(description, descriptionMessage);
+        refreshDirectionAwareStyles();
     }
 
     private void applyLocalizedMessage(Span target, Message message) {
@@ -207,6 +211,12 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         icon.addClassName("app-notification__icon-graphic");
         icon.setSize("24px");
         return icon;
+    }
+
+    private void refreshDirectionAwareStyles() {
+        boolean rtl = isCurrentDirectionRtl();
+        wrapper.getElement().getClassList().set("app-notification__wrapper--rtl", rtl);
+        closeButton.getElement().getClassList().set("app-notification__close--rtl", rtl);
     }
 
     private boolean isCurrentDirectionRtl() {

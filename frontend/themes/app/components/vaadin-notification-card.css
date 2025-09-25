@@ -1,5 +1,6 @@
 :host(.app-notification) {
   --app-notification-accent: var(--color-info-500);
+  --app-notification-close-size: 32px;
   box-shadow: var(--shadow-sm);
   max-width: 420px;
   width: min(420px, calc(100vw - 2 * var(--space-6)));
@@ -16,9 +17,16 @@
 
 :host(.app-notification) .app-notification__wrapper {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr;
   gap: var(--space-4);
   align-items: flex-start;
+  position: relative;
+  padding-inline-end: calc(var(--app-notification-close-size) + var(--space-3));
+}
+
+:host(.app-notification) .app-notification__wrapper--rtl {
+  padding-inline-end: 0;
+  padding-inline-start: calc(var(--app-notification-close-size) + var(--space-3));
 }
 
 :host(.app-notification) .app-notification__icon {
@@ -30,11 +38,13 @@
   border-radius: var(--radius-l);
   color: var(--app-notification-accent);
   background: color-mix(in srgb, var(--app-notification-accent) 16%, transparent);
+  flex-shrink: 0;
 }
 
 :host(.app-notification) .app-notification__icon vaadin-icon {
   width: 24px;
   height: 24px;
+  color: var(--app-notification-accent);
 }
 
 :host(.app-notification) .app-notification__body {
@@ -55,7 +65,25 @@
 }
 
 :host(.app-notification) .app-notification__close {
-  margin-inline-start: auto;
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  margin: 0;
+  width: var(--app-notification-close-size);
+  height: var(--app-notification-close-size);
+  border-radius: var(--radius-full);
+  color: var(--text-tertiary);
+  transition: color 120ms ease;
+}
+
+:host(.app-notification) .app-notification__close--rtl {
+  inset-inline-end: auto;
+  inset-inline-start: 0;
+}
+
+:host(.app-notification) .app-notification__close:hover,
+:host(.app-notification) .app-notification__close:focus-visible {
+  color: var(--text-primary);
 }
 
 :host(.app-notification.app-notification--info) {
