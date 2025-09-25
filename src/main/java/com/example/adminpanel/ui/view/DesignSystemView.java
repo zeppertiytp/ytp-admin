@@ -1,5 +1,6 @@
 package com.example.adminpanel.ui.view;
 
+import com.example.adminpanel.ui.component.AppNotification;
 import com.example.adminpanel.ui.layout.AppPageLayout;
 import com.example.adminpanel.ui.layout.MainLayout;
 import com.vaadin.flow.component.UI;
@@ -9,10 +10,12 @@ import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
 import com.vaadin.flow.router.Route;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 @Route(value = "design-system", layout = MainLayout.class)
@@ -39,6 +42,13 @@ public class DesignSystemView extends AppPageLayout implements LocaleChangeObser
     private final Span dangerBadge;
     private final Div paletteGrid;
     private final Map<Span, String> swatchLabels = new HashMap<>();
+    private final H2 notificationsTitle;
+    private final Span notificationsDescription;
+    private final Select<AppNotification.Corner> notificationCornerSelect;
+    private final Button infoNotificationButton;
+    private final Button successNotificationButton;
+    private final Button warningNotificationButton;
+    private final Button errorNotificationButton;
 
     public DesignSystemView() {
         pageTitle = createPageTitle(getTranslation("designSystem.title"));
@@ -92,6 +102,33 @@ public class DesignSystemView extends AppPageLayout implements LocaleChangeObser
         badgesCard.add(badgesTitle, badgesDescription, badges);
         add(badgesCard);
 
+        notificationsTitle = new H2();
+        notificationsDescription = new Span();
+        notificationsDescription.addClassName("page-subtitle");
+
+        notificationCornerSelect = new Select<>();
+        notificationCornerSelect.setItems(AppNotification.Corner.values());
+        notificationCornerSelect.setValue(AppNotification.Corner.TOP_RIGHT);
+        notificationCornerSelect.setItemLabelGenerator(this::cornerLabel);
+        notificationCornerSelect.setWidthFull();
+        notificationCornerSelect.getStyle().set("maxWidth", "240px");
+
+        Div notificationButtons = responsiveGrid();
+        infoNotificationButton = btn("info");
+        infoNotificationButton.addClickListener(event -> showNotification(AppNotification.Variant.INFO));
+        successNotificationButton = btn("success");
+        successNotificationButton.addClickListener(event -> showNotification(AppNotification.Variant.SUCCESS));
+        warningNotificationButton = btn("warning");
+        warningNotificationButton.addClickListener(event -> showNotification(AppNotification.Variant.WARNING));
+        errorNotificationButton = btn("danger");
+        errorNotificationButton.addClickListener(event -> showNotification(AppNotification.Variant.ERROR));
+        notificationButtons.add(infoNotificationButton, successNotificationButton, warningNotificationButton, errorNotificationButton);
+
+        VerticalLayout notificationsCard = createCard();
+        notificationsCard.addClassName("stack-lg");
+        notificationsCard.add(notificationsTitle, notificationsDescription, notificationCornerSelect, notificationButtons);
+        add(notificationsCard);
+
         updateTexts();
         updatePageTitle();
     }
@@ -141,6 +178,53 @@ public class DesignSystemView extends AppPageLayout implements LocaleChangeObser
         successBadge.setText(getTranslation("designSystem.success"));
         warningBadge.setText(getTranslation("designSystem.warning"));
         dangerBadge.setText(getTranslation("designSystem.danger"));
+        notificationsTitle.setText(getTranslation("designSystem.notificationsCard"));
+        notificationsDescription.setText(getTranslation("designSystem.notificationsDescription"));
+        notificationCornerSelect.setLabel(getTranslation("designSystem.notificationsCornerLabel"));
+        notificationCornerSelect.getListDataView().refreshAll();
+        infoNotificationButton.setText(getTranslation("designSystem.notificationTrigger.info"));
+        successNotificationButton.setText(getTranslation("designSystem.notificationTrigger.success"));
+        warningNotificationButton.setText(getTranslation("designSystem.notificationTrigger.warning"));
+        errorNotificationButton.setText(getTranslation("designSystem.notificationTrigger.error"));
+    }
+
+    private void showNotification(AppNotification.Variant variant) {
+        AppNotification.Message titleMessage;
+        AppNotification.Message bodyMessage;
+
+        if (variant == AppNotification.Variant.WARNING) {
+            titleMessage = AppNotification.Message.bilingual(
+                    "Custom bilingual warning",
+                    "هشدار دو زبانه سفارشی"
+            );
+            bodyMessage = AppNotification.Message.bilingual(
+                    "Use bilingual values when you need ad-hoc localized text outside the bundle.",
+                    "وقتی به متن محلی خارج از بسته ترجمه نیاز دارید از مقادیر دو زبانه استفاده کنید."
+            );
+        } else {
+            String variantKey = variantKeyFor(variant);
+            titleMessage = AppNotification.Message.translationKey("designSystem.notificationTitle." + variantKey);
+            bodyMessage = AppNotification.Message.translationKey("designSystem.notificationBody." + variantKey);
+        }
+
+        AppNotification notification = new AppNotification(titleMessage, bodyMessage, variant);
+        notification.setCloseButtonAriaLabel(getTranslation("designSystem.notificationClose"));
+        AppNotification.Corner corner = notificationCornerSelect.getValue();
+        if (corner != null) {
+            notification.setCorner(corner);
+        }
+        notification.open();
+    }
+
+    private String cornerLabel(AppNotification.Corner corner) {
+        if (corner == null) {
+            return "";
+        }
+        return getTranslation("designSystem.notificationsCorner." + corner.name().toLowerCase(Locale.ENGLISH).replace('_', '-'));
+    }
+
+    private String variantKeyFor(AppNotification.Variant variant) {
+        return variant.name().toLowerCase(Locale.ENGLISH);
     }
 
     private void updatePageTitle() {
