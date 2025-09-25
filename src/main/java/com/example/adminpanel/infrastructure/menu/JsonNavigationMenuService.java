@@ -83,8 +83,8 @@ public class JsonNavigationMenuService implements NavigationMenuService {
                 .orElse(null);
 
         MenuItem menuItem = children.isEmpty()
-                ? new MenuItem(definition.group(), definition.labelKey(), icon, definition.navigationTarget().orElse(null))
-                : new MenuItem(definition.group(), definition.labelKey(), icon, definition.navigationTarget().orElse(null), children);
+                ? new MenuItem(definition.group(), definition.labelKey(), icon, definition.navigationTargetOptional().orElse(null))
+                : new MenuItem(definition.group(), definition.labelKey(), icon, definition.navigationTargetOptional().orElse(null), children);
 
         return Optional.of(menuItem);
     }
@@ -141,7 +141,7 @@ public class JsonNavigationMenuService implements NavigationMenuService {
                     .filter(name -> !name.isEmpty());
         }
 
-        Optional<String> navigationTarget() {
+        Optional<String> navigationTargetOptional() {
             return Optional.ofNullable(navigationTarget);
         }
 
