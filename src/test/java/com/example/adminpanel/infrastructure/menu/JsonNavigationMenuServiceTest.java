@@ -3,6 +3,7 @@ package com.example.adminpanel.infrastructure.menu;
 import com.example.adminpanel.application.security.UserScopeService;
 import com.example.adminpanel.domain.menu.MenuItem;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -86,6 +87,48 @@ class JsonNavigationMenuServiceTest {
         assertThatThrownBy(service::getMenuItemsForCurrentUser)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("requiredScopesLogic");
+    }
+
+    @Test
+    void whitespaceIsTrimmedAndIconNameIsNormalised() {
+        String json = """
+                {
+                  \"items\": [
+                    {
+                      \"group\": \" general \",
+                      \"labelKey\": \" menu.trimmed \",
+                      \"icon\": \"palette\",
+                      \"navigationTarget\": \"  design-system  \"
+                    }
+                  ]
+                }
+                """;
+
+        JsonNavigationMenuService service = createService(json, Set.of());
+
+        MenuItem item = service.getMenuItemsForCurrentUser().get(0);
+
+        assertThat(item.getGroup()).isEqualTo("general");
+        assertThat(item.getLabelKey()).isEqualTo("menu.trimmed");
+        assertThat(item.getIcon()).isEqualTo(VaadinIcon.PALETTE);
+        assertThat(item.getNavigationTarget()).contains("design-system");
+    }
+
+    @Test
+    void missingLabelKeyFailsFast() {
+        String json = """
+                {
+                  \"items\": [
+                    {
+                      \"group\": \"general\"
+                    }
+                  ]
+                }
+                """;
+
+        assertThatThrownBy(() -> createService(json, Set.of()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("labelKey");
     }
 
     private JsonNavigationMenuService createService(String json, Set<String> scopes) {

@@ -82,9 +82,13 @@ public class JsonNavigationMenuService implements NavigationMenuService {
                 .map(this::resolveIcon)
                 .orElse(null);
 
+        String group = definition.group().trim();
+        String labelKey = definition.labelKey().trim();
+        String navigationTarget = definition.navigationTargetOptional().orElse(null);
+
         MenuItem menuItem = children.isEmpty()
-                ? new MenuItem(definition.group(), definition.labelKey(), icon, definition.navigationTargetOptional().orElse(null))
-                : new MenuItem(definition.group(), definition.labelKey(), icon, definition.navigationTargetOptional().orElse(null), children);
+                ? new MenuItem(group, labelKey, icon, navigationTarget)
+                : new MenuItem(group, labelKey, icon, navigationTarget, children);
 
         return Optional.of(menuItem);
     }
@@ -104,9 +108,40 @@ public class JsonNavigationMenuService implements NavigationMenuService {
         try (InputStream inputStream = resource.getInputStream()) {
             MenuDefinition menuDefinition = objectMapper.readValue(inputStream, MenuDefinition.class);
             List<MenuItemDefinition> items = menuDefinition.itemsOrEmpty();
+            validateDefinitions(items, "items");
             return List.copyOf(items);
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to read navigation menu configuration from " + resource.getDescription(), ex);
+        }
+    }
+
+    private static void validateDefinitions(List<MenuItemDefinition> definitions, String path) {
+        for (int index = 0; index < definitions.size(); index++) {
+            MenuItemDefinition definition = definitions.get(index);
+            String definitionPath = path + "[" + index + "]";
+            if (definition == null) {
+                throw new IllegalStateException("Navigation menu entry " + definitionPath + " must not be null");
+            }
+            validateDefinition(definition, definitionPath);
+        }
+    }
+
+    private static void validateDefinition(MenuItemDefinition definition, String path) {
+        if (definition.group() == null || definition.group().isBlank()) {
+            throw new IllegalStateException("Navigation menu entry " + path + " is missing a group");
+        }
+        if (definition.labelKey() == null || definition.labelKey().isBlank()) {
+            throw new IllegalStateException("Navigation menu entry " + path + " is missing a labelKey");
+        }
+
+        List<MenuItemDefinition> children = definition.childrenOrEmpty();
+        for (int index = 0; index < children.size(); index++) {
+            MenuItemDefinition child = children.get(index);
+            String childPath = path + ".children[" + index + "]";
+            if (child == null) {
+                throw new IllegalStateException("Navigation menu entry " + childPath + " must not be null");
+            }
+            validateDefinition(child, childPath);
         }
     }
 
@@ -142,7 +177,9 @@ public class JsonNavigationMenuService implements NavigationMenuService {
         }
 
         Optional<String> navigationTargetOptional() {
-            return Optional.ofNullable(navigationTarget);
+            return Optional.ofNullable(navigationTarget)
+                    .map(String::trim)
+                    .filter(target -> !target.isEmpty());
         }
 
         boolean isAccessibleFor(Set<String> scopes) {
