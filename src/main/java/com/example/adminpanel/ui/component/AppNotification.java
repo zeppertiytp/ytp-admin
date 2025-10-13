@@ -313,7 +313,7 @@ public class AppNotification extends Notification implements LocaleChangeObserve
     }
 
     private void syncClientAutoClose() {
-        long delay = autoCloseDurationMillis;
+        double delay = autoCloseDurationMillis;
         if (delay <= 0) {
             disableClientAutoClose();
             return;
