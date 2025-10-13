@@ -14,6 +14,7 @@ import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
 import com.vaadin.flow.router.Route;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -45,6 +46,7 @@ public class DesignSystemView extends AppPageLayout implements LocaleChangeObser
     private final H2 notificationsTitle;
     private final Span notificationsDescription;
     private final Select<AppNotification.Corner> notificationCornerSelect;
+    private final Select<Integer> notificationDurationSelect;
     private final Button infoNotificationButton;
     private final Button successNotificationButton;
     private final Button warningNotificationButton;
@@ -113,6 +115,13 @@ public class DesignSystemView extends AppPageLayout implements LocaleChangeObser
         notificationCornerSelect.setWidthFull();
         notificationCornerSelect.getStyle().set("maxWidth", "240px");
 
+        notificationDurationSelect = new Select<>();
+        notificationDurationSelect.setItems(0, 5, 10);
+        notificationDurationSelect.setValue(0);
+        notificationDurationSelect.setItemLabelGenerator(this::durationLabel);
+        notificationDurationSelect.setWidthFull();
+        notificationDurationSelect.getStyle().set("maxWidth", "240px");
+
         Div notificationButtons = responsiveGrid();
         infoNotificationButton = btn("info");
         infoNotificationButton.addClickListener(event -> showNotification(AppNotification.Variant.INFO));
@@ -126,7 +135,8 @@ public class DesignSystemView extends AppPageLayout implements LocaleChangeObser
 
         VerticalLayout notificationsCard = createCard();
         notificationsCard.addClassName("stack-lg");
-        notificationsCard.add(notificationsTitle, notificationsDescription, notificationCornerSelect, notificationButtons);
+        notificationsCard.add(notificationsTitle, notificationsDescription, notificationCornerSelect, notificationDurationSelect,
+                notificationButtons);
         add(notificationsCard);
 
         updateTexts();
@@ -182,6 +192,8 @@ public class DesignSystemView extends AppPageLayout implements LocaleChangeObser
         notificationsDescription.setText(getTranslation("designSystem.notificationsDescription"));
         notificationCornerSelect.setLabel(getTranslation("designSystem.notificationsCornerLabel"));
         notificationCornerSelect.getListDataView().refreshAll();
+        notificationDurationSelect.setLabel(getTranslation("designSystem.notificationsDurationLabel"));
+        notificationDurationSelect.getListDataView().refreshAll();
         infoNotificationButton.setText(getTranslation("designSystem.notificationTrigger.info"));
         successNotificationButton.setText(getTranslation("designSystem.notificationTrigger.success"));
         warningNotificationButton.setText(getTranslation("designSystem.notificationTrigger.warning"));
@@ -213,6 +225,12 @@ public class DesignSystemView extends AppPageLayout implements LocaleChangeObser
         if (corner != null) {
             notification.setCorner(corner);
         }
+        Integer durationSeconds = notificationDurationSelect.getValue();
+        if (durationSeconds != null && durationSeconds > 0) {
+            notification.setAutoCloseDuration(Duration.ofSeconds(durationSeconds));
+        } else {
+            notification.setAutoCloseDuration(Duration.ZERO);
+        }
         notification.open();
     }
 
@@ -225,6 +243,13 @@ public class DesignSystemView extends AppPageLayout implements LocaleChangeObser
 
     private String variantKeyFor(AppNotification.Variant variant) {
         return variant.name().toLowerCase(Locale.ENGLISH);
+    }
+
+    private String durationLabel(Integer seconds) {
+        if (seconds == null || seconds <= 0) {
+            return getTranslation("designSystem.notificationsDuration.manual");
+        }
+        return getTranslation("designSystem.notificationsDuration.seconds", seconds);
     }
 
     private void updatePageTitle() {

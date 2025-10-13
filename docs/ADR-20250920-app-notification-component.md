@@ -14,8 +14,9 @@ Introduce a dedicated `AppNotification` component that extends Vaadin `Notificat
 - ships with matching theme styles in `vaadin-notification-card.css` so that the look is consistent in both LTR and RTL modes.
 - includes helper methods (e.g., `setCloseButtonAriaLabel`, `show`) to streamline usage.
 - resolves notification copy either via translation bundle keys or explicit bilingual payloads so ad-hoc messages remain localized.
+- supports optional auto-dismiss timers that pause while the toast is hovered to avoid closing active interactions.
 
-The design system view now showcases the component with translated copy and a placement selector so designers and developers can reference the supported variants.
+The design system view now showcases the component with translated copy, placement selector, and auto-dismiss control so designers and developers can reference the supported variants and behaviours.
 
 ## Consequences
 - Teams can reuse `AppNotification` for consistent toast messaging without re-implementing styling.

@@ -8,13 +8,19 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.dom.ThemeList;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Branded notification component used across the application. It enlarges the
@@ -50,6 +56,15 @@ public class AppNotification extends Notification implements LocaleChangeObserve
     private Corner corner = Corner.TOP_RIGHT;
     private Message titleMessage;
     private Message descriptionMessage;
+    private long autoCloseDurationMillis;
+    private boolean hovered;
+    private transient ScheduledFuture<?> autoCloseTask;
+    private static final ScheduledExecutorService AUTO_CLOSE_EXECUTOR =
+            Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread thread = new Thread(r, "app-notification-auto-close");
+                thread.setDaemon(true);
+                return thread;
+            });
 
     public AppNotification(String titleKey, String descriptionKey, Variant initialVariant) {
         this(Message.translationKey(titleKey), Message.translationKey(descriptionKey), initialVariant);
@@ -90,6 +105,7 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         setCloseButtonAriaLabel("Close notification");
         wrapper.add(closeButton);
 
+        registerHoverListeners();
         add(wrapper);
 
         setTitle(titleMessage);
@@ -139,6 +155,39 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         applyCornerPosition();
     }
 
+    /**
+     * Configures automatic dismissal for the notification. Passing {@code null}
+     * or a non-positive duration disables the timeout and requires manual
+     * dismissal.
+     *
+     * @param duration how long the notification should stay open before closing
+     *                 automatically; if {@code null} or not positive the
+     *                 notification will stay open until closed explicitly
+     */
+    public void setAutoCloseDuration(Duration duration) {
+        long requested = duration != null ? Math.max(0, duration.toMillis()) : 0;
+        autoCloseDurationMillis = requested;
+        if (autoCloseDurationMillis <= 0) {
+            cancelAutoCloseTask();
+            return;
+        }
+        if (isOpened() && !hovered) {
+            scheduleAutoCloseTask();
+        }
+    }
+
+    /**
+     * Returns the current automatic dismissal duration.
+     *
+     * @return the configured timeout or {@link Duration#ZERO} when disabled
+     */
+    public Duration getAutoCloseDuration() {
+        if (autoCloseDurationMillis <= 0) {
+            return Duration.ZERO;
+        }
+        return Duration.ofMillis(autoCloseDurationMillis);
+    }
+
     public void setCloseButtonAriaLabel(String label) {
         String value = label == null ? "" : label;
         closeButton.getElement().setAttribute("aria-label", value);
@@ -164,6 +213,27 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         applyLocalizedMessage(title, titleMessage);
         applyLocalizedMessage(description, descriptionMessage);
         applyCornerPosition();
+    }
+
+    @Override
+    public void open() {
+        super.open();
+        hovered = false;
+        if (autoCloseDurationMillis > 0) {
+            scheduleAutoCloseTask();
+        }
+    }
+
+    @Override
+    public void close() {
+        cancelAutoCloseTask();
+        super.close();
+    }
+
+    @Override
+    protected void onDetach(DetachEvent detachEvent) {
+        cancelAutoCloseTask();
+        super.onDetach(detachEvent);
     }
 
     private void applyLocalizedMessage(Span target, Message message) {
@@ -245,6 +315,41 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         }
         String language = locale.getLanguage();
         return RTL_LANGS.contains(language);
+    }
+
+    private void registerHoverListeners() {
+        wrapper.getElement().addEventListener("mouseenter", event -> {
+            hovered = true;
+            cancelAutoCloseTask();
+        });
+        wrapper.getElement().addEventListener("mouseleave", event -> {
+            hovered = false;
+            if (isOpened() && autoCloseDurationMillis > 0) {
+                scheduleAutoCloseTask();
+            }
+        });
+    }
+
+    private void scheduleAutoCloseTask() {
+        cancelAutoCloseTask();
+        if (autoCloseDurationMillis <= 0) {
+            return;
+        }
+        getUI().ifPresent(ui -> autoCloseTask = AUTO_CLOSE_EXECUTOR.schedule(() ->
+                ui.access(() -> {
+                    if (isOpened() && !hovered) {
+                        close();
+                    }
+                }),
+                autoCloseDurationMillis,
+                TimeUnit.MILLISECONDS));
+    }
+
+    private void cancelAutoCloseTask() {
+        if (autoCloseTask != null) {
+            autoCloseTask.cancel(true);
+            autoCloseTask = null;
+        }
     }
     public static final class Message {
 
