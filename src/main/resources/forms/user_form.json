@@ -140,6 +140,36 @@
           "type": "date"
         },
         {
+          "name": "lastLogin",
+          "label": {
+            "fa": "آخرین ورود",
+            "en": "Last login"
+          },
+          "type": "jalaliDateTime",
+          "minuteStep": 5,
+          "min": "2020-01-01T00:00:00",
+          "minYear": 1398,
+          "maxYear": 1410,
+          "openLabel": {
+            "fa": "انتخاب تاریخ و زمان",
+            "en": "Pick last login"
+          }
+        },
+        {
+          "name": "interview",
+          "label": {
+            "fa": "تاریخ مصاحبه",
+            "en": "Interview date"
+          },
+          "type": "jalaliDate",
+          "openLabel": {
+            "fa": "انتخاب تاریخ",
+            "en": "Pick interview date"
+          },
+          "minYear": 1400,
+          "max": "2025-12-31T00:00:00"
+        },
+        {
           "name": "resume",
           "label": {
             "fa": "رزومه",

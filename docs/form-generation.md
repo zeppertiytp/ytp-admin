@@ -80,11 +80,23 @@ Use a horizontal layout for compact inline groups such as first/last-name pairs 
 | `select`      | Drop‑down selection (`ComboBox`).  `options` must be provided. |
 | `switch`      | Boolean input (`Checkbox`) with on/off state. |
 | `date`        | Date picker (`DatePicker`) returning a `java.time.LocalDate`. |
+| `jalaliDate`     | Jalali calendar date picker (`JalaliDateTimePicker` in date mode). Opens in an overlay via a button, honours optional `min`/`max` ISO values, `minYear`/`maxYear` Jalali bounds, and an `openLabel`, and returns a `java.time.LocalDateTime` at midnight. |
+| `jalaliDateTime` | Jalali calendar date & time picker (`JalaliDateTimePicker`). Opens via the same overlay button, supports optional `min`/`max` ISO values, `minYear`/`maxYear`, `minuteStep`, and `openLabel`, and can be switched to date-only mode with `showTime: false` or `pickerVariant: "date"`. Returns a `java.time.LocalDateTime`. |
 | `file`        | Single file upload (`Upload`).  The uploaded file name is stored; extend if you need to persist content. |
 | `multiFile`   | Multiple file upload (`Upload`).  Stores a list of uploaded file names. |
 | `radio`       | Single selection radio group (`RadioButtonGroup`).  `options` must be provided. |
 
 Additional types (e.g. `time`, `dateTime`, `textArea`) can be added by extending `GeneratedForm.createField()`.
+
+The Jalali pickers render a lightweight value preview next to a button. Clicking the button opens an overlay that contains the calendar (and optionally time controls). Common configuration keys:
+
+- `min` / `max`: ISO 8601 strings (e.g. `"2024-01-01T00:00:00"`) that constrain selectable dates.
+- `minYear` / `maxYear`: Jalali year numbers that trim the year dropdown even when full ISO bounds are unnecessary.
+- `minuteStep`: numeric value that limits the time selector granularity when the time panel is visible.
+- `openLabel`: string or translation object that replaces the default button caption.
+- `showTime` / `pickerVariant`: set `showTime` to `false` or `pickerVariant` to `"date"` to hide the time controls even when using the `jalaliDateTime` type.
+
+Both variants deliver values to the backend as `java.time.LocalDateTime` instances.
 
 ### Conditional Visibility
 
@@ -178,6 +190,8 @@ The sample form `user_form.json` demonstrates many of the features:
       "columns":2,
       "fields":[
         {"name":"dob","label":{"fa":"تاریخ تولد","en":"Date of Birth"},"type":"date"},
+        {"name":"lastLogin","label":{"fa":"آخرین ورود","en":"Last login"},"type":"jalaliDateTime","minuteStep":5,"min":"2020-01-01T00:00:00","openLabel":{"fa":"انتخاب تاریخ و زمان","en":"Pick last login"}},
+        {"name":"interview","label":{"fa":"تاریخ مصاحبه","en":"Interview date"},"type":"jalaliDate","openLabel":{"fa":"انتخاب تاریخ","en":"Pick interview date"},"max":"2025-12-31T00:00:00"},
         {"name":"resume","label":{"fa":"رزومه","en":"Resume"},"type":"file"},
         {"name":"attachments","label":{"fa":"فایل‌ها","en":"Attachments"},"type":"multiFile"},
         {"name":"gender","label":{"fa":"جنسیت","en":"Gender"},"type":"radio","options":[{"value":"M","label":{"fa":"مرد","en":"Male"}},{"value":"F","label":{"fa":"زن","en":"Female"}},{"value":"O","label":{"fa":"دیگر","en":"Other"}}]}
@@ -188,7 +202,7 @@ The sample form `user_form.json` demonstrates many of the features:
 }
 ```
 
-This form includes basic text/email fields, a select drop‑down, a boolean switch controlling the visibility of a dependent field, and examples of new types (date, file upload, multi‑file upload and radio buttons).
+This form includes basic text/email fields, a select drop‑down, a boolean switch controlling the visibility of a dependent field, and examples of richer inputs such as the standard date picker, the Jalali date-time picker, file uploads (single and multi) and radio buttons.
 
 For layout-specific behaviour, review `user_form_with_layout.json`.  It keeps the first section on the responsive grid, switches the second section to a wrapped horizontal layout for inline fields, and renders the final section in a stacked vertical container with custom spacing and width.
 

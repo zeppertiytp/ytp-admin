@@ -34,6 +34,8 @@
     <java.version>17</java.version>
     <!-- Import the Vaadin BOM (Bill of Materials) to manage versions automatically -->
     <vaadin.version>24.2.6</vaadin.version>
+    <!-- Centralise Lombok version for both dependency and annotation processor -->
+    <lombok.version>1.18.32</lombok.version>
   </properties>
 
   <dependencyManagement>
@@ -59,6 +61,7 @@
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
+      <version>${lombok.version}</version>
       <optional>true</optional>
     </dependency>
 
@@ -90,6 +93,13 @@
         <configuration>
           <source>${java.version}</source>
           <target>${java.version}</target>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>${lombok.version}</version>
+            </path>
+          </annotationProcessorPaths>
         </configuration>
       </plugin>
     </plugins>
