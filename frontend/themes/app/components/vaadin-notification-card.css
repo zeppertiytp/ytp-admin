@@ -1,107 +1,37 @@
-:host(.app-notification) {
+:host([theme~="app-notification"]) {
   --app-notification-accent: var(--color-info-500);
   --app-notification-close-size: 32px;
   box-shadow: var(--shadow-sm);
+  margin: var(--space-4);
   max-width: 420px;
-  width: min(420px, calc(100vw - 2 * var(--space-6)));
+  width: min(420px, calc(100vw - 2 * var(--space-4)));
   border-radius: var(--radius-xl);
   background: var(--surface-card);
   color: var(--text-secondary);
   border: 1px solid color-mix(in srgb, var(--text-muted) 14%, transparent);
-  padding: var(--space-5);
-}
-
-:host(.app-notification) [part="content"] {
   padding: 0;
 }
 
-:host(.app-notification) .app-notification__wrapper {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--space-4);
-  align-items: flex-start;
-  position: relative;
-  padding-inline-end: calc(var(--app-notification-close-size) + var(--space-3));
+:host([theme~="app-notification"]) [part="content"] {
+  padding: 0;
 }
 
-:host(.app-notification) .app-notification__wrapper--rtl {
-  padding-inline-end: 0;
-  padding-inline-start: calc(var(--app-notification-close-size) + var(--space-3));
-}
-
-:host(.app-notification) .app-notification__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-l);
-  color: var(--app-notification-accent);
-  background: color-mix(in srgb, var(--app-notification-accent) 16%, transparent);
-  flex-shrink: 0;
-}
-
-:host(.app-notification) .app-notification__icon vaadin-icon {
-  width: 24px;
-  height: 24px;
-  color: var(--app-notification-accent);
-}
-
-:host(.app-notification) .app-notification__body {
-  display: grid;
-  gap: var(--space-2);
-}
-
-:host(.app-notification) .app-notification__title {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
-}
-
-:host(.app-notification) .app-notification__description {
-  font-size: var(--font-size-sm);
-  color: var(--text-muted);
-  line-height: 1.55;
-}
-
-:host(.app-notification) .app-notification__close {
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline-end: 0;
-  margin: 0;
-  width: var(--app-notification-close-size);
-  height: var(--app-notification-close-size);
-  border-radius: var(--radius-full);
-  color: var(--text-tertiary);
-  transition: color 120ms ease;
-}
-
-:host(.app-notification) .app-notification__close--rtl {
-  inset-inline-end: auto;
-  inset-inline-start: 0;
-}
-
-:host(.app-notification) .app-notification__close:hover,
-:host(.app-notification) .app-notification__close:focus-visible {
-  color: var(--text-primary);
-}
-
-:host(.app-notification.app-notification--info) {
+:host([theme~="app-notification"][theme~="app-notification--info"]) {
   border-inline-start: 4px solid var(--color-info-500);
   --app-notification-accent: var(--color-info-500);
 }
 
-:host(.app-notification.app-notification--success) {
+:host([theme~="app-notification"][theme~="app-notification--success"]) {
   border-inline-start: 4px solid var(--color-success-500);
   --app-notification-accent: var(--color-success-500);
 }
 
-:host(.app-notification.app-notification--warning) {
+:host([theme~="app-notification"][theme~="app-notification--warning"]) {
   border-inline-start: 4px solid var(--color-warning-500);
   --app-notification-accent: var(--color-warning-500);
 }
 
-:host(.app-notification.app-notification--error) {
+:host([theme~="app-notification"][theme~="app-notification--error"]) {
   border-inline-start: 4px solid var(--color-danger-500);
   --app-notification-accent: var(--color-danger-500);
 }

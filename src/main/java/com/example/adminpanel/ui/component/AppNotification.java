@@ -8,9 +8,11 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.dom.ThemeList;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -41,14 +43,18 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         BOTTOM_RIGHT
     }
 
+    private static final String AUTO_CLOSE_EVENT = "app-notification-auto-close";
+
     private final Div wrapper;
     private final Span title;
     private final Span description;
     private final Div iconContainer;
     private final Button closeButton;
     private Variant variant;
+    private Corner corner = Corner.TOP_RIGHT;
     private Message titleMessage;
     private Message descriptionMessage;
+    private long autoCloseDurationMillis;
 
     public AppNotification(String titleKey, String descriptionKey, Variant initialVariant) {
         this(Message.translationKey(titleKey), Message.translationKey(descriptionKey), initialVariant);
@@ -89,12 +95,13 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         setCloseButtonAriaLabel("Close notification");
         wrapper.add(closeButton);
 
+        registerAutoCloseBridge();
         add(wrapper);
 
         setTitle(titleMessage);
         setDescription(descriptionMessage);
         setVariant(initialVariant != null ? initialVariant : Variant.INFO);
-        refreshDirectionAwareStyles();
+        setCorner(Corner.TOP_RIGHT);
     }
 
     public void setTitle(String text) {
@@ -134,15 +141,39 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         if (corner == null) {
             return;
         }
-        boolean rtl = isCurrentDirectionRtl();
-        Position position = switch (corner) {
-            case TOP_LEFT -> rtl ? Position.TOP_END : Position.TOP_START;
-            case TOP_RIGHT -> rtl ? Position.TOP_START : Position.TOP_END;
-            case BOTTOM_LEFT -> rtl ? Position.BOTTOM_END : Position.BOTTOM_START;
-            case BOTTOM_RIGHT -> rtl ? Position.BOTTOM_START : Position.BOTTOM_END;
-        };
-        setPosition(position);
-        refreshDirectionAwareStyles();
+        this.corner = corner;
+        applyCornerPosition();
+    }
+
+    /**
+     * Configures automatic dismissal for the notification. Passing {@code null}
+     * or a non-positive duration disables the timeout and requires manual
+     * dismissal.
+     *
+     * @param duration how long the notification should stay open before closing
+     *                 automatically; if {@code null} or not positive the
+     *                 notification will stay open until closed explicitly
+     */
+    public void setAutoCloseDuration(Duration duration) {
+        long requested = duration != null ? Math.max(0, duration.toMillis()) : 0;
+        autoCloseDurationMillis = requested;
+        if (autoCloseDurationMillis <= 0) {
+            disableClientAutoClose();
+        } else if (isOpened()) {
+            syncClientAutoClose();
+        }
+    }
+
+    /**
+     * Returns the current automatic dismissal duration.
+     *
+     * @return the configured timeout or {@link Duration#ZERO} when disabled
+     */
+    public Duration getAutoCloseDuration() {
+        if (autoCloseDurationMillis <= 0) {
+            return Duration.ZERO;
+        }
+        return Duration.ofMillis(autoCloseDurationMillis);
     }
 
     public void setCloseButtonAriaLabel(String label) {
@@ -169,7 +200,27 @@ public class AppNotification extends Notification implements LocaleChangeObserve
     public void localeChange(LocaleChangeEvent event) {
         applyLocalizedMessage(title, titleMessage);
         applyLocalizedMessage(description, descriptionMessage);
-        refreshDirectionAwareStyles();
+        applyCornerPosition();
+    }
+
+    @Override
+    public void open() {
+        super.open();
+        if (autoCloseDurationMillis > 0) {
+            syncClientAutoClose();
+        }
+    }
+
+    @Override
+    public void close() {
+        disableClientAutoClose();
+        super.close();
+    }
+
+    @Override
+    protected void onDetach(DetachEvent detachEvent) {
+        disableClientAutoClose();
+        super.onDetach(detachEvent);
     }
 
     private void applyLocalizedMessage(Span target, Message message) {
@@ -198,6 +249,23 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         }
         toRemove.forEach(themeList::remove);
         themeList.add(VARIANT_PREFIX + variant.name().toLowerCase(Locale.ENGLISH));
+    }
+
+    private void applyCornerPosition() {
+        boolean rtl = isCurrentDirectionRtl();
+        Position position = determinePosition(corner, rtl);
+        setPosition(position);
+        refreshDirectionAwareStyles();
+    }
+
+    private Position determinePosition(Corner corner, boolean rtl) {
+        Corner safeCorner = corner != null ? corner : Corner.TOP_RIGHT;
+        return switch (safeCorner) {
+            case TOP_LEFT -> rtl ? Position.TOP_END : Position.TOP_START;
+            case TOP_RIGHT -> rtl ? Position.TOP_START : Position.TOP_END;
+            case BOTTOM_LEFT -> rtl ? Position.BOTTOM_END : Position.BOTTOM_START;
+            case BOTTOM_RIGHT -> rtl ? Position.BOTTOM_START : Position.BOTTOM_END;
+        };
     }
 
     private Icon createIcon(Variant type) {
@@ -235,6 +303,82 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         String language = locale.getLanguage();
         return RTL_LANGS.contains(language);
     }
+
+    private void registerAutoCloseBridge() {
+        wrapper.getElement().addEventListener(AUTO_CLOSE_EVENT, event -> {
+            if (autoCloseDurationMillis > 0 && isOpened()) {
+                close();
+            }
+        });
+    }
+
+    private void syncClientAutoClose() {
+        double delay = autoCloseDurationMillis;
+        if (delay <= 0) {
+            disableClientAutoClose();
+            return;
+        }
+        wrapper.getElement().getNode().runWhenAttached(ui ->
+                ui.beforeClientResponse(this, context ->
+                        wrapper.getElement().executeJs(
+                                "const host=this;const duration=$0;const eventName=$1;" +
+                                        "if (!duration || duration<=0){" +
+                                        "  if (host.__appNotificationAutoClose){" +
+                                        "    if (host.__appNotificationAutoClose.timerId){clearTimeout(host.__appNotificationAutoClose.timerId);}" +
+                                        "    host.removeEventListener('mouseenter', host.__appNotificationAutoClose.onEnter);" +
+                                        "    host.removeEventListener('mouseleave', host.__appNotificationAutoClose.onLeave);" +
+                                        "    host.__appNotificationAutoClose=null;" +
+                                        "  }" +
+                                        "  return;" +
+                                        "}" +
+                                        "let data=host.__appNotificationAutoClose;" +
+                                        "if(!data){" +
+                                        "  data=host.__appNotificationAutoClose={timerId:0,startedAt:0,remaining:duration};" +
+                                        "  data.invokeClose=()=>{if(!host.isConnected){return;}host.dispatchEvent(new CustomEvent(eventName,{bubbles:false,composed:false}));};" +
+                                        "  data.startTimer=timeout=>{" +
+                                        "    if (data.timerId){clearTimeout(data.timerId);}" +
+                                        "    if (timeout<=0){data.invokeClose();return;}" +
+                                        "    data.remaining=timeout;" +
+                                        "    data.startedAt=Date.now();" +
+                                        "    data.timerId=window.setTimeout(()=>{" +
+                                        "      data.timerId=0;" +
+                                        "      data.startedAt=0;" +
+                                        "      data.remaining=0;" +
+                                        "      data.invokeClose();" +
+                                        "    }, timeout);" +
+                                        "  };" +
+                                        "  data.pause=()=>{" +
+                                        "    if (data.timerId){clearTimeout(data.timerId);data.timerId=0;}" +
+                                        "    if (data.startedAt){data.remaining=Math.max(0,data.remaining-(Date.now()-data.startedAt));data.startedAt=0;}" +
+                                        "  };" +
+                                        "  data.resume=()=>{" +
+                                        "    if (!host.isConnected){return;}" +
+                                        "    if (data.remaining<=0){data.invokeClose();return;}" +
+                                        "    data.startTimer(data.remaining);" +
+                                        "  };" +
+                                        "  data.onEnter=()=>data.pause();" +
+                                        "  data.onLeave=()=>data.resume();" +
+                                        "  host.addEventListener('mouseenter', data.onEnter);" +
+                                        "  host.addEventListener('mouseleave', data.onLeave);" +
+                                        "}" +
+                                        "const info=host.__appNotificationAutoClose;" +
+                                        "info.startTimer(duration);",
+                                delay,
+                                AUTO_CLOSE_EVENT)));
+    }
+
+    private void disableClientAutoClose() {
+        wrapper.getElement().getNode().runWhenAttached(ui ->
+                ui.beforeClientResponse(this, context ->
+                        wrapper.getElement().executeJs(
+                                "const host=this;const data=host.__appNotificationAutoClose;" +
+                                        "if(!data){return;}" +
+                                        "if(data.timerId){clearTimeout(data.timerId);}" +
+                                        "host.removeEventListener('mouseenter', data.onEnter);" +
+                                        "host.removeEventListener('mouseleave', data.onLeave);" +
+                                        "host.__appNotificationAutoClose=null;")));
+    }
+
     public static final class Message {
 
         private final String key;
