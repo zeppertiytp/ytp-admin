@@ -45,6 +45,11 @@ mvn -pl samples -am spring-boot:run
 ```
 The application becomes available at http://localhost:8080 with routes such as `/` and `/design-system`.
 
+> [!TIP]
+> The repository ships with `.mvn/maven.config` that already enables `-am` by default,
+> so running `mvn -pl samples spring-boot:run` from the root project will also build
+> the component library before launching the demo.
+
 ### Production build
 To produce an optimised bundle (e.g. before deploying the samples) run:
 ```bash

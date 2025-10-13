@@ -27,6 +27,7 @@
   <properties>
     <java.version>17</java.version>
     <vaadin.version>24.2.6</vaadin.version>
+    <spring-boot.run.skip>true</spring-boot.run.skip>
   </properties>
 
   <dependencyManagement>
@@ -40,4 +41,13 @@
       </dependency>
     </dependencies>
   </dependencyManagement>
+
+  <profiles>
+    <profile>
+      <id>production</id>
+      <properties>
+        <vaadin.productionMode>true</vaadin.productionMode>
+      </properties>
+    </profile>
+  </profiles>
 </project>
