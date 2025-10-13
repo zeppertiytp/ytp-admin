@@ -2,8 +2,9 @@
   --app-notification-accent: var(--color-info-500);
   --app-notification-close-size: 32px;
   box-shadow: var(--shadow-sm);
+  margin: var(--space-4);
   max-width: 420px;
-  width: min(420px, calc(100vw - 2 * var(--space-6)));
+  width: min(420px, calc(100vw - 2 * var(--space-4)));
   border-radius: var(--radius-xl);
   background: var(--surface-card);
   color: var(--text-secondary);
