@@ -17,11 +17,11 @@ Stable foundation with RTL-first theme, light/dark persistence, language switch 
 - `frontend/themes/app/` → `styles.css` (entry), `tokens.css`, `light.css`, `dark.css`, `rtl.css`, `typography.css`
 - `frontend/components/app-icon.js`
 - `src/main/resources/static/icons/iconoir-sprite.svg`
-- `src/main/java/com/example/adminpanel/AppShell.java` (`@Theme("app")` + digit normalizer + theme init)
-- `src/main/java/com/example/adminpanel/config/UiLocaleInitializer.java` (default FA, set `dir/lang`)
-- `src/main/java/com/example/adminpanel/view/MainLayout.java` (header/drawer, toggles, reordering)
-- `src/main/java/com/example/adminpanel/view/DesignSystemView.java` (responsive DS samples)
-- `src/main/java/com/example/adminpanel/component/FilterablePaginatedGrid.java` (i18n & icon)
+- `samples/src/main/java/com/youtopin/vaadin/samples/AppShell.java` (`@Theme("app")` + digit normalizer + theme init)
+- `samples/src/main/java/com/youtopin/vaadin/samples/config/UiLocaleInitializer.java` (default FA, set `dir/lang`)
+- `samples/src/main/java/com/youtopin/vaadin/samples/ui/layout/MainLayout.java` (header/drawer, toggles, reordering)
+- `samples/src/main/java/com/youtopin/vaadin/samples/ui/view/DesignSystemView.java` (responsive DS samples)
+- `components/src/main/java/com/youtopin/vaadin/component/FilterablePaginatedGrid.java` (i18n & icon)
 
 ## Run
 ```bash

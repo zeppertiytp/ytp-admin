@@ -1,40 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  Project descriptor for the Vaadin admin panel.  
-  
-  This file declares the project's dependencies, build plugins and
-  inheritance from the Spring Boot parent POM.  Vaadin Flow and
-  Spring Boot integrate seamlessly via the `vaadin-spring-boot-starter`
-  dependency.
--->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.example</groupId>
-  <artifactId>admin-panel</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
-  <packaging>jar</packaging>
-
-  <name>admin-panel</name>
-  <description>A Vaadin Flow based admin panel with internationalisation and theming.</description>
-
-  <!-- Inherit defaults from Spring Boot -->
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
     <version>3.2.5</version>
-    <relativePath/> <!-- lookup parent from repository -->
+    <relativePath/>
   </parent>
 
+  <groupId>com.youtopin.vaadin</groupId>
+  <artifactId>ytp-admin</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <name>ytp-admin</name>
+  <description>Reusable Vaadin components with sample showcase application.</description>
+
+  <modules>
+    <module>components</module>
+    <module>samples</module>
+  </modules>
+
   <properties>
-    <!-- The Java version used to compile the project.  Vaadin 24 supports Java 17+. -->
     <java.version>17</java.version>
-    <!-- Import the Vaadin BOM (Bill of Materials) to manage versions automatically -->
     <vaadin.version>24.2.6</vaadin.version>
-    <!-- Centralise Lombok version for both dependency and annotation processor -->
     <lombok.version>1.18.32</lombok.version>
   </properties>
 
@@ -49,59 +41,4 @@
       </dependency>
     </dependencies>
   </dependencyManagement>
-
-  <dependencies>
-    <!-- Vaadin integration with Spring Boot -->
-    <dependency>
-      <groupId>com.vaadin</groupId>
-      <artifactId>vaadin-spring-boot-starter</artifactId>
-    </dependency>
-
-    <!-- Lombok to reduce boilerplate (optional; includes annotation processor) -->
-    <dependency>
-      <groupId>org.projectlombok</groupId>
-      <artifactId>lombok</artifactId>
-      <version>${lombok.version}</version>
-      <optional>true</optional>
-    </dependency>
-
-    <!-- Spring Boot test dependencies -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-test</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.tngtech.archunit</groupId>
-      <artifactId>archunit-junit5</artifactId>
-      <version>1.2.1</version>
-      <scope>test</scope>
-    </dependency>
-  </dependencies>
-
-  <build>
-    <plugins>
-      <!-- Spring Boot plugin for packaging the application -->
-      <plugin>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-maven-plugin</artifactId>
-      </plugin>
-      <!-- Compiler settings for Java version -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <configuration>
-          <source>${java.version}</source>
-          <target>${java.version}</target>
-          <annotationProcessorPaths>
-            <path>
-              <groupId>org.projectlombok</groupId>
-              <artifactId>lombok</artifactId>
-              <version>${lombok.version}</version>
-            </path>
-          </annotationProcessorPaths>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
 </project>

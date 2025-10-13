@@ -9,7 +9,7 @@ This document equips **ChatGPT Codex / Code Interpreter style agents** to work o
 
 ## Fast facts (TL;DR)
 - **Stack:** Java with (likely) Spring Boot, Vaadin Flow (Maven/Gradle)
-- **Module:** com.example:adminpanel
+- **Modules:** `com.youtopin.vaadin:vaadin-components` (library) and `com.youtopin.vaadin:vaadin-samples` (demo app)
 - **UI goals:** Modern flat design, full **light/dark** theme, **responsive** layouts, reusable components, strong **i18n** with **RTL (Farsi)** support and **Vazirmatn** font.
 - **Auth:** local demo login (`admin` / `admin`); production via OAuth (hooks/stubs).
 - **Data:** No DB by default; use **MongoDB** if persistence is added.
@@ -29,8 +29,8 @@ This document equips **ChatGPT Codex / Code Interpreter style agents** to work o
 ### Commands
 #### Maven
 - `mvn -Pproduction clean package`
-- `mvn spring-boot:run` (if Spring Boot)
-- `mvn -DskipTests spring-boot:run`
+- `mvn -pl samples spring-boot:run` (demo application)
+- `mvn -pl samples -DskipTests spring-boot:run`
 
 #### Gradle
 - `./gradlew clean build`
