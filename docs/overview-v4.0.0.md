@@ -23,11 +23,34 @@ Stable foundation with RTL-first theme, light/dark persistence, language switch 
 - `samples/src/main/java/com/youtopin/vaadin/samples/ui/view/DesignSystemView.java` (responsive DS samples)
 - `components/src/main/java/com/youtopin/vaadin/component/FilterablePaginatedGrid.java` (i18n & icon)
 
+## Build
+The repository is a Maven multi-module project.  Typical flows:
+
+1. **Validate everything** (recommended):
+   ```bash
+   mvn clean verify
+   ```
+   This compiles the reusable `vaadin-components` library, executes the sample application build, and runs unit tests.
+2. **Publish the component library to your local Maven cache** so it can be consumed by other projects:
+   ```bash
+   mvn -pl components -am clean install
+   ```
+   The `-am` flag ensures transitive modules are built when necessary.
+
 ## Run
+### Sample showcase (Vaadin dev mode)
+Launch the demo UI from the `vaadin-samples` module:
 ```bash
-mvn -Dvaadin.clean-frontend=true clean spring-boot:run
+mvn -pl samples -am spring-boot:run
 ```
-Routes: `/` and `/design-system`
+The application becomes available at http://localhost:8080 with routes such as `/` and `/design-system`.
+
+### Production build
+To produce an optimised bundle (e.g. before deploying the samples) run:
+```bash
+mvn -pl samples -am clean package -Pproduction
+```
+The resulting Spring Boot fat JAR will be placed under `samples/target/`.
 
 ## Known items
 - Details caret styling can be tuned further.

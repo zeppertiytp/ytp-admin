@@ -6,7 +6,8 @@ import com.youtopin.vaadin.navigation.MenuItem;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -27,9 +28,9 @@ import java.util.stream.Collectors;
  * the scopes returned by {@link UserScopeService}, enabling future integration with OAuth/OIDC
  * providers without changing the UI layer.
  */
-@Slf4j
 @Service
 public class JsonNavigationMenuService implements NavigationMenuService {
+    private static final Logger log = LoggerFactory.getLogger(JsonNavigationMenuService.class);
 
     private final List<MenuItemDefinition> menuDefinitions;
     private final UserScopeService userScopeService;

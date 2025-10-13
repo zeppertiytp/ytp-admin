@@ -1,8 +1,9 @@
 package com.youtopin.vaadin.samples.infrastructure.form;
 
 import com.youtopin.vaadin.form.FormValidationService;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,9 +15,9 @@ import java.util.Map;
  * application, you might call a backend service or database to
  * validate the form data.
  */
-@Slf4j
 @Service
 public class InMemoryFormValidationService implements FormValidationService {
+    private static final Logger log = LoggerFactory.getLogger(InMemoryFormValidationService.class);
     @Override
     public Map<String, String> validate(String formId, Map<String, Object> fields) {
         Map<String, String> errors = new HashMap<>();

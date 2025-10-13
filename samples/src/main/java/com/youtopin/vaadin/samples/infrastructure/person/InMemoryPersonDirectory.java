@@ -3,7 +3,8 @@ package com.youtopin.vaadin.samples.infrastructure.person;
 import com.youtopin.vaadin.data.pagination.PageResult;
 import com.youtopin.vaadin.samples.application.person.PersonDirectory;
 import com.youtopin.vaadin.samples.domain.person.Person;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -17,9 +18,9 @@ import java.util.stream.Collectors;
  * interfaces while this class offers an in-memory data source that can be
  * swapped out for database-backed implementations.
  */
-@Slf4j
 @Service
 public class InMemoryPersonDirectory implements PersonDirectory {
+    private static final Logger log = LoggerFactory.getLogger(InMemoryPersonDirectory.class);
     private final List<Person> people;
 
     public InMemoryPersonDirectory() {
