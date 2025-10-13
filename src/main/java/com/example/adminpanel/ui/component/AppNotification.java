@@ -12,6 +12,7 @@ import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.dom.ThemeList;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
+import com.vaadin.flow.shared.Registration;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +60,7 @@ public class AppNotification extends Notification implements LocaleChangeObserve
     private long autoCloseDurationMillis;
     private boolean hovered;
     private transient ScheduledFuture<?> autoCloseTask;
+    private transient Registration pendingAutoCloseRegistration;
     private static final ScheduledExecutorService AUTO_CLOSE_EXECUTOR =
             Executors.newSingleThreadScheduledExecutor(r -> {
                 Thread thread = new Thread(r, "app-notification-auto-close");
@@ -335,22 +337,52 @@ public class AppNotification extends Notification implements LocaleChangeObserve
         if (autoCloseDurationMillis <= 0) {
             return;
         }
-        getUI().ifPresent(ui -> autoCloseTask = AUTO_CLOSE_EXECUTOR.schedule(() ->
-                ui.access(() -> {
-                    if (isOpened() && !hovered) {
-                        close();
-                    }
-                }),
-                autoCloseDurationMillis,
-                TimeUnit.MILLISECONDS));
+        UI ui = getUI().orElse(null);
+        if (ui != null) {
+            scheduleAutoCloseTask(ui);
+            return;
+        }
+
+        if (pendingAutoCloseRegistration != null) {
+            return;
+        }
+
+        pendingAutoCloseRegistration = addAttachListener(event -> {
+            Registration registration = pendingAutoCloseRegistration;
+            pendingAutoCloseRegistration = null;
+            if (registration != null) {
+                registration.remove();
+            }
+            scheduleAutoCloseTask(event.getUI());
+        });
     }
 
     private void cancelAutoCloseTask() {
+        if (pendingAutoCloseRegistration != null) {
+            pendingAutoCloseRegistration.remove();
+            pendingAutoCloseRegistration = null;
+        }
         if (autoCloseTask != null) {
             autoCloseTask.cancel(true);
             autoCloseTask = null;
         }
     }
+
+    private void scheduleAutoCloseTask(UI ui) {
+        long delay = autoCloseDurationMillis;
+        if (delay <= 0) {
+            return;
+        }
+        autoCloseTask = AUTO_CLOSE_EXECUTOR.schedule(() ->
+                        ui.access(() -> {
+                            if (isOpened() && !hovered) {
+                                close();
+                            }
+                        }),
+                delay,
+                TimeUnit.MILLISECONDS);
+    }
+
     public static final class Message {
 
         private final String key;
