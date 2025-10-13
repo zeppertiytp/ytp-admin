@@ -7,11 +7,21 @@ practices. Packages are organised by responsibility:
 
 | Layer | Package | Responsibilities |
 | --- | --- | --- |
-| Domain | `com.example.adminpanel.domain..` | Pure models and aggregates (`Person`, `MenuItem`). Contains no Vaadin UI dependencies beyond simple value objects. |
-| Application | `com.example.adminpanel.application..` | Use-case and service interfaces (`PersonDirectory`, `NavigationMenuService`, `FormValidationService`, `SecurityService`, pagination contracts). Depends only on the domain. |
-| Infrastructure | `com.example.adminpanel.infrastructure..` | Technical implementations of application services (in-memory data sources, JSON-backed navigation menu service, form validation stub). May depend on domain and application layers but never on UI packages. |
-| UI | `com.example.adminpanel.ui..` | Vaadin layouts, views and reusable components. Depends on domain types and application interfaces only. |
-| Configuration & support | `com.example.adminpanel.config..`, `com.example.adminpanel.i18n..` | Bootstrapping, locale handling and translation provider. |
+| Domain | `com.youtopin.vaadin.samples.domain..` | Pure models and aggregates (e.g. `Person`). Contains no Vaadin UI dependencies beyond simple value objects. |
+| Application | `com.youtopin.vaadin.samples.application..` | Use-case and service interfaces (`PersonDirectory`, `NavigationMenuService`, `FormValidationService`, `SecurityService`, pagination contracts). Depends only on the domain. |
+| Infrastructure | `com.youtopin.vaadin.samples.infrastructure..` | Technical implementations of application services (in-memory data sources, JSON-backed navigation menu service, form validation stub). May depend on domain and application layers but never on UI packages. |
+| UI | `com.youtopin.vaadin.samples.ui..` | Vaadin layouts, views and demos for the component showcase. Depends on domain types and application interfaces only. |
+| Configuration & support | `com.youtopin.vaadin.samples.config..`, `com.youtopin.vaadin.i18n..` | Bootstrapping, locale handling and translation provider. |
+
+Reusable Vaadin building blocks that are intended to be consumed by other
+applications live in the component module under the `com.youtopin.vaadin.component`
+package. Supporting pagination contracts and form validation interfaces are
+published via `com.youtopin.vaadin.data.pagination` and `com.youtopin.vaadin.form`
+respectively, while reusable navigation primitives are available in
+`com.youtopin.vaadin.navigation`. Frontend resources (custom elements, shared styles, icons, and the
+`app` theme) ship with the component JAR under
+`components/src/main/resources/META-INF/resources/frontend` so that any consumer
+project automatically receives the assets when it depends on the library module.
 
 ## Dependency rules
 
@@ -29,7 +39,7 @@ practices. Packages are organised by responsibility:
 
 ## Contract enforcement
 
-ArchUnit tests in `src/test/java/com/example/adminpanel/architecture` enforce the
+ArchUnit tests in `samples/src/test/java/com/youtopin/vaadin/samples/architecture` enforce the
 rules above. The build fails if any class violates the declared architecture.
 Run `mvn test` to execute them.
 
