@@ -6,7 +6,7 @@
 Stable foundation with RTL-first theme, light/dark persistence, language switch (FA/EN), polished navigation, and i18n-ready grid.
 
 ## Highlights
-- Tokenized theme (`frontend/themes/app`) with **light/dark** and **RTL**.
+- Tokenized theme (`components/src/main/resources/META-INF/resources/frontend/themes/app`) with **light/dark** and **RTL**.
 - Shell & drawer: header reorders by `dir`; drawer moves left/right with FA/EN.
 - Theme persistence via **session + localStorage** and `document.documentElement[theme]`.
 - Icon layer: **Iconoir-style** sprite + `AppIcon` Flow wrapper.
@@ -14,9 +14,9 @@ Stable foundation with RTL-first theme, light/dark persistence, language switch 
 - Design System page to preview semantic colors.
 
 ## Structure
-- `frontend/themes/app/` → `styles.css` (entry), `tokens.css`, `light.css`, `dark.css`, `rtl.css`, `typography.css`
-- `frontend/components/app-icon.js`
-- `src/main/resources/static/icons/iconoir-sprite.svg`
+- `components/src/main/resources/META-INF/resources/frontend/themes/app/` → `styles.css` (entry), `tokens.css`, `light.css`, `dark.css`, `rtl.css`, `typography.css`
+- `components/src/main/resources/META-INF/resources/frontend/components/app-icon.js`
+- `components/src/main/resources/META-INF/resources/frontend/icons/iconoir-sprite.svg`
 - `samples/src/main/java/com/youtopin/vaadin/samples/AppShell.java` (`@Theme("app")` + digit normalizer + theme init)
 - `samples/src/main/java/com/youtopin/vaadin/samples/config/UiLocaleInitializer.java` (default FA, set `dir/lang`)
 - `samples/src/main/java/com/youtopin/vaadin/samples/ui/layout/MainLayout.java` (header/drawer, toggles, reordering)

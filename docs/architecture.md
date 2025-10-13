@@ -17,7 +17,10 @@ Reusable Vaadin building blocks that are intended to be consumed by other
 applications live in the component module under the `com.youtopin.vaadin.component`
 package. Supporting pagination contracts and form validation interfaces are
 published via `com.youtopin.vaadin.data.pagination` and `com.youtopin.vaadin.form`
-respectively.
+respectively. Frontend resources (custom elements, shared styles, icons, and the
+`app` theme) ship with the component JAR under
+`components/src/main/resources/META-INF/resources/frontend` so that any consumer
+project automatically receives the assets when it depends on the library module.
 
 ## Dependency rules
 
