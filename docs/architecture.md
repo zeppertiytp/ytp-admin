@@ -9,7 +9,7 @@ practices. Packages are organised by responsibility:
 | --- | --- | --- |
 | Domain | `com.example.adminpanel.domain..` | Pure models and aggregates (`Person`, `MenuItem`). Contains no Vaadin UI dependencies beyond simple value objects. |
 | Application | `com.example.adminpanel.application..` | Use-case and service interfaces (`PersonDirectory`, `NavigationMenuService`, `FormValidationService`, `SecurityService`, pagination contracts). Depends only on the domain. |
-| Infrastructure | `com.example.adminpanel.infrastructure..` | Technical implementations of application services (in-memory data sources, static menu provider, form validation stub). May depend on domain and application layers but never on UI packages. |
+| Infrastructure | `com.example.adminpanel.infrastructure..` | Technical implementations of application services (in-memory data sources, JSON-backed navigation menu service, form validation stub). May depend on domain and application layers but never on UI packages. |
 | UI | `com.example.adminpanel.ui..` | Vaadin layouts, views and reusable components. Depends on domain types and application interfaces only. |
 | Configuration & support | `com.example.adminpanel.config..`, `com.example.adminpanel.i18n..` | Bootstrapping, locale handling and translation provider. |
 
@@ -42,6 +42,8 @@ Run `mvn test` to execute them.
   honour contracts without changing callers.
 * **Interface Segregation:** UI components depend on lean interfaces such as
   `PersonDirectory` and `NavigationMenuService` instead of concrete services.
+  See `docs/navigation-menu.md` for details about the JSON-driven navigation
+  provider that implements the menu contract.
 * **Dependency Inversion:** UI and configuration layers depend on abstractions
   defined in the application layer; infrastructure supplies the concrete beans.
 

@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v4.6.7
+### JSON-driven navigation menu with scope filtering
+
+* **Feature:** Replaced the static navigation provider with a JSON-backed
+  `JsonNavigationMenuService` that loads `menu/navigation-menu.json` at startup
+  and filters items per user scopes.
+* **Security readiness:** Introduced configurable `AND`/`OR` evaluation for
+  `requiredScopes`, paving the way for OIDC-powered role enforcement.
+* **Resilience:** Added schema validation to fail fast on missing groups,
+  labels, or malformed children and normalised whitespace/icon names while
+  loading the menu tree.
+* **Documentation:** Captured configuration guidance in
+  `docs/navigation-menu.md` and linked it from the architecture overview.
+
 ## v4.6.6
 ### Jalali picker year range controls
 
