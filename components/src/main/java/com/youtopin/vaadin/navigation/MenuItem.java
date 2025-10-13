@@ -1,4 +1,4 @@
-package com.youtopin.vaadin.samples.domain.menu;
+package com.youtopin.vaadin.navigation;
 
 import com.vaadin.flow.component.icon.VaadinIcon;
 

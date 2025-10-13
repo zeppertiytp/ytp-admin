@@ -2,7 +2,7 @@ package com.youtopin.vaadin.samples.infrastructure.menu;
 
 import com.youtopin.vaadin.samples.application.menu.NavigationMenuService;
 import com.youtopin.vaadin.samples.application.security.UserScopeService;
-import com.youtopin.vaadin.samples.domain.menu.MenuItem;
+import com.youtopin.vaadin.navigation.MenuItem;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vaadin.flow.component.icon.VaadinIcon;

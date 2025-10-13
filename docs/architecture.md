@@ -7,17 +7,18 @@ practices. Packages are organised by responsibility:
 
 | Layer | Package | Responsibilities |
 | --- | --- | --- |
-| Domain | `com.youtopin.vaadin.samples.domain..` | Pure models and aggregates (`Person`, `MenuItem`). Contains no Vaadin UI dependencies beyond simple value objects. |
+| Domain | `com.youtopin.vaadin.samples.domain..` | Pure models and aggregates (e.g. `Person`). Contains no Vaadin UI dependencies beyond simple value objects. |
 | Application | `com.youtopin.vaadin.samples.application..` | Use-case and service interfaces (`PersonDirectory`, `NavigationMenuService`, `FormValidationService`, `SecurityService`, pagination contracts). Depends only on the domain. |
 | Infrastructure | `com.youtopin.vaadin.samples.infrastructure..` | Technical implementations of application services (in-memory data sources, JSON-backed navigation menu service, form validation stub). May depend on domain and application layers but never on UI packages. |
 | UI | `com.youtopin.vaadin.samples.ui..` | Vaadin layouts, views and demos for the component showcase. Depends on domain types and application interfaces only. |
-| Configuration & support | `com.youtopin.vaadin.samples.config..`, `com.youtopin.vaadin.samples.i18n..` | Bootstrapping, locale handling and translation provider. |
+| Configuration & support | `com.youtopin.vaadin.samples.config..`, `com.youtopin.vaadin.i18n..` | Bootstrapping, locale handling and translation provider. |
 
 Reusable Vaadin building blocks that are intended to be consumed by other
 applications live in the component module under the `com.youtopin.vaadin.component`
 package. Supporting pagination contracts and form validation interfaces are
 published via `com.youtopin.vaadin.data.pagination` and `com.youtopin.vaadin.form`
-respectively. Frontend resources (custom elements, shared styles, icons, and the
+respectively, while reusable navigation primitives are available in
+`com.youtopin.vaadin.navigation`. Frontend resources (custom elements, shared styles, icons, and the
 `app` theme) ship with the component JAR under
 `components/src/main/resources/META-INF/resources/frontend` so that any consumer
 project automatically receives the assets when it depends on the library module.

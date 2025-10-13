@@ -1,4 +1,4 @@
-package com.youtopin.vaadin.samples.i18n;
+package com.youtopin.vaadin.i18n;
 
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.page.Page;

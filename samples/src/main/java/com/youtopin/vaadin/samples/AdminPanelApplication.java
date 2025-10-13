@@ -12,7 +12,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * combines several annotations including {@code @Configuration},
  * {@code @EnableAutoConfiguration} and {@code @ComponentScan}.
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.youtopin.vaadin")
 public class AdminPanelApplication {
 
     /**

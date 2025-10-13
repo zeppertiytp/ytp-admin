@@ -1,7 +1,7 @@
 package com.youtopin.vaadin.samples.infrastructure.menu;
 
 import com.youtopin.vaadin.samples.application.security.UserScopeService;
-import com.youtopin.vaadin.samples.domain.menu.MenuItem;
+import com.youtopin.vaadin.navigation.MenuItem;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import org.junit.jupiter.api.Test;

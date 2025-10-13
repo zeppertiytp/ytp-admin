@@ -2,8 +2,8 @@ package com.youtopin.vaadin.samples.ui.layout;
 
 import com.youtopin.vaadin.samples.application.menu.NavigationMenuService;
 import com.youtopin.vaadin.samples.application.security.SecurityService;
-import com.youtopin.vaadin.samples.domain.menu.MenuItem;
-import com.youtopin.vaadin.samples.i18n.LocaleDirectionService;
+import com.youtopin.vaadin.navigation.MenuItem;
+import com.youtopin.vaadin.i18n.LocaleDirectionService;
 import com.youtopin.vaadin.component.AppIcon;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;

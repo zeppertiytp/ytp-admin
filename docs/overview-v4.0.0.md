@@ -18,7 +18,7 @@ Stable foundation with RTL-first theme, light/dark persistence, language switch 
 - `components/src/main/resources/META-INF/resources/frontend/components/app-icon.js`
 - `components/src/main/resources/META-INF/resources/frontend/icons/iconoir-sprite.svg`
 - `samples/src/main/java/com/youtopin/vaadin/samples/AppShell.java` (`@Theme("app")` + digit normalizer + theme init)
-- `samples/src/main/java/com/youtopin/vaadin/samples/config/UiLocaleInitializer.java` (default FA, set `dir/lang`)
+- `components/src/main/java/com/youtopin/vaadin/i18n/UiLocaleInitializer.java` (default locale + `dir/lang`)
 - `samples/src/main/java/com/youtopin/vaadin/samples/ui/layout/MainLayout.java` (header/drawer, toggles, reordering)
 - `samples/src/main/java/com/youtopin/vaadin/samples/ui/view/DesignSystemView.java` (responsive DS samples)
 - `components/src/main/java/com/youtopin/vaadin/component/FilterablePaginatedGrid.java` (i18n & icon)

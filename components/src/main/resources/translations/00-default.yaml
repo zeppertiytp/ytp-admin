@@ -1,0 +1,5 @@
+defaultLocale: fa
+providedLocales:
+  - fa
+  - en
+messages: {}

@@ -1,6 +1,6 @@
 package com.youtopin.vaadin.samples.application.menu;
 
-import com.youtopin.vaadin.samples.domain.menu.MenuItem;
+import com.youtopin.vaadin.navigation.MenuItem;
 
 import java.util.List;
 
