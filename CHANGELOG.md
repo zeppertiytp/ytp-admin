@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## v4.6.9
+### Horizontal wizard interaction updates
+
+* **Component:** Added optional click support to `HorizontalWizard` steps,
+  including pointer and focus styling, keyboard activation, and new
+  `StepClickEvent`/`CurrentStepChangeEvent` hooks so applications can react to
+  user navigation.
+* **Samples:** Updated `/wizard` to mix clickable and read-only steps, wiring a
+  real-time status caption via the new change listener so flows can trigger view
+  logic as the selection changes.
+* **Documentation:** Expanded `docs/horizontal-wizard.md` to cover the new
+  events and interaction model for reviewers.
+
 ## v4.6.8
 ### Horizontal wizard progress indicator
 

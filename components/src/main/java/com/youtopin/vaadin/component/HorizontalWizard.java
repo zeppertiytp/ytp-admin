@@ -1,5 +1,7 @@
 package com.youtopin.vaadin.component;
 
+import com.vaadin.flow.component.ComponentEvent;
+import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.Composite;
 import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.html.Div;
@@ -108,8 +110,21 @@ public class HorizontalWizard extends Composite<Div> implements HasSize {
         if (index < 0 || index >= steps.size()) {
             throw new IllegalArgumentException("Step index out of bounds: " + index);
         }
+        if (index == currentIndex) {
+            if (index >= 0 && index < stepElements.size()) {
+                scrollStepIntoView(stepElements.get(index));
+            }
+            return;
+        }
+
+        int previousIndex = currentIndex;
         currentIndex = index;
         refreshStates();
+        fireEvent(new CurrentStepChangeEvent(this,
+                previousIndex >= 0 ? previousIndex : null,
+                previousIndex >= 0 ? steps.get(previousIndex) : null,
+                currentIndex,
+                steps.get(currentIndex)));
     }
 
     /**
@@ -159,6 +174,22 @@ public class HorizontalWizard extends Composite<Div> implements HasSize {
         if (currentIndex > 0) {
             setCurrentStepIndex(currentIndex - 1);
         }
+    }
+
+    /**
+     * Registers a listener that is notified whenever the current step changes.
+     */
+    public Registration addCurrentStepChangeListener(
+            ComponentEventListener<CurrentStepChangeEvent> listener) {
+        return addListener(CurrentStepChangeEvent.class, listener);
+    }
+
+    /**
+     * Registers a listener that is notified when a clickable step is triggered.
+     */
+    public Registration addStepClickListener(
+            ComponentEventListener<StepClickEvent> listener) {
+        return addListener(StepClickEvent.class, listener);
     }
 
     /**
@@ -306,6 +337,14 @@ public class HorizontalWizard extends Composite<Div> implements HasSize {
 
             add(circle, label);
             updateTexts();
+
+            addClickListener(event -> handleActivation());
+            getElement().addEventListener("keydown", event -> {
+                if (!step.isClickable()) {
+                    return;
+                }
+                handleActivation();
+            }).setFilter("event.key === 'Enter' || event.key === ' '");
         }
 
         private void updateTexts() {
@@ -315,6 +354,7 @@ public class HorizontalWizard extends Composite<Div> implements HasSize {
             circle.setText(indicator);
             circle.getElement().setProperty("title", step.getTitle());
             circle.getElement().setAttribute("aria-label", step.getTitle());
+            updateInteractionState();
         }
 
         private void applyState(StepState state) {
@@ -347,6 +387,22 @@ public class HorizontalWizard extends Composite<Div> implements HasSize {
                 case UPCOMING -> upcomingColor;
             };
         }
+
+        private void updateInteractionState() {
+            boolean clickable = step.isClickable();
+            getElement().setAttribute("tabindex", clickable ? "0" : "-1");
+            getElement().setAttribute("data-clickable", clickable ? "true" : "false");
+            getElement().setAttribute("aria-disabled", clickable ? "false" : "true");
+        }
+
+        private void handleActivation() {
+            if (!step.isClickable()) {
+                return;
+            }
+            HorizontalWizard.this.setCurrentStepIndex(index);
+            HorizontalWizard.this.fireEvent(
+                    new StepClickEvent(HorizontalWizard.this, index, steps.get(index)));
+        }
     }
 
     private final class ConnectorElement extends Div {
@@ -372,6 +428,7 @@ public class HorizontalWizard extends Composite<Div> implements HasSize {
         private String title;
         private String indicator;
         private String completedColor;
+        private boolean clickable;
 
         private WizardStep(String id, String title) {
             if (id == null || id.isBlank()) {
@@ -433,6 +490,22 @@ public class HorizontalWizard extends Composite<Div> implements HasSize {
             return this;
         }
 
+        /**
+         * Marks the step as clickable. Clickable steps fire click events and update
+         * the current selection when activated.
+         */
+        public WizardStep clickable() {
+            return withClickable(true);
+        }
+
+        /**
+         * Explicitly enables or disables click support for the step.
+         */
+        public WizardStep withClickable(boolean clickable) {
+            this.clickable = clickable;
+            return this;
+        }
+
         public String getId() {
             return id;
         }
@@ -449,11 +522,76 @@ public class HorizontalWizard extends Composite<Div> implements HasSize {
             return Optional.ofNullable(completedColor);
         }
 
+        public boolean isClickable() {
+            return clickable;
+        }
+
         private WizardStep copy() {
             WizardStep copy = new WizardStep(id, title);
             copy.indicator = indicator;
             copy.completedColor = completedColor;
+            copy.clickable = clickable;
             return copy;
+        }
+    }
+
+    /**
+     * Event fired when the current wizard step changes.
+     */
+    public static class CurrentStepChangeEvent extends ComponentEvent<HorizontalWizard> {
+        private final Integer previousIndex;
+        private final WizardStep previousStep;
+        private final int currentIndex;
+        private final WizardStep currentStep;
+
+        private CurrentStepChangeEvent(HorizontalWizard source,
+                Integer previousIndex,
+                WizardStep previousStep,
+                int currentIndex,
+                WizardStep currentStep) {
+            super(source, false);
+            this.previousIndex = previousIndex;
+            this.previousStep = previousStep;
+            this.currentIndex = currentIndex;
+            this.currentStep = currentStep;
+        }
+
+        public OptionalInt getPreviousIndex() {
+            return previousIndex == null ? OptionalInt.empty() : OptionalInt.of(previousIndex);
+        }
+
+        public Optional<WizardStep> getPreviousStep() {
+            return Optional.ofNullable(previousStep);
+        }
+
+        public int getCurrentIndex() {
+            return currentIndex;
+        }
+
+        public WizardStep getCurrentStep() {
+            return currentStep;
+        }
+    }
+
+    /**
+     * Event fired when a clickable step is activated by the user.
+     */
+    public static class StepClickEvent extends ComponentEvent<HorizontalWizard> {
+        private final int index;
+        private final WizardStep step;
+
+        private StepClickEvent(HorizontalWizard source, int index, WizardStep step) {
+            super(source, false);
+            this.index = index;
+            this.step = step;
+        }
+
+        public int getIndex() {
+            return index;
+        }
+
+        public WizardStep getStep() {
+            return step;
         }
     }
 }

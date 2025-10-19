@@ -29,6 +29,15 @@
   scroll-snap-align: center;
 }
 
+.horizontal-wizard__step[data-clickable="true"] {
+  cursor: pointer;
+}
+
+.horizontal-wizard__step[data-clickable="true"]:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--horizontal-wizard-step-color) 75%, transparent);
+  outline-offset: 4px;
+}
+
 .horizontal-wizard__circle {
   width: var(--horizontal-wizard-circle-size, 44px);
   height: var(--horizontal-wizard-circle-size, 44px);

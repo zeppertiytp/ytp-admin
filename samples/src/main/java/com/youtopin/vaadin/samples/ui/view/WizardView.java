@@ -27,6 +27,7 @@ public class WizardView extends AppPageLayout implements LocaleChangeObserver {
     private final Span basicSampleDescription = new Span();
     private final H2 colorSampleTitle = new H2();
     private final Span colorSampleDescription = new Span();
+    private final Span colorSampleStatus = new Span();
     private final H2 longSampleTitle = new H2();
     private final Span longSampleDescription = new Span();
     private final HorizontalWizard onboardingWizard = new HorizontalWizard();
@@ -38,6 +39,7 @@ public class WizardView extends AppPageLayout implements LocaleChangeObserver {
 
         basicSampleDescription.addClassName("page-subtitle");
         colorSampleDescription.addClassName("page-subtitle");
+        colorSampleStatus.addClassName("page-subtitle");
         longSampleDescription.addClassName("page-subtitle");
 
         onboardingWizard.setWidthFull();
@@ -54,13 +56,15 @@ public class WizardView extends AppPageLayout implements LocaleChangeObserver {
 
         VerticalLayout colorCard = createCard();
         colorCard.addClassName("stack-lg");
-        colorCard.add(colorSampleTitle, colorSampleDescription, releaseWizard);
+        colorCard.add(colorSampleTitle, colorSampleDescription, releaseWizard, colorSampleStatus);
 
         VerticalLayout longCard = createCard();
         longCard.addClassName("stack-lg");
         longCard.add(longSampleTitle, longSampleDescription, projectWizard);
 
         add(basicCard, colorCard, longCard);
+
+        releaseWizard.addCurrentStepChangeListener(event -> updateReleaseStatus());
 
         updateContent();
         updatePageTitle();
@@ -82,6 +86,8 @@ public class WizardView extends AppPageLayout implements LocaleChangeObserver {
 
         projectWizard.setSteps(createProjectSteps());
         projectWizard.setCurrentStepId("qa");
+
+        updateReleaseStatus();
     }
 
     private void updatePageTitle() {
@@ -105,13 +111,17 @@ public class WizardView extends AppPageLayout implements LocaleChangeObserver {
     private List<WizardStep> createReleaseSteps() {
         return List.of(
                 WizardStep.of("plan", getTranslation("wizard.steps.plan"))
-                        .withCompletedColor("var(--color-secondary-600)"),
+                        .withCompletedColor("var(--color-secondary-600)")
+                        .clickable(),
                 WizardStep.of("prepare", getTranslation("wizard.steps.prepare"))
-                        .withCompletedColor("var(--color-info-500)"),
+                        .withCompletedColor("var(--color-info-500)")
+                        .clickable(),
                 WizardStep.of("configure", getTranslation("wizard.steps.configure"))
-                        .withCompletedColor("var(--color-warning-500)"),
+                        .withCompletedColor("var(--color-warning-500)")
+                        .withClickable(false),
                 WizardStep.of("launch", getTranslation("wizard.steps.launch"))
                         .withCompletedColor("var(--color-success-600)")
+                        .withClickable(false)
         );
     }
 
@@ -123,9 +133,30 @@ public class WizardView extends AppPageLayout implements LocaleChangeObserver {
                 WizardStep.of("development", getTranslation("wizard.steps.development")),
                 WizardStep.of("qa", getTranslation("wizard.steps.qa")),
                 WizardStep.of("localization", getTranslation("wizard.steps.localization")),
-                WizardStep.of("launch", getTranslation("wizard.steps.launch")),
+                WizardStep.of("launch", getTranslation("wizard.steps.launch"))
+                        .clickable(),
                 WizardStep.of("measure", getTranslation("wizard.steps.measure"))
         );
+    }
+
+    private void updateReleaseStatus() {
+        colorSampleStatus.setText(createReleaseStatusMessage());
+    }
+
+    private String createReleaseStatusMessage() {
+        return getTranslation("wizard.sample.currentPhase", releaseWizard.getCurrentStepId()
+                .map(this::translatePhaseLabel)
+                .orElse(""));
+    }
+
+    private String translatePhaseLabel(String stepId) {
+        return switch (stepId) {
+            case "plan" -> getTranslation("wizard.steps.plan");
+            case "prepare" -> getTranslation("wizard.steps.prepare");
+            case "configure" -> getTranslation("wizard.steps.configure");
+            case "launch" -> getTranslation("wizard.steps.launch");
+            default -> stepId;
+        };
     }
 
     @Override

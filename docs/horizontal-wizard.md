@@ -17,6 +17,14 @@ library so application views can provide a consistent multi-step experience.
     `withCompletedColor(String)`.
   - `WizardStep.withIndicator(String)` optionally replaces the ordinal number in
     the circle with a custom label.
+  - `WizardStep.clickable()` enables pointer and keyboard interaction for the
+    step. When activated, the wizard fires `StepClickEvent`s and updates the
+    current index.
+  - `addCurrentStepChangeListener` publishes `CurrentStepChangeEvent`s whenever
+    the selection changes, regardless of whether it was triggered by the user or
+    programmatically.
+  - `addStepClickListener` allows views to react to user interaction on
+    clickable steps, e.g. to open supporting content or navigate elsewhere.
   - `advance()` / `retreat()` move the selection forwards or backwards.
 
 ### Usage example
@@ -47,9 +55,10 @@ structure never wraps into multiple rows.
 `WizardView` renders three cards:
 
 1. An onboarding flow that uses default colors to illustrate the base look.
-2. A release checklist where every completed step provides a distinct accent via
-   `withCompletedColor`, while the wizard itself overrides the current and
-   upcoming colors.
+2. A release checklist that mixes clickable and read-only steps. The wizard
+   still overrides the default colors, and an explanatory caption beneath the
+   component updates in real time via `addCurrentStepChangeListener` so QA can
+   see how views react to selection changes.
 3. An extended product delivery roadmap with eight steps so reviewers can
    confirm horizontal scrolling, spacing, and the reinforced highlight of the
    active stage. Additional padding keeps the accent halo visible, and the wizard
