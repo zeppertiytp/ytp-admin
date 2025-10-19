@@ -22,15 +22,17 @@
   width: var(--horizontal-wizard-circle-size, 44px);
   height: var(--horizontal-wizard-circle-size, 44px);
   min-width: var(--horizontal-wizard-circle-size, 44px);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   border-radius: 50%;
   border: 2px solid var(--horizontal-wizard-circle-border-color, var(--lumo-contrast-30pct));
   background: var(--horizontal-wizard-circle-background, transparent);
   color: var(--horizontal-wizard-upcoming-text-color, var(--lumo-secondary-text-color));
   font-weight: 600;
   font-size: var(--lumo-font-size-m, 1rem);
+  line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
   box-sizing: border-box;
   transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease,
     transform 160ms ease, box-shadow 160ms ease;
