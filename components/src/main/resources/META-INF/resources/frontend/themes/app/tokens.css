@@ -84,4 +84,11 @@
   --divider-subtle: var(--color-border);
   --divider-strong: #CBD5F5;
   --text-muted: var(--color-muted);
+
+  /* Scrollbars */
+  --scrollbar-size: 8px;
+  --scrollbar-radius: 999px;
+  --scrollbar-track: color-mix(in srgb, var(--surface-subtle) 92%, transparent);
+  --scrollbar-thumb: color-mix(in srgb, var(--color-primary-600) 35%, var(--divider-subtle));
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--color-primary-600) 55%, var(--divider-subtle));
 }

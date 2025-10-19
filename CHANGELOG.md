@@ -18,6 +18,13 @@
   referenced the sample from the platform overview, including the new extended
   scenario and scrolling guidance.
 
+### Scrollbar styling refresh
+
+* **Design system:** Introduced theme-level scrollbar tokens and global styles
+  that render slimmer, rounded scrollbars with color-mixed thumbs in both light
+  and dark modes, aligning overflow containers with the platform's visual
+  language.
+
 ## v4.6.7
 ### JSON-driven navigation menu with scope filtering
 

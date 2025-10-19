@@ -21,6 +21,9 @@
   --text-primary: var(--text-inverse);
   --text-secondary: color-mix(in srgb, var(--text-inverse) 80%, transparent);
   --text-muted: color-mix(in srgb, var(--text-inverse) 60%, transparent);
+  --scrollbar-track: color-mix(in srgb, var(--surface-subtle) 70%, transparent);
+  --scrollbar-thumb: color-mix(in srgb, var(--color-primary-400) 45%, var(--divider-subtle));
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--color-primary-400) 65%, var(--divider-subtle));
 }
 
 :root[theme~="dark"] body {
