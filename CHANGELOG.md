@@ -5,16 +5,17 @@
 
 * **Component:** Added the `HorizontalWizard` Flow component with configurable
   colors for completed/current/upcoming states and per-step overrides, plus a
-  responsive CSS module that stacks vertically on small screens. Refined the
-  active-state styling with a subtle scale, halo, and label emphasis so the
-  current step stands out clearly against completed ones.
+  responsive CSS module that now keeps the layout in a single row with
+  horizontal scrolling and automatically scrolls the active step into view on
+  attach. Refined the active-state styling with a subtle scale, halo, and label
+  emphasis so the current step stands out clearly against completed ones.
 * **Samples:** Published a `/wizard` showcase view demonstrating default and
   custom color schemes, wired into the navigation menu with new translations, and
-  expanded it with an eight-step product roadmap sample to validate responsive
-  wrapping.
+  expanded it with an eight-step product roadmap sample to validate horizontal
+  scrolling behaviour.
 * **Documentation:** Captured usage guidance in `docs/horizontal-wizard.md` and
   referenced the sample from the platform overview, including the new extended
-  scenario.
+  scenario and scrolling guidance.
 
 ## v4.6.7
 ### JSON-driven navigation menu with scope filtering

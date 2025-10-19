@@ -5,6 +5,7 @@ import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.shared.Registration;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -33,6 +34,7 @@ public class HorizontalWizard extends Composite<Div> implements HasSize {
     private final List<StepElement> stepElements = new ArrayList<>();
     private final List<ConnectorElement> connectors = new ArrayList<>();
     private final Map<String, Integer> indexById = new LinkedHashMap<>();
+    private Registration pendingAttachScroll;
 
     private String completedColor = "var(--color-primary-600)";
     private String currentColor = "var(--color-primary-700)";
@@ -219,13 +221,20 @@ public class HorizontalWizard extends Composite<Div> implements HasSize {
     }
 
     private void refreshStates() {
+        StepElement activeStep = null;
         for (int i = 0; i < stepElements.size(); i++) {
             StepState state = stateForIndex(i);
             StepElement element = stepElements.get(i);
             element.applyState(state);
+            if (state == StepState.CURRENT) {
+                activeStep = element;
+            }
         }
         for (int i = 0; i < connectors.size(); i++) {
             connectors.get(i).applyState(stepElements.get(i));
+        }
+        if (activeStep != null) {
+            scrollStepIntoView(activeStep);
         }
     }
 
@@ -254,6 +263,25 @@ public class HorizontalWizard extends Composite<Div> implements HasSize {
         COMPLETED,
         CURRENT,
         UPCOMING
+    }
+
+    private void scrollStepIntoView(StepElement activeStep) {
+        Runnable command = () -> activeStep.getElement().executeJs(
+                "this.scrollIntoView({behavior: 'instant', block: 'nearest', inline: 'center'});");
+        if (isAttached()) {
+            command.run();
+        } else {
+            if (pendingAttachScroll != null) {
+                pendingAttachScroll.remove();
+            }
+            pendingAttachScroll = addAttachListener(event -> {
+                command.run();
+                if (pendingAttachScroll != null) {
+                    pendingAttachScroll.remove();
+                    pendingAttachScroll = null;
+                }
+            });
+        }
     }
 
     private final class StepElement extends Div {

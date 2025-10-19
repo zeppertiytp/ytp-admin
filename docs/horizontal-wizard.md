@@ -34,8 +34,9 @@ wizard.setCurrentColor("var(--color-info-700)");
 wizard.setUpcomingColor("var(--lumo-contrast-40pct)");
 ```
 
-The CSS module keeps the layout horizontal on wide screens and stacks steps on
-narrow viewports while hiding the connectors for clarity.
+The CSS module keeps the layout horizontal across breakpoints, enabling
+horizontal scrolling when the sequence exceeds the available width so the
+structure never wraps into multiple rows.
 
 ## Sample view
 
@@ -50,8 +51,9 @@ narrow viewports while hiding the connectors for clarity.
    `withCompletedColor`, while the wizard itself overrides the current and
    upcoming colors.
 3. An extended product delivery roadmap with eight steps so reviewers can
-   confirm responsive wrapping, spacing, and the reinforced highlight of the
-   active stage.
+   confirm horizontal scrolling, spacing, and the reinforced highlight of the
+   active stage. The wizard automatically scrolls the active step into view on
+   load so long flows remain easy to interpret.
 
 All cards update their copy and step labels on locale change. The showcase
 page is linked from the documentation navigation and is described here so QA and
