@@ -1,0 +1,91 @@
+.horizontal-wizard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, var(--lumo-space-m, 1rem));
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.horizontal-wizard__step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2, var(--lumo-space-s, 0.75rem));
+  min-width: 120px;
+  flex: 1 1 140px;
+  text-align: center;
+}
+
+.horizontal-wizard__circle {
+  width: var(--horizontal-wizard-circle-size, 44px);
+  height: var(--horizontal-wizard-circle-size, 44px);
+  min-width: var(--horizontal-wizard-circle-size, 44px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid var(--horizontal-wizard-circle-border-color, var(--lumo-contrast-30pct));
+  background: var(--horizontal-wizard-circle-background, transparent);
+  color: var(--horizontal-wizard-upcoming-text-color, var(--lumo-secondary-text-color));
+  font-weight: 600;
+  font-size: var(--lumo-font-size-m, 1rem);
+  box-sizing: border-box;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.horizontal-wizard__step[data-state="completed"] .horizontal-wizard__circle,
+.horizontal-wizard__step[data-state="current"] .horizontal-wizard__circle {
+  background: var(--horizontal-wizard-step-color);
+  border-color: var(--horizontal-wizard-step-color);
+  color: var(--horizontal-wizard-circle-contrast-color, #fff);
+}
+
+.horizontal-wizard__step[data-state="upcoming"] .horizontal-wizard__circle {
+  border-color: var(--horizontal-wizard-step-color);
+}
+
+.horizontal-wizard__label {
+  font-size: var(--lumo-font-size-s, 0.875rem);
+  line-height: 1.4;
+  color: var(--lumo-body-text-color);
+  word-break: break-word;
+  max-width: 18ch;
+}
+
+.horizontal-wizard__connector {
+  flex: 1 1 32px;
+  min-width: 32px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--horizontal-wizard-connector-color, var(--lumo-contrast-30pct));
+  transition: background-color 160ms ease;
+}
+
+.horizontal-wizard__connector[data-state="current"],
+.horizontal-wizard__connector[data-state="completed"] {
+  background: var(--horizontal-wizard-connector-color, var(--color-primary-600));
+}
+
+@media (max-width: 640px) {
+  .horizontal-wizard {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2, var(--lumo-space-s, 0.75rem));
+  }
+
+  .horizontal-wizard__connector {
+    display: none;
+  }
+
+  .horizontal-wizard__step {
+    flex: 1 1 auto;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .horizontal-wizard__label {
+    max-width: 100%;
+  }
+}

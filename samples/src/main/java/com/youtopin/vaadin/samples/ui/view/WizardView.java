@@ -1,0 +1,109 @@
+package com.youtopin.vaadin.samples.ui.view;
+
+import com.youtopin.vaadin.component.HorizontalWizard;
+import com.youtopin.vaadin.component.HorizontalWizard.WizardStep;
+import com.youtopin.vaadin.samples.ui.layout.AppPageLayout;
+import com.youtopin.vaadin.samples.ui.layout.MainLayout;
+import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.i18n.LocaleChangeEvent;
+import com.vaadin.flow.i18n.LocaleChangeObserver;
+import com.vaadin.flow.router.Route;
+
+import java.util.List;
+
+/**
+ * Showcase view for the {@link HorizontalWizard} component. Demonstrates
+ * default styling and per-step color overrides.
+ */
+@Route(value = "wizard", layout = MainLayout.class)
+public class WizardView extends AppPageLayout implements LocaleChangeObserver {
+
+    private final H1 pageTitle;
+    private final H2 basicSampleTitle = new H2();
+    private final Span basicSampleDescription = new Span();
+    private final H2 colorSampleTitle = new H2();
+    private final Span colorSampleDescription = new Span();
+    private final HorizontalWizard onboardingWizard = new HorizontalWizard();
+    private final HorizontalWizard releaseWizard = new HorizontalWizard();
+
+    public WizardView() {
+        pageTitle = createPageTitle(getTranslation("wizard.title"));
+
+        basicSampleDescription.addClassName("page-subtitle");
+        colorSampleDescription.addClassName("page-subtitle");
+
+        onboardingWizard.setWidthFull();
+        releaseWizard.setWidthFull();
+
+        releaseWizard.setCompletedColor("var(--color-success-600)");
+        releaseWizard.setCurrentColor("var(--color-info-700)");
+        releaseWizard.setUpcomingColor("var(--lumo-contrast-40pct)");
+
+        VerticalLayout basicCard = createCard();
+        basicCard.addClassName("stack-lg");
+        basicCard.add(basicSampleTitle, basicSampleDescription, onboardingWizard);
+
+        VerticalLayout colorCard = createCard();
+        colorCard.addClassName("stack-lg");
+        colorCard.add(colorSampleTitle, colorSampleDescription, releaseWizard);
+
+        add(basicCard, colorCard);
+
+        updateContent();
+        updatePageTitle();
+    }
+
+    private void updateContent() {
+        basicSampleTitle.setText(getTranslation("wizard.sample.basic"));
+        basicSampleDescription.setText(getTranslation("wizard.sample.basicDescription"));
+        colorSampleTitle.setText(getTranslation("wizard.sample.customColors"));
+        colorSampleDescription.setText(getTranslation("wizard.sample.customColorsDescription"));
+
+        onboardingWizard.setSteps(createOnboardingSteps());
+        onboardingWizard.setCurrentStepId("profile");
+
+        releaseWizard.setSteps(createReleaseSteps());
+        releaseWizard.setCurrentStepId("configure");
+    }
+
+    private void updatePageTitle() {
+        UI ui = UI.getCurrent();
+        String title = getTranslation("wizard.title");
+        pageTitle.setText(title);
+        if (ui != null) {
+            ui.getPage().setTitle(title);
+        }
+    }
+
+    private List<WizardStep> createOnboardingSteps() {
+        return List.of(
+                WizardStep.of("welcome", getTranslation("wizard.steps.welcome")),
+                WizardStep.of("profile", getTranslation("wizard.steps.profile")),
+                WizardStep.of("security", getTranslation("wizard.steps.security")),
+                WizardStep.of("done", getTranslation("wizard.steps.complete"))
+        );
+    }
+
+    private List<WizardStep> createReleaseSteps() {
+        return List.of(
+                WizardStep.of("plan", getTranslation("wizard.steps.plan"))
+                        .withCompletedColor("var(--color-secondary-600)"),
+                WizardStep.of("prepare", getTranslation("wizard.steps.prepare"))
+                        .withCompletedColor("var(--color-info-500)"),
+                WizardStep.of("configure", getTranslation("wizard.steps.configure"))
+                        .withCompletedColor("var(--color-warning-500)"),
+                WizardStep.of("launch", getTranslation("wizard.steps.launch"))
+                        .withCompletedColor("var(--color-success-600)")
+        );
+    }
+
+    @Override
+    public void localeChange(LocaleChangeEvent event) {
+        updateContent();
+        updatePageTitle();
+    }
+}

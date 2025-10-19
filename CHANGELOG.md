@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v4.6.8
+### Horizontal wizard progress indicator
+
+* **Component:** Added the `HorizontalWizard` Flow component with configurable
+  colors for completed/current/upcoming states and per-step overrides, plus a
+  responsive CSS module that stacks vertically on small screens.
+* **Samples:** Published a `/wizard` showcase view demonstrating default and
+  custom color schemes, wired into the navigation menu with new translations.
+* **Documentation:** Captured usage guidance in `docs/horizontal-wizard.md` and
+  referenced the sample from the platform overview.
+
 ## v4.6.7
 ### JSON-driven navigation menu with scope filtering
 

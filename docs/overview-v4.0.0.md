@@ -11,6 +11,7 @@ Stable foundation with RTL-first theme, light/dark persistence, language switch 
 - Theme persistence via **session + localStorage** and `document.documentElement[theme]`.
 - Icon layer: **Iconoir-style** sprite + `AppIcon` Flow wrapper.
 - Grid i18n (Filter/Apply/Clear/Rows per page) + locale change updates.
+- Horizontal wizard component with configurable colors and responsive layout.
 - Design System page to preview semantic colors.
 
 ## Structure
@@ -22,6 +23,7 @@ Stable foundation with RTL-first theme, light/dark persistence, language switch 
 - `samples/src/main/java/com/youtopin/vaadin/samples/ui/layout/MainLayout.java` (header/drawer, toggles, reordering)
 - `samples/src/main/java/com/youtopin/vaadin/samples/ui/view/DesignSystemView.java` (responsive DS samples)
 - `components/src/main/java/com/youtopin/vaadin/component/FilterablePaginatedGrid.java` (i18n & icon)
+- `components/src/main/java/com/youtopin/vaadin/component/HorizontalWizard.java` + `/wizard` sample view.
 
 ## Build
 The repository is a Maven multi-module project.  Typical flows:
