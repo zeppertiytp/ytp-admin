@@ -43,13 +43,16 @@ narrow viewports while hiding the connectors for clarity.
 - **Location:** `samples/src/main/java/com/youtopin/vaadin/samples/ui/view/WizardView.java`
 - **Menu entry:** "Wizard" under the *Other* section (`menu/navigation-menu.json`).
 
-`WizardView` renders two cards:
+`WizardView` renders three cards:
 
 1. An onboarding flow that uses default colors to illustrate the base look.
 2. A release checklist where every completed step provides a distinct accent via
    `withCompletedColor`, while the wizard itself overrides the current and
    upcoming colors.
+3. An extended product delivery roadmap with eight steps so reviewers can
+   confirm responsive wrapping, spacing, and the reinforced highlight of the
+   active stage.
 
-Both cards update their copy and step labels on locale change. The showcase
+All cards update their copy and step labels on locale change. The showcase
 page is linked from the documentation navigation and is described here so QA and
 contributors can quickly verify the component in action.

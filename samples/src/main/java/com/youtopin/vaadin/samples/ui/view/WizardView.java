@@ -27,17 +27,22 @@ public class WizardView extends AppPageLayout implements LocaleChangeObserver {
     private final Span basicSampleDescription = new Span();
     private final H2 colorSampleTitle = new H2();
     private final Span colorSampleDescription = new Span();
+    private final H2 longSampleTitle = new H2();
+    private final Span longSampleDescription = new Span();
     private final HorizontalWizard onboardingWizard = new HorizontalWizard();
     private final HorizontalWizard releaseWizard = new HorizontalWizard();
+    private final HorizontalWizard projectWizard = new HorizontalWizard();
 
     public WizardView() {
         pageTitle = createPageTitle(getTranslation("wizard.title"));
 
         basicSampleDescription.addClassName("page-subtitle");
         colorSampleDescription.addClassName("page-subtitle");
+        longSampleDescription.addClassName("page-subtitle");
 
         onboardingWizard.setWidthFull();
         releaseWizard.setWidthFull();
+        projectWizard.setWidthFull();
 
         releaseWizard.setCompletedColor("var(--color-success-600)");
         releaseWizard.setCurrentColor("var(--color-info-700)");
@@ -51,7 +56,11 @@ public class WizardView extends AppPageLayout implements LocaleChangeObserver {
         colorCard.addClassName("stack-lg");
         colorCard.add(colorSampleTitle, colorSampleDescription, releaseWizard);
 
-        add(basicCard, colorCard);
+        VerticalLayout longCard = createCard();
+        longCard.addClassName("stack-lg");
+        longCard.add(longSampleTitle, longSampleDescription, projectWizard);
+
+        add(basicCard, colorCard, longCard);
 
         updateContent();
         updatePageTitle();
@@ -62,12 +71,17 @@ public class WizardView extends AppPageLayout implements LocaleChangeObserver {
         basicSampleDescription.setText(getTranslation("wizard.sample.basicDescription"));
         colorSampleTitle.setText(getTranslation("wizard.sample.customColors"));
         colorSampleDescription.setText(getTranslation("wizard.sample.customColorsDescription"));
+        longSampleTitle.setText(getTranslation("wizard.sample.longFlow"));
+        longSampleDescription.setText(getTranslation("wizard.sample.longFlowDescription"));
 
         onboardingWizard.setSteps(createOnboardingSteps());
         onboardingWizard.setCurrentStepId("profile");
 
         releaseWizard.setSteps(createReleaseSteps());
         releaseWizard.setCurrentStepId("configure");
+
+        projectWizard.setSteps(createProjectSteps());
+        projectWizard.setCurrentStepId("qa");
     }
 
     private void updatePageTitle() {
@@ -98,6 +112,19 @@ public class WizardView extends AppPageLayout implements LocaleChangeObserver {
                         .withCompletedColor("var(--color-warning-500)"),
                 WizardStep.of("launch", getTranslation("wizard.steps.launch"))
                         .withCompletedColor("var(--color-success-600)")
+        );
+    }
+
+    private List<WizardStep> createProjectSteps() {
+        return List.of(
+                WizardStep.of("brief", getTranslation("wizard.steps.brief")),
+                WizardStep.of("research", getTranslation("wizard.steps.research")),
+                WizardStep.of("design", getTranslation("wizard.steps.design")),
+                WizardStep.of("development", getTranslation("wizard.steps.development")),
+                WizardStep.of("qa", getTranslation("wizard.steps.qa")),
+                WizardStep.of("localization", getTranslation("wizard.steps.localization")),
+                WizardStep.of("launch", getTranslation("wizard.steps.launch")),
+                WizardStep.of("measure", getTranslation("wizard.steps.measure"))
         );
     }
 

@@ -32,7 +32,8 @@
   font-weight: 600;
   font-size: var(--lumo-font-size-m, 1rem);
   box-sizing: border-box;
-  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease,
+    transform 160ms ease, box-shadow 160ms ease;
 }
 
 .horizontal-wizard__step[data-state="completed"] .horizontal-wizard__circle,
@@ -40,6 +41,11 @@
   background: var(--horizontal-wizard-step-color);
   border-color: var(--horizontal-wizard-step-color);
   color: var(--horizontal-wizard-circle-contrast-color, #fff);
+}
+
+.horizontal-wizard__step[data-state="current"] .horizontal-wizard__circle {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--horizontal-wizard-step-color) 25%, transparent);
 }
 
 .horizontal-wizard__step[data-state="upcoming"] .horizontal-wizard__circle {
@@ -52,6 +58,15 @@
   color: var(--lumo-body-text-color);
   word-break: break-word;
   max-width: 18ch;
+}
+
+.horizontal-wizard__step[data-state="current"] .horizontal-wizard__label {
+  font-weight: 600;
+  color: var(--horizontal-wizard-step-color);
+}
+
+.horizontal-wizard__step[data-state="completed"] .horizontal-wizard__label {
+  color: color-mix(in srgb, var(--horizontal-wizard-step-color) 25%, var(--lumo-body-text-color));
 }
 
 .horizontal-wizard__connector {
