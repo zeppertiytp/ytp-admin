@@ -62,7 +62,7 @@
 .horizontal-wizard__step[data-state="current"] .horizontal-wizard__circle {
   background: var(--horizontal-wizard-step-color);
   border-color: var(--horizontal-wizard-step-color);
-  color: var(--horizontal-wizard-circle-contrast-color, #fff);
+  color: var(--horizontal-wizard-circle-contrast-color, var(--text-inverse, #fff));
 }
 
 .horizontal-wizard__step[data-state="current"] .horizontal-wizard__circle {

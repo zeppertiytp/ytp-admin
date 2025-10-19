@@ -7,6 +7,10 @@
   including pointer and focus styling, keyboard activation, and new
   `StepClickEvent`/`CurrentStepChangeEvent` hooks so applications can react to
   user navigation.
+* **Design system:** Restored the missing accent color ramps (info/success/
+  warning/danger 600–700) and aligned the wizard's contrast fallback with the
+  global inverse text token so highlighted steps stay legible in light and dark
+  themes.
 * **Samples:** Updated `/wizard` to mix clickable and read-only steps, wiring a
   real-time status caption via the new change listener so flows can trigger view
   logic as the selection changes.

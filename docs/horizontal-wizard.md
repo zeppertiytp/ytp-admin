@@ -46,6 +46,11 @@ The CSS module keeps the layout horizontal across breakpoints, enabling
 horizontal scrolling when the sequence exceeds the available width so the
 structure never wraps into multiple rows.
 
+When customising the palette, prefer the provided design tokens such as
+`--color-info-600`, `--color-info-700`, and `--color-success-600`. These shades
+are available in both light and dark themes and pair with the wizard's
+inverse-text fallback so the active indicator always remains legible.
+
 ## Sample view
 
 - **Route:** `/wizard`
