@@ -294,7 +294,11 @@ public class HorizontalWizard extends Composite<Div> implements HasSize {
             updateTexts();
             String stateName = state.name().toLowerCase(Locale.ROOT);
             getElement().setAttribute("data-state", stateName);
-            circle.getElement().setAttribute("aria-current", state == StepState.CURRENT ? "step" : null);
+            if (state == StepState.CURRENT) {
+                circle.getElement().setAttribute("aria-current", "step");
+            } else {
+                circle.getElement().removeAttribute("aria-current");
+            }
             String color = colorForState(state);
             this.activeColor = color;
             circle.getStyle().set("--horizontal-wizard-step-color", color);
