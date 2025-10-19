@@ -10,8 +10,10 @@
   -webkit-overflow-scrolling: touch;
   scroll-padding-inline: var(--space-4, var(--lumo-space-l, 1.5rem));
   padding-inline: var(--space-3, var(--lumo-space-m, 1rem));
+  padding-block: var(--space-2, var(--lumo-space-s, 0.75rem));
   scrollbar-width: thin;
   scroll-snap-type: x proximity;
+  box-sizing: border-box;
 }
 
 .horizontal-wizard__step {
@@ -55,8 +57,8 @@
 }
 
 .horizontal-wizard__step[data-state="current"] .horizontal-wizard__circle {
-  transform: scale(1.08);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--horizontal-wizard-step-color) 25%, transparent);
+  transform: scale(1.05);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--horizontal-wizard-step-color) 25%, transparent);
 }
 
 .horizontal-wizard__step[data-state="upcoming"] .horizontal-wizard__circle {

@@ -52,8 +52,9 @@ structure never wraps into multiple rows.
    upcoming colors.
 3. An extended product delivery roadmap with eight steps so reviewers can
    confirm horizontal scrolling, spacing, and the reinforced highlight of the
-   active stage. The wizard automatically scrolls the active step into view on
-   load so long flows remain easy to interpret.
+   active stage. Additional padding keeps the accent halo visible, and the wizard
+   automatically scrolls the active step into view on load so long flows remain
+   easy to interpret.
 
 All cards update their copy and step labels on locale change. The showcase
 page is linked from the documentation navigation and is described here so QA and

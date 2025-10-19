@@ -8,7 +8,8 @@
   responsive CSS module that now keeps the layout in a single row with
   horizontal scrolling and automatically scrolls the active step into view on
   attach. Refined the active-state styling with a subtle scale, halo, and label
-  emphasis so the current step stands out clearly against completed ones.
+  emphasis so the current step stands out clearly against completed ones while
+  padding the container to prevent the highlight from being clipped.
 * **Samples:** Published a `/wizard` showcase view demonstrating default and
   custom color schemes, wired into the navigation menu with new translations, and
   expanded it with an eight-step product roadmap sample to validate horizontal
