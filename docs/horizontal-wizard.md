@@ -49,7 +49,10 @@ structure never wraps into multiple rows.
 When customising the palette, prefer the provided design tokens such as
 `--color-info-600`, `--color-info-700`, and `--color-success-600`. These shades
 are available in both light and dark themes and pair with the wizard's
-inverse-text fallback so the active indicator always remains legible.
+inverse-text fallback so the active indicator always remains legible. The
+component now copies the resolved color to the step container and indicator
+styles, keeping the accent backgrounds intact even if a theme override omits a
+fallback value.
 
 ## Sample view
 

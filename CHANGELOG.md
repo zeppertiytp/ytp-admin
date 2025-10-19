@@ -7,6 +7,9 @@
   including pointer and focus styling, keyboard activation, and new
   `StepClickEvent`/`CurrentStepChangeEvent` hooks so applications can react to
   user navigation.
+* **Component:** Propagated the state colors to each step container and circle
+  token so accent backgrounds stay applied even when theme fallbacks fail,
+  keeping the current and completed indicators legible.
 * **Design system:** Restored the missing accent color ramps (info/success/
   warning/danger 600–700) and aligned the wizard's contrast fallback with the
   global inverse text token so highlighted steps stay legible in light and dark

@@ -369,7 +369,19 @@ public class HorizontalWizard extends Composite<Div> implements HasSize {
             }
             String color = colorForState(state);
             this.activeColor = color;
+            getStyle().set("--horizontal-wizard-step-color", color);
             circle.getStyle().set("--horizontal-wizard-step-color", color);
+
+            if (state == StepState.CURRENT || state == StepState.COMPLETED) {
+                circle.getStyle().set("--horizontal-wizard-circle-background", color);
+                circle.getStyle().set("--horizontal-wizard-circle-border-color", color);
+                circle.getStyle().set("--horizontal-wizard-circle-contrast-color",
+                        "var(--text-inverse, #fff)");
+            } else {
+                circle.getStyle().set("--horizontal-wizard-circle-background", "transparent");
+                circle.getStyle().set("--horizontal-wizard-circle-border-color", color);
+                circle.getStyle().remove("--horizontal-wizard-circle-contrast-color");
+            }
         }
 
         private StepState getState() {
