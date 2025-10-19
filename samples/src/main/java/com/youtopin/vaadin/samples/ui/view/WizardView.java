@@ -46,6 +46,10 @@ public class WizardView extends AppPageLayout implements LocaleChangeObserver {
         releaseWizard.setWidthFull();
         projectWizard.setWidthFull();
 
+        projectWizard.setCompletedColor("var(--color-success-600)");
+        projectWizard.setCurrentColor("var(--color-info-700)");
+        projectWizard.setUpcomingColor("var(--lumo-contrast-40pct)");
+
         releaseWizard.setCompletedColor("var(--color-success-600)");
         releaseWizard.setCurrentColor("var(--color-info-700)");
         releaseWizard.setUpcomingColor("var(--lumo-contrast-40pct)");
