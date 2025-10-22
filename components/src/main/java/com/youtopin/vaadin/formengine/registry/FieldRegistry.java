@@ -154,8 +154,8 @@ public final class FieldRegistry {
         register(UiField.ComponentType.EMAIL, (definition, context) -> wrap(new EmailField()));
         register(UiField.ComponentType.PHONE, (definition, context) -> {
             TextField field = new TextField();
-            field.setPattern("[0-9()+- ]*");
-            field.setAllowedCharPattern("[0-9()+- ]");
+            field.setPattern("[0-9()+\\- ]*");
+            field.setAllowedCharPattern("[0-9()+\\- ]");
             field.getElement().setProperty("dir", "ltr");
             return wrap(field);
         });

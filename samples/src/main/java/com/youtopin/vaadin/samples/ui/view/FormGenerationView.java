@@ -2,6 +2,8 @@ package com.youtopin.vaadin.samples.ui.view;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.youtopin.vaadin.component.GeneratedForm;
+import com.youtopin.vaadin.form.FormValidationService;
 import com.youtopin.vaadin.formengine.FormEngine;
 import com.youtopin.vaadin.formengine.FormEngine.RenderedForm;
 import com.youtopin.vaadin.formengine.definition.FieldDefinition;
@@ -46,19 +48,41 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
     private final TranslationProvider translationProvider;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private final H2 generatedDefaultHeading;
+    private final H2 generatedLayoutHeading;
+    private final GeneratedForm defaultGeneratedForm;
+    private final GeneratedForm layoutGeneratedForm;
     private final VerticalLayout sampleContainer;
     private H1 pageTitle;
 
     @Autowired
-    public FormGenerationView(FormEngine formEngine, TranslationProvider translationProvider) {
+    public FormGenerationView(FormEngine formEngine,
+                              TranslationProvider translationProvider,
+                              FormValidationService validationService) {
         this.formEngine = Objects.requireNonNull(formEngine, "formEngine");
         this.translationProvider = Objects.requireNonNull(translationProvider, "translationProvider");
         pageTitle = createPageTitle("");
+
+        generatedDefaultHeading = new H2();
+        generatedDefaultHeading.addClassNames("text-primary", "mt-0");
+        generatedLayoutHeading = new H2();
+        generatedLayoutHeading.addClassNames("text-primary");
+        defaultGeneratedForm = new GeneratedForm("user_form.json", validationService);
+        layoutGeneratedForm = new GeneratedForm("user_form_with_layout.json", validationService);
+
+        VerticalLayout generatedFormsCard = createCard(
+                generatedDefaultHeading,
+                defaultGeneratedForm,
+                generatedLayoutHeading,
+                layoutGeneratedForm
+        );
+
         sampleContainer = new VerticalLayout();
         sampleContainer.setSpacing(true);
         sampleContainer.setPadding(false);
         sampleContainer.addClassNames("stack-xl");
-        add(sampleContainer);
+
+        add(generatedFormsCard, sampleContainer);
         renderSamples();
     }
 
@@ -68,14 +92,7 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
     }
 
     private void renderSamples() {
-        if (pageTitle == null) {
-            pageTitle = createPageTitle("");
-        }
-        pageTitle.setText(getTranslation("forms.title"));
-        UI ui = UI.getCurrent();
-        if (ui != null) {
-            ui.getPage().setTitle(getTranslation("forms.title"));
-        }
+        updateHeadings();
         sampleContainer.removeAll();
         sampleContainer.add(
                 buildSampleCard(
@@ -97,6 +114,20 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
                         AccessPolicyFormData::new
                 )
         );
+    }
+
+    private void updateHeadings() {
+        if (pageTitle == null) {
+            pageTitle = createPageTitle("");
+        }
+        String title = getTranslation("forms.title");
+        pageTitle.setText(title);
+        generatedDefaultHeading.setText(getTranslation("forms.sample.basic"));
+        generatedLayoutHeading.setText(getTranslation("forms.sample.layout"));
+        UI ui = UI.getCurrent();
+        if (ui != null) {
+            ui.getPage().setTitle(title);
+        }
     }
 
     private <T> Component buildSampleCard(String headingKey,
