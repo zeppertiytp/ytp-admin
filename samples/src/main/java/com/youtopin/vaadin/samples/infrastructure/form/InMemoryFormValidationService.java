@@ -45,4 +45,10 @@ public class InMemoryFormValidationService implements FormValidationService {
         }
         return errors;
     }
+
+    @Override
+    public Map<String, String> validate(String formId, Map<String, Object> fields, String actionId) {
+        log.debug("Validating form '{}' for action '{}'", formId, actionId);
+        return validate(formId, fields);
+    }
 }

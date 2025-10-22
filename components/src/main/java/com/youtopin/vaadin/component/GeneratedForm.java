@@ -34,16 +34,21 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import java.io.ByteArrayInputStream;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
+import com.vaadin.flow.shared.Registration;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -76,10 +81,13 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
     private final JsonNode spec;
     private final String formId;
     private final FormValidationService validationService;
+    private final JsonNode submitConfig;
     private final Map<String, Component> fieldComponents = new HashMap<>();
     private final Map<String, Object> fieldValues = new HashMap<>();
     private final Map<String, List<Runnable>> visibilityWatchers = new HashMap<>();
     private final List<Runnable> localeUpdaters = new ArrayList<>();
+    private final Map<String, ActionDefinition> actionsById = new LinkedHashMap<>();
+    private final List<SubmissionListener> submissionListeners = new ArrayList<>();
     private H3 formTitle;
     private Button submitButton;
 
@@ -104,6 +112,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         } catch (IOException e) {
             throw new RuntimeException("Failed to read form specification " + jsonResource, e);
         }
+        this.submitConfig = spec.get("submit");
         this.formId = spec.has("id") ? spec.get("id").asText() : jsonResource;
         buildForm();
     }
@@ -112,9 +121,9 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
      * Build the form UI from the JSON specification. Sections are rendered
      * as titled blocks and fields are laid out using {@link FormLayout}
      * with the configured number of columns. Field values and validity
-     * state are stored internally; external consumers should call
-     * {@link #submit()} to trigger backend validation and optionally
-     * process the submission.
+     * state are stored internally; external consumers can trigger submissions
+     * via {@link #submit(String)} or observe completions through
+     * {@link #addSubmissionListener(SubmissionListener)}.
      */
     private void buildForm() {
         removeAll();
@@ -122,6 +131,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         fieldComponents.clear();
         fieldValues.clear();
         visibilityWatchers.clear();
+        actionsById.clear();
         setSpacing(false);
         setPadding(false);
         setWidthFull();
@@ -147,19 +157,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         if (layout != null) {
             layout.forEach(sectionNode -> buildSection(sectionNode));
         }
-        // Submit button
-        submitButton = new Button(getTranslation("form.submit"));
-        submitButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        submitButton.addClickListener(e -> submit());
-        localeUpdaters.add(() -> submitButton.setText(getTranslation("form.submit")));
-
-        HorizontalLayout actions = new HorizontalLayout(submitButton);
-        actions.setPadding(false);
-        actions.setSpacing(false);
-        actions.setWidthFull();
-        actions.addClassName("form-actions");
-        actions.setJustifyContentMode(JustifyContentMode.END);
-        add(actions);
+        buildActions();
     }
 
     /**
@@ -260,6 +258,155 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         }
         sectionLayout.add((Component) fieldContainer);
         add(sectionLayout);
+    }
+
+
+    private void buildActions() {
+        submitButton = null;
+        List<ActionDefinition> actions = resolveActions();
+        if (actions.isEmpty()) {
+            return;
+        }
+        HorizontalLayout actionsBar = new HorizontalLayout();
+        actionsBar.setPadding(false);
+        actionsBar.setSpacing(false);
+        actionsBar.setWidthFull();
+        actionsBar.addClassName("form-actions");
+        actionsBar.setJustifyContentMode(JustifyContentMode.END);
+
+        actions.forEach(action -> {
+            Button button = new Button(resolveActionLabel(action));
+            action.themeVariants().forEach(button::addThemeVariants);
+            ActionDefinition enriched = action.withButton(button);
+            button.addClickListener(e -> submit(enriched));
+            actionsBar.add(button);
+            if (submitButton == null) {
+                submitButton = button;
+            }
+            localeUpdaters.add(() -> button.setText(resolveActionLabel(enriched)));
+            actionsById.put(enriched.id(), enriched);
+        });
+
+        add(actionsBar);
+    }
+
+
+    private List<ActionDefinition> resolveActions() {
+        List<ActionDefinition> actions = new ArrayList<>();
+        if (submitConfig != null && submitConfig.has("actions") && submitConfig.get("actions").isArray()) {
+            int index = 0;
+            for (JsonNode node : submitConfig.get("actions")) {
+                ActionDefinition def = parseActionDefinition(node, index++);
+                if (def != null) {
+                    actions.add(def);
+                }
+            }
+        }
+        if (actions.isEmpty()) {
+            actions.add(defaultActionDefinition());
+        }
+        return actions;
+    }
+
+    private ActionDefinition parseActionDefinition(JsonNode actionNode, int index) {
+        if (actionNode == null || actionNode.isNull()) {
+            return null;
+        }
+        String id = actionNode.has("id") ? actionNode.get("id").asText() : null;
+        if (!hasText(id)) {
+            id = index == 0 ? "submit" : "action-" + (index + 1);
+        }
+        JsonNode labelNode = actionNode.get("label");
+        String labelKey = actionNode.has("labelKey") ? actionNode.get("labelKey").asText(null) : null;
+        List<ButtonVariant> variants = parseButtonVariants(actionNode, index == 0);
+        boolean clientValidation = actionNode.has("validate")
+                ? actionNode.get("validate").asBoolean(true)
+                : actionNode.has("clientValidation")
+                        ? actionNode.get("clientValidation").asBoolean(true)
+                        : true;
+        Boolean backendOverride = actionNode.has("backendValidation")
+                ? Boolean.valueOf(actionNode.get("backendValidation").asBoolean())
+                : null;
+        JsonNode successNode = actionNode.get("successMessage");
+        String successKey = actionNode.has("successMessageKey")
+                ? actionNode.get("successMessageKey").asText(null)
+                : null;
+        return new ActionDefinition(id, labelNode, labelKey, variants, clientValidation, backendOverride, successNode,
+                successKey, actionNode, null);
+    }
+
+    private List<ButtonVariant> parseButtonVariants(JsonNode actionNode, boolean isFirst) {
+        LinkedHashSet<ButtonVariant> variants = new LinkedHashSet<>();
+        if (actionNode != null) {
+            if (actionNode.has("theme")) {
+                JsonNode themeNode = actionNode.get("theme");
+                if (themeNode.isArray()) {
+                    themeNode.forEach(node -> addButtonVariant(node.asText(), variants));
+                } else if (themeNode.isTextual()) {
+                    addButtonVariant(themeNode.asText(), variants);
+                }
+            }
+            if (actionNode.has("themeVariants")) {
+                JsonNode themeNode = actionNode.get("themeVariants");
+                if (themeNode.isArray()) {
+                    themeNode.forEach(node -> addButtonVariant(node.asText(), variants));
+                } else if (themeNode.isTextual()) {
+                    addButtonVariant(themeNode.asText(), variants);
+                }
+            }
+            if (actionNode.path("primary").asBoolean(false)) {
+                variants.add(ButtonVariant.LUMO_PRIMARY);
+            }
+        }
+        if (variants.isEmpty() && isFirst) {
+            variants.add(ButtonVariant.LUMO_PRIMARY);
+        }
+        return List.copyOf(variants);
+    }
+
+    private void addButtonVariant(String value, LinkedHashSet<ButtonVariant> variants) {
+        if (!hasText(value)) {
+            return;
+        }
+        switch (value.trim().toLowerCase(Locale.ROOT)) {
+            case "primary" -> variants.add(ButtonVariant.LUMO_PRIMARY);
+            case "success" -> variants.add(ButtonVariant.LUMO_SUCCESS);
+            case "error", "danger" -> variants.add(ButtonVariant.LUMO_ERROR);
+            case "contrast" -> variants.add(ButtonVariant.LUMO_CONTRAST);
+            case "tertiary" -> variants.add(ButtonVariant.LUMO_TERTIARY);
+            case "tertiary-inline" -> variants.add(ButtonVariant.LUMO_TERTIARY_INLINE);
+            case "icon" -> variants.add(ButtonVariant.LUMO_ICON);
+            default -> {
+                // ignore unknown variants to keep compatibility
+            }
+        }
+    }
+
+    private ActionDefinition defaultActionDefinition() {
+        return new ActionDefinition("submit", null, "form.submit", List.of(ButtonVariant.LUMO_PRIMARY), true, null, null,
+                null, null, null);
+    }
+
+    private String resolveActionLabel(ActionDefinition action) {
+        String label = getTranslationFromNode(action.labelNode());
+        if (!hasText(label) && hasText(action.labelKey())) {
+            label = getTranslation(action.labelKey());
+        }
+        if (!hasText(label) && hasText(action.id())) {
+            label = action.id();
+        }
+        return label;
+    }
+
+    private String resolveActionSuccessMessage(ActionDefinition action) {
+        String message = getTranslationFromNode(action.successMessageNode());
+        if (!hasText(message) && hasText(action.successMessageKey())) {
+            message = getTranslation(action.successMessageKey());
+        }
+        if (!hasText(message)) {
+            message = getTranslation("form.success");
+        }
+        return message;
     }
 
 
@@ -1476,36 +1623,21 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
      * corresponding fields. If no errors remain, a notification is
      * shown indicating success.
      */
-    private void submit() {
-        // Validate required and pattern constraints manually
-        boolean hasErrors = false;
-        for (Map.Entry<String, Component> entry : fieldComponents.entrySet()) {
-            String name = entry.getKey();
-            Component comp = entry.getValue();
-            JsonNode fieldSpec = findFieldSpecByName(name);
-            if (fieldSpec == null) continue;
-            boolean required = fieldSpec.has("required") && fieldSpec.get("required").asBoolean(false);
-            validateField(comp, name, required, fieldSpec);
-            if (comp instanceof TextField tf) {
-                if (tf.isInvalid()) hasErrors = true;
-            } else if (comp instanceof EmailField ef) {
-                if (ef.isInvalid()) hasErrors = true;
-            } else if (comp instanceof NumberField nf) {
-                if (nf.isInvalid()) hasErrors = true;
-            } else if (comp instanceof ComboBox<?> cb) {
-                if (cb.isInvalid()) hasErrors = true;
-            } else if (comp instanceof JalaliDateTimePicker jalali) {
-                if (jalali.isInvalid()) hasErrors = true;
-            }
+    private void submit(ActionDefinition action) {
+        if (action == null) {
+            action = actionsById.values().stream().findFirst().orElse(defaultActionDefinition());
         }
-        if (hasErrors) {
+        if (shouldRunClientValidation(action) && runClientValidation()) {
             Notification.show(getTranslation("form.correctErrors"));
             return;
         }
-        // Backend validation
-        Map<String, String> errors = validationService.validate(formId, new HashMap<>(fieldValues));
-        if (!errors.isEmpty()) {
-            errors.forEach((field, msgKey) -> {
+
+        Map<String, String> backendErrors = Collections.emptyMap();
+        if (shouldRunBackendValidation(action)) {
+            backendErrors = validationService.validate(formId, new HashMap<>(fieldValues), action.id());
+        }
+        if (!backendErrors.isEmpty()) {
+            backendErrors.forEach((field, msgKey) -> {
                 Component comp = fieldComponents.get(field);
                 if (comp != null) {
                     setError(comp, getTranslation(msgKey));
@@ -1514,8 +1646,69 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
             Notification.show(getTranslation("form.correctErrors"));
             return;
         }
-        // Success
-        Notification.show(getTranslation("form.success"));
+
+        Notification.show(resolveActionSuccessMessage(action));
+        fireSubmissionEvent(action);
+    }
+
+    private boolean shouldRunClientValidation(ActionDefinition action) {
+        return action.clientValidation();
+    }
+
+    private boolean shouldRunBackendValidation(ActionDefinition action) {
+        if (action.backendValidationOverride() != null) {
+            return action.backendValidationOverride();
+        }
+        if (submitConfig != null && submitConfig.has("backendValidation")) {
+            return submitConfig.get("backendValidation").asBoolean(true);
+        }
+        return true;
+    }
+
+    private boolean runClientValidation() {
+        boolean hasErrors = false;
+        for (Map.Entry<String, Component> entry : fieldComponents.entrySet()) {
+            String name = entry.getKey();
+            Component comp = entry.getValue();
+            JsonNode fieldSpec = findFieldSpecByName(name);
+            if (fieldSpec == null) {
+                continue;
+            }
+            boolean required = fieldSpec.has("required") && fieldSpec.get("required").asBoolean(false);
+            validateField(comp, name, required, fieldSpec);
+            if (comp instanceof TextField tf) {
+                if (tf.isInvalid()) {
+                    hasErrors = true;
+                }
+            } else if (comp instanceof EmailField ef) {
+                if (ef.isInvalid()) {
+                    hasErrors = true;
+                }
+            } else if (comp instanceof NumberField nf) {
+                if (nf.isInvalid()) {
+                    hasErrors = true;
+                }
+            } else if (comp instanceof ComboBox<?> cb) {
+                if (cb.isInvalid()) {
+                    hasErrors = true;
+                }
+            } else if (comp instanceof JalaliDateTimePicker jalali) {
+                if (jalali.isInvalid()) {
+                    hasErrors = true;
+                }
+            }
+        }
+        return hasErrors;
+    }
+
+    private void fireSubmissionEvent(ActionDefinition action) {
+        if (submissionListeners.isEmpty()) {
+            return;
+        }
+        Map<String, Object> snapshot = Collections.unmodifiableMap(new HashMap<>(fieldValues));
+        FormSubmissionEvent event = new FormSubmissionEvent(this, action.id(), snapshot, action.rawNode(), submitConfig,
+                action.button());
+        submissionListeners.forEach(listener -> listener.onSubmit(event));
     }
 
     /**
@@ -1540,6 +1733,36 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         return null;
     }
 
+    /**
+     * Register a listener that will be notified after a successful submission.
+     * The listener receives the triggered action identifier, the immutable
+     * snapshot of field values, and direct access to the originating JSON
+     * snippets for further processing.
+     *
+     * @param listener the listener to register (must not be {@code null})
+     * @return a {@link Registration} for removing the listener
+     */
+    public Registration addSubmissionListener(SubmissionListener listener) {
+        Objects.requireNonNull(listener, "listener must not be null");
+        submissionListeners.add(listener);
+        return () -> submissionListeners.remove(listener);
+    }
+
+    /**
+     * Programmatically trigger submission for the given action identifier.
+     * This executes the same validation pipeline as clicking the associated
+     * button.
+     *
+     * @param actionId the identifier declared in the form specification
+     */
+    public void submit(String actionId) {
+        ActionDefinition action = actionsById.get(actionId);
+        if (action == null) {
+            throw new IllegalArgumentException("Unknown form action: " + actionId);
+        }
+        submit(action);
+    }
+
     @Override
     public void localeChange(LocaleChangeEvent event) {
         if (formTitle != null) {
@@ -1550,5 +1773,63 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         }
         // Update section titles and field labels via localeUpdaters
         localeUpdaters.forEach(Runnable::run);
+    }
+
+    @FunctionalInterface
+    public interface SubmissionListener {
+        void onSubmit(FormSubmissionEvent event);
+    }
+
+    public static final class FormSubmissionEvent {
+        private final GeneratedForm source;
+        private final String actionId;
+        private final Map<String, Object> values;
+        private final JsonNode actionSpec;
+        private final JsonNode submitSpec;
+        private final Button actionButton;
+
+        private FormSubmissionEvent(GeneratedForm source, String actionId, Map<String, Object> values, JsonNode actionSpec,
+                JsonNode submitSpec, Button actionButton) {
+            this.source = source;
+            this.actionId = actionId;
+            this.values = values;
+            this.actionSpec = actionSpec;
+            this.submitSpec = submitSpec;
+            this.actionButton = actionButton;
+        }
+
+        public GeneratedForm getSource() {
+            return source;
+        }
+
+        public String getActionId() {
+            return actionId;
+        }
+
+        public Map<String, Object> getValues() {
+            return values;
+        }
+
+        public JsonNode getActionSpec() {
+            return actionSpec;
+        }
+
+        public JsonNode getSubmitSpec() {
+            return submitSpec;
+        }
+
+        public Button getActionButton() {
+            return actionButton;
+        }
+    }
+
+    private record ActionDefinition(String id, JsonNode labelNode, String labelKey, List<ButtonVariant> themeVariants,
+            boolean clientValidation, Boolean backendValidationOverride, JsonNode successMessageNode,
+            String successMessageKey, JsonNode rawNode, Button button) {
+
+        ActionDefinition withButton(Button enrichedButton) {
+            return new ActionDefinition(id, labelNode, labelKey, themeVariants, clientValidation, backendValidationOverride,
+                    successMessageNode, successMessageKey, rawNode, enrichedButton);
+        }
     }
 }

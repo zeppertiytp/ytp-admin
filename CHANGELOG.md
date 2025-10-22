@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v4.6.9
+### Multi-action submissions for generated forms
+
+* **Configurable actions:** Introduced `submit.actions` so generated forms can render multiple buttons (e.g. “Submit” and “Submit & Exit”), each with independent validation and theming.
+* **Action-aware validation:** Extended `FormValidationService` with an action-aware overload and added submission events plus the `submit(String)` helper for programmatic triggers.
+* **Docs & samples:** Documented the new action schema, updated the layout sample form to demonstrate draft saving, and refined the in-memory validator logging.
+
 ## v4.6.8
 ### FormLayout-first generated forms
 

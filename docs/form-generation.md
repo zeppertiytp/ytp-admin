@@ -146,6 +146,7 @@ The generated form performs validation in two phases:
 
 2. **Backend validation:**
    - After client checks pass, the form collects all field values into a map and calls the injected `FormValidationService`.
+   - Override `FormValidationService#validate(String, Map, String)` to inspect which action triggered the submission.  The default implementation delegates to the historical two-parameter method for backwards compatibility.
    - The service returns a map of field names to error keys (translation keys).  The form displays these messages next to the corresponding fields and prevents submission.
 
 ## Internationalisation
@@ -154,7 +155,40 @@ The form generator is locale‑aware:
 
 - Section and field labels are selected from translation objects based on `UI.getCurrent().getLocale()`.  If the current language isn’t found, English is used as a fallback.
 - Labels and option captions update automatically when the user switches language at runtime.  Section titles are registered with the locale change mechanism so they refresh as well.
-- Error messages and button captions (`form.required`, `form.correctErrors`, `form.success`, `form.submit`) come from the application’s `messages.properties` files.
+- Error messages and default button captions (`form.required`, `form.correctErrors`, `form.success`, `form.submit`) come from the application’s `messages.properties` files.  Individual actions can override these captions directly in JSON if needed.
+
+## Submission actions & listeners
+
+The root-level `submit` object controls which buttons appear and how they behave.  When omitted, the component renders a single primary action labelled with the translated `form.submit` caption and runs both client and backend validation.
+
+### Action configuration
+
+Declare an `actions` array under `submit` to render multiple buttons:
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `id` | string | Required. Unique identifier used to distinguish the action in listeners and backend validation. |
+| `label` | object or string | Optional. Localised captions for the button. When omitted, `labelKey` or the `id` is used. |
+| `labelKey` | string | Optional translation key resolved via `Component#getTranslation`. Useful for reusing existing i18n keys. |
+| `theme` / `themeVariants` | string or array | Optional Vaadin Button theme variants (`primary`, `success`, `tertiary`, `tertiary-inline`, `icon`, `contrast`, `error`, `danger`). The first action defaults to `primary` if nothing is supplied. |
+| `validate` / `clientValidation` | boolean | Defaults to `true`. When `false`, skips client-side validation (useful for “Save draft” buttons). |
+| `backendValidation` | boolean | Overrides the root `submit.backendValidation` flag for the specific action. Defaults to the root value or `true` if unspecified. |
+| `successMessage` | object or string | Optional custom success notification message. Falls back to `form.success`. |
+| `successMessageKey` | string | Translation key resolved at runtime; ignored when `successMessage` is provided. |
+
+### Handling submissions programmatically
+
+Every successful submission raises a `FormSubmissionEvent`.  Register listeners from Java code to react differently per action:
+
+```java
+form.addSubmissionListener(event -> {
+    if ("submit-exit".equals(event.getActionId())) {
+        navigateAway();
+    }
+});
+```
+
+Listeners receive the immutable value map, the raw JSON node describing the action, the overall `submit` configuration and the button instance.  To trigger a submission manually (for example, from a keyboard shortcut), call `form.submit("submit")` with the desired action identifier.
 
 ## Extending the Specification
 
@@ -213,11 +247,22 @@ The sample form `user_form.json` demonstrates many of the features:
       ]
     }
   ],
-  "submit": {"endpoint":"/api/users","method":"POST","backendValidation":true}
+  "submit": {
+    "endpoint":"/api/users",
+    "method":"POST",
+    "backendValidation":true,
+    "actions": [
+      {"id":"submit","labelKey":"form.submit"},
+      {"id":"submit-exit","label":{"fa":"ثبت و خروج","en":"Submit and Exit"},"validate":false,"backendValidation":false,
+       "successMessage":{"fa":"پیش‌نویس ذخیره شد","en":"Draft saved"}}
+    ]
+  }
 }
 ```
 
 This form includes basic text/email fields, a select drop‑down, a boolean switch controlling the visibility of a dependent field, and examples of richer inputs such as the standard date picker, the Jalali date-time picker, file uploads (single and multi) and radio buttons.
+
+The layout-focused sample `user_form_with_layout.json` combines responsive grid overrides with the multi-action configuration shown above so you can offer “Submit” and “Submit & Exit” flows side by side.
 
 For layout-specific behaviour, review `user_form_with_layout.json`.  It keeps the first section on the responsive grid, switches the second section to a wrapped horizontal layout for inline fields, and renders the final section in a stacked vertical container with custom spacing and width.
 

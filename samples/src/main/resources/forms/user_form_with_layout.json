@@ -92,6 +92,21 @@
   "submit": {
     "endpoint": "/api/users",
     "method": "POST",
-    "backendValidation": true
+    "backendValidation": true,
+    "actions": [
+      {
+        "id": "submit",
+        "labelKey": "form.submit",
+        "theme": ["primary"]
+      },
+      {
+        "id": "submit-exit",
+        "label": { "fa": "ثبت و خروج", "en": "Submit and Exit" },
+        "theme": ["tertiary"],
+        "validate": false,
+        "backendValidation": false,
+        "successMessage": { "fa": "پیش‌نویس ذخیره شد", "en": "Draft saved" }
+      }
+    ]
   }
 }
