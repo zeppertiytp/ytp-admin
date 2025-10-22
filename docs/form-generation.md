@@ -28,6 +28,7 @@ Each entry in the `fields` array describes a single input component.  Common pro
 | `validators`   | array (optional)                | Additional client‑side validators.  Currently only `pattern` is supported. |
 | `options`      | array (for `select`/`radio`)    | A list of choices.  Each entry has a `value` (submitted value) and a `label` (translations). |
 | `visibleWhen`  | object (optional)               | Defines conditional visibility.  Use `"all"` or `"any"` with an array of conditions.  Each condition has `field`, `op`, and `value`.  Currently `op` supports `EQ` (equals). |
+| `colSpan`      | number or string (optional)     | How many columns the field should span inside the responsive `FormLayout`. Values greater than one stretch the component across multiple grid columns. |
 
 ### Section layout overrides
 
@@ -42,6 +43,20 @@ Sections render in a responsive `FormLayout` by default and honour the numeric `
 | `width` | string | Optional explicit width for the section container (`"auto"`, `"100%"`, `"320px"`, etc.). |
 | `wrap` | boolean | Only for `type: "horizontal"`. When `true`, enables wrapping inside the horizontal layout. |
 | `classNames` | array | Extra CSS class names applied to the section container. |
+| `responsiveSteps` | array | Only for `type: "form"`. Overrides the generated Vaadin `FormLayout.ResponsiveStep` list. Each entry accepts `minWidth` (or `width`), `columns`, and optional `labelsPosition` (`top`/`aside`). |
+
+When no custom steps are supplied, the generator creates sensible defaults that flow from a single column on narrow screens to the declared `columns` value once the viewport reaches `1200px`, at which point labels shift `aside` to match Vaadin’s best practice guidance.
+
+Supplying custom responsive steps gives fine-grained control. For example, the sample form defines two breakpoints to move from stacked labels to an aside layout:
+
+```json
+"layout": {
+  "responsiveSteps": [
+    { "minWidth": "0", "columns": 1, "labelsPosition": "top" },
+    { "minWidth": "640px", "columns": 2, "labelsPosition": "aside" }
+  ]
+}
+```
 
 > **Note:** `columns` still only applies when `layout.type` is `"form"` (or omitted). Horizontal and vertical layouts ignore the column count but pick up other flex settings.
 
@@ -67,7 +82,7 @@ Example (excerpt from `user_form_with_layout.json`):
 }
 ```
 
-Use a horizontal layout for compact inline groups such as first/last-name pairs or filter toolbars, and a vertical layout when you need stacked cards but still want spacing control between field groups.
+Use a horizontal layout for compact inline groups such as first/last-name pairs or filter toolbars, and a vertical layout when you need stacked cards but still want spacing control between field groups. When sticking to the default `form` layout, use `colSpan` to stretch wider inputs (e.g. biography text areas) across multiple columns while preserving responsive behaviour.
 
 ### Supported Field Types
 

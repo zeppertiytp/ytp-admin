@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v4.6.8
+### FormLayout-first generated forms
+
+* **Responsive defaults:** Standardised the generated form grid around Vaadin `FormLayout`, adding automatic responsive steps that keep single-column mobile layouts while flowing to full column counts with aside labels on wider screens.
+* **Configurable breakpoints:** Added JSON support for explicit `layout.responsiveSteps` arrays and per-field `colSpan` values so complex forms can tune breakpoints and stretch fields across multiple columns without custom code.
+* **Documentation & samples:** Updated the form generation guide and the sample `user_form_with_layout.json` to illustrate responsive step overrides and column spanning.
+
 ## v4.6.7
 ### JSON-driven navigation menu with scope filtering
 

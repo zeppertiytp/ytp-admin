@@ -6,6 +6,12 @@
       "type": "section",
       "title": { "fa": "اطلاعات اصلی", "en": "Main details" },
       "columns": 2,
+      "layout": {
+        "responsiveSteps": [
+          { "minWidth": "0", "columns": 1, "labelsPosition": "top" },
+          { "minWidth": "640px", "columns": 2, "labelsPosition": "aside" }
+        ]
+      },
       "fields": [
         {
           "name": "username",
@@ -72,7 +78,8 @@
           "name": "bio",
           "label": { "fa": "بیوگرافی", "en": "Biography" },
           "type": "text",
-          "maxLength": 500
+          "maxLength": 500,
+          "colSpan": 2
         },
         {
           "name": "attachments",

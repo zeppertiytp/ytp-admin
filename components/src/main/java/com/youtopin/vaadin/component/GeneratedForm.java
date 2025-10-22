@@ -242,22 +242,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                 fieldContainer = column;
             }
             default -> {
-                FormLayout formLayout = new FormLayout();
-                formLayout.addClassName("form-section__grid");
-                formLayout.setWidthFull();
-                List<FormLayout.ResponsiveStep> steps = new ArrayList<>();
-                steps.add(new FormLayout.ResponsiveStep("0", 1));
-                if (columns >= 2) {
-                    steps.add(new FormLayout.ResponsiveStep("640px", Math.min(2, columns)));
-                }
-                if (columns >= 3) {
-                    steps.add(new FormLayout.ResponsiveStep("960px", Math.min(3, columns)));
-                }
-                steps.add(new FormLayout.ResponsiveStep("1200px", Math.max(1, columns)));
-                formLayout.setResponsiveSteps(steps);
-                String spacing = resolveSpacing(layoutConfig, "var(--lumo-space-m)");
-                formLayout.getStyle().set("column-gap", spacing);
-                formLayout.getStyle().set("row-gap", spacing);
+                FormLayout formLayout = createFormLayout(columns, layoutConfig);
                 fieldContainer = formLayout;
             }
         }
@@ -269,12 +254,105 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
             fields.forEach(field -> {
                 Component comp = createField(field);
                 if (comp != null) {
-                    fieldContainer.add(comp);
+                    addComponentToContainer(fieldContainer, comp, field);
                 }
             });
         }
         sectionLayout.add((Component) fieldContainer);
         add(sectionLayout);
+    }
+
+
+    private FormLayout createFormLayout(int columns, JsonNode layoutConfig) {
+        FormLayout formLayout = new FormLayout();
+        formLayout.addClassName("form-section__grid");
+        formLayout.setWidthFull();
+        configureResponsiveSteps(formLayout, columns, layoutConfig);
+        String spacing = resolveSpacing(layoutConfig, "var(--lumo-space-m)");
+        formLayout.getStyle().set("column-gap", spacing);
+        formLayout.getStyle().set("row-gap", spacing);
+        return formLayout;
+    }
+
+    private void configureResponsiveSteps(FormLayout formLayout, int columns, JsonNode layoutConfig) {
+        List<FormLayout.ResponsiveStep> steps = new ArrayList<>();
+        if (layoutConfig != null && layoutConfig.has("responsiveSteps") && layoutConfig.get("responsiveSteps").isArray()) {
+            layoutConfig.get("responsiveSteps").forEach(node -> {
+                if (node == null || node.isNull()) {
+                    return;
+                }
+                String minWidth = node.has("minWidth") ? node.get("minWidth").asText("0")
+                        : node.has("width") ? node.get("width").asText("0") : "0";
+                int cols = node.has("columns") ? Math.max(1, node.get("columns").asInt(1)) : 1;
+                FormLayout.ResponsiveStep.LabelsPosition labelsPosition = null;
+                if (node.has("labelsPosition")) {
+                    labelsPosition = parseLabelsPosition(node.get("labelsPosition").asText());
+                }
+                if (labelsPosition != null) {
+                    steps.add(new FormLayout.ResponsiveStep(minWidth, cols, labelsPosition));
+                } else {
+                    steps.add(new FormLayout.ResponsiveStep(minWidth, cols));
+                }
+            });
+        }
+        if (steps.isEmpty()) {
+            steps.add(new FormLayout.ResponsiveStep("0", 1));
+            if (columns >= 2) {
+                steps.add(new FormLayout.ResponsiveStep("640px", Math.min(2, columns)));
+            }
+            if (columns >= 3) {
+                steps.add(new FormLayout.ResponsiveStep("960px", Math.min(3, columns)));
+            }
+            steps.add(new FormLayout.ResponsiveStep("1200px", Math.max(1, columns), FormLayout.ResponsiveStep.LabelsPosition.ASIDE));
+        }
+        formLayout.setResponsiveSteps(steps);
+    }
+
+    private FormLayout.ResponsiveStep.LabelsPosition parseLabelsPosition(String value) {
+        if (!hasText(value)) {
+            return null;
+        }
+        return switch (value.trim().toLowerCase(Locale.ROOT)) {
+            case "top" -> FormLayout.ResponsiveStep.LabelsPosition.TOP;
+            case "aside", "left" -> FormLayout.ResponsiveStep.LabelsPosition.ASIDE;
+            default -> null;
+        };
+    }
+
+    private void addComponentToContainer(HasComponents container, Component component, JsonNode fieldSpec) {
+        container.add(component);
+        if (container instanceof FormLayout formLayout) {
+            Integer colspan = resolveColSpan(fieldSpec);
+            if (colspan != null && colspan > 1) {
+                formLayout.setColspan(component, colspan);
+            }
+        }
+    }
+
+    private Integer resolveColSpan(JsonNode fieldSpec) {
+        if (fieldSpec == null) {
+            return null;
+        }
+        JsonNode node = fieldSpec.has("colSpan") ? fieldSpec.get("colSpan") : fieldSpec.get("colspan");
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (node.isInt()) {
+            return node.asInt();
+        }
+        if (node.isTextual()) {
+            String text = node.asText();
+            if (!hasText(text)) {
+                return null;
+            }
+            try {
+                return Integer.parseInt(text);
+            } catch (NumberFormatException ex) {
+                String fieldName = fieldSpec.has("name") ? fieldSpec.get("name").asText() : "unknown";
+                throw new IllegalArgumentException("Field '" + fieldName + "' has invalid colSpan", ex);
+            }
+        }
+        return null;
     }
 
 
