@@ -56,7 +56,7 @@
       "children": [
         {
           "group": "forms",
-          "labelKey": "menu.formgeneration",
+          "labelKey": "menu.formengine.samples",
           "icon": "CLIPBOARD_TEXT",
           "navigationTarget": "forms"
         }
