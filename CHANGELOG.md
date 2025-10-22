@@ -1,5 +1,50 @@
 # CHANGELOG
 
+## v4.6.13
+### Horizontal wizard interaction updates
+
+* **Component:** Added optional click support to `HorizontalWizard` steps,
+  including pointer and focus styling, keyboard activation, and new
+  `StepClickEvent`/`CurrentStepChangeEvent` hooks so applications can react to
+  user navigation.
+* **Component:** Propagated the state colors to each step container and circle
+  token so accent backgrounds stay applied even when theme fallbacks fail,
+  keeping the current and completed indicators legible.
+* **Design system:** Restored the missing accent color ramps (info/success/
+  warning/danger 600–700) and aligned the wizard's contrast fallback with the
+  global inverse text token so highlighted steps stay legible in light and dark
+  themes.
+* **Samples:** Updated `/wizard` to mix clickable and read-only steps, wiring a
+  real-time status caption via the new change listener so flows can trigger view
+  logic as the selection changes.
+* **Documentation:** Expanded `docs/horizontal-wizard.md` to cover the new
+  events and interaction model for reviewers.
+
+## v4.6.12
+### Horizontal wizard progress indicator
+
+* **Component:** Added the `HorizontalWizard` Flow component with configurable
+  colors for completed/current/upcoming states and per-step overrides, plus a
+  responsive CSS module that now keeps the layout in a single row with
+  horizontal scrolling and automatically scrolls the active step into view on
+  attach. Refined the active-state styling with a subtle scale, halo, and label
+  emphasis so the current step stands out clearly against completed ones while
+  padding the container to prevent the highlight from being clipped.
+* **Samples:** Published a `/wizard` showcase view demonstrating default and
+  custom color schemes, wired into the navigation menu with new translations, and
+  expanded it with an eight-step product roadmap sample to validate horizontal
+  scrolling behaviour.
+* **Documentation:** Captured usage guidance in `docs/horizontal-wizard.md` and
+  referenced the sample from the platform overview, including the new extended
+  scenario and scrolling guidance.
+
+### Scrollbar styling refresh
+
+* **Design system:** Introduced theme-level scrollbar tokens and global styles
+  that render slimmer, rounded scrollbars with color-mixed thumbs in both light
+  and dark modes, aligning overflow containers with the platform's visual
+  language.
+
 ## v4.6.11
 ### Draft action defaults and manual success handling cleanup
 

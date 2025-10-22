@@ -70,6 +70,12 @@
     },
     {
       "group": "other",
+      "labelKey": "menu.wizard",
+      "icon": "LIST",
+      "navigationTarget": "wizard"
+    },
+    {
+      "group": "other",
       "labelKey": "menu.placeholder",
       "icon": "CLIPBOARD_TEXT"
     }
