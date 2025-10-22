@@ -30,7 +30,7 @@ public class SecurityService {
      */
     public boolean authenticate(String username, String password) {
         boolean authenticated = "admin".equals(username) && "admin".equals(password);
-        VaadinSession session = VaadinSession.getCurrent();
+        VaadinSession session = resolveSession();
         if (session != null) {
             session.setAttribute(AUTH_SESSION_ATTR, authenticated);
         } else {
@@ -52,7 +52,7 @@ public class SecurityService {
      * @return {@code true} if the session holds an authenticated flag
      */
     public boolean isAuthenticated() {
-        VaadinSession session = VaadinSession.getCurrent();
+        VaadinSession session = resolveSession();
         if (session == null) {
             return false;
         }
@@ -69,7 +69,7 @@ public class SecurityService {
      * point inside the UI.
      */
     public void logout() {
-        VaadinSession session = VaadinSession.getCurrent();
+        VaadinSession session = resolveSession();
         if (session != null) {
             session.getSession().invalidate();
             session.close();
@@ -84,5 +84,14 @@ public class SecurityService {
         } else {
             log.debug("Unable to redirect to login view because no UI is bound to the current thread");
         }
+    }
+
+    private VaadinSession resolveSession() {
+        VaadinSession session = VaadinSession.getCurrent();
+        if (session != null) {
+            return session;
+        }
+        UI current = UI.getCurrent();
+        return current != null ? current.getSession() : null;
     }
 }
