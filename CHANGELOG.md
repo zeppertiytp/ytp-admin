@@ -1,5 +1,33 @@
 # CHANGELOG
 
+## v4.6.11
+### Draft action defaults and manual success handling cleanup
+
+* **Backend validation skips for drafts:** Actions that disable client-side validation now skip backend validation automatically unless they explicitly override it, removing the need for redundant `backendValidation: false` flags on draft-style buttons.
+* **Success message opt-in:** `FormSubmissionEvent#getSuccessMessage()` now only returns a value when the specification provides one, so hosts avoid unexpected default strings and can opt-in to messaging when desired.
+* **Docs & samples:** Updated the form generation guide and sample JSON to remove unnecessary action metadata, keeping manual handling examples focused on alignment and validation control.
+
+## v4.6.10
+### Manual submission handling and action alignment
+
+* **Left/right actions:** Added per-action `align` metadata so secondary buttons can anchor to the opposite side of the footer while primaries stay grouped on the right. The action bar now renders dedicated left/right clusters.
+* **Host-driven success handling:** Removed the built-in success/failure notifications. Successful submissions fire `FormSubmissionEvent`s with the translated success message so host views decide how to respond (toast, navigation, etc.).
+* **Docs & samples:** Documented the new alignment option and manual handling approach, and updated sample form JSON to showcase a left-aligned draft button.
+
+## v4.6.9
+### Multi-action submissions for generated forms
+
+* **Configurable actions:** Introduced `submit.actions` so generated forms can render multiple buttons (e.g. “Submit” and “Submit & Exit”), each with independent validation and theming.
+* **Action-aware validation:** Extended `FormValidationService` with an action-aware overload and added submission events plus the `submit(String)` helper for programmatic triggers.
+* **Docs & samples:** Documented the new action schema, updated the layout sample form to demonstrate draft saving, and refined the in-memory validator logging.
+
+## v4.6.8
+### FormLayout-first generated forms
+
+* **Responsive defaults:** Standardised the generated form grid around Vaadin `FormLayout`, adding automatic responsive steps that keep single-column mobile layouts while flowing to full column counts with aside labels on wider screens.
+* **Configurable breakpoints:** Added JSON support for explicit `layout.responsiveSteps` arrays and per-field `colSpan` values so complex forms can tune breakpoints and stretch fields across multiple columns without custom code.
+* **Documentation & samples:** Updated the form generation guide and the sample `user_form_with_layout.json` to illustrate responsive step overrides and column spanning.
+
 ## v4.6.7
 ### JSON-driven navigation menu with scope filtering
 
