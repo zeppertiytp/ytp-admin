@@ -459,7 +459,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
             message = getTranslation(action.successMessageKey());
         }
         if (!hasText(message)) {
-            message = getTranslation("form.success");
+            return null;
         }
         return message;
     }
@@ -1716,6 +1716,9 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         if (action.backendValidationOverride() != null) {
             return action.backendValidationOverride();
         }
+        if (!action.clientValidation()) {
+            return false;
+        }
         if (submitConfig != null && submitConfig.has("backendValidation")) {
             return submitConfig.get("backendValidation").asBoolean(true);
         }
@@ -1882,9 +1885,10 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         }
 
         /**
-         * Optional, fully translated success message resolved for the action.
-         * Use this to display toast notifications or inline confirmations
-         * when handling the submission externally.
+         * Optional, fully translated success message resolved for the action
+         * when the specification explicitly defines one. Use this to display
+         * toast notifications or inline confirmations when handling the
+         * submission externally.
          */
         public Optional<String> getSuccessMessage() {
             return Optional.ofNullable(successMessage);

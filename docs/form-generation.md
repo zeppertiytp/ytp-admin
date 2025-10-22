@@ -171,10 +171,10 @@ Declare an `actions` array under `submit` to render multiple buttons:
 | `label` | object or string | Optional. Localised captions for the button. When omitted, `labelKey` or the `id` is used. |
 | `labelKey` | string | Optional translation key resolved via `Component#getTranslation`. Useful for reusing existing i18n keys. |
 | `theme` / `themeVariants` | string or array | Optional Vaadin Button theme variants (`primary`, `success`, `tertiary`, `tertiary-inline`, `icon`, `contrast`, `error`, `danger`). The first action defaults to `primary` if nothing is supplied. |
-| `validate` / `clientValidation` | boolean | Defaults to `true`. When `false`, skips client-side validation (useful for “Save draft” buttons). |
-| `backendValidation` | boolean | Overrides the root `submit.backendValidation` flag for the specific action. Defaults to the root value or `true` if unspecified. |
+| `validate` / `clientValidation` | boolean | Defaults to `true`. When `false`, skips client-side validation (useful for “Save draft” buttons). Draft-style actions that disable client validation also skip backend validation unless they explicitly override it. |
+| `backendValidation` | boolean | Overrides the root `submit.backendValidation` flag for the specific action. |
 | `align` | string | Optional button placement. Accepts `left`/`right` (or `start`/`end`). Defaults to `right`. Left-aligned actions render on the opposite side of the action bar, useful for secondary flows like “Cancel” or “Back”. |
-| `successMessage` | object or string | Optional custom success message (string or i18n map). Falls back to `form.success`. Exposed via `FormSubmissionEvent#getSuccessMessage()` so the host view can display or ignore it. |
+| `successMessage` | object or string | Optional custom success message (string or i18n map). Exposed via `FormSubmissionEvent#getSuccessMessage()` so the host view can display or ignore it when present. |
 | `successMessageKey` | string | Translation key resolved at runtime; ignored when `successMessage` is provided. |
 
 Buttons marked with `align: "left"` are rendered on the opposite side of the footer bar so you can keep primary actions on the
@@ -267,8 +267,7 @@ The sample form `user_form.json` demonstrates many of the features:
     "backendValidation":true,
     "actions": [
       {"id":"submit","labelKey":"form.submit"},
-      {"id":"submit-exit","label":{"fa":"ثبت و خروج","en":"Submit and Exit"},"validate":false,"backendValidation":false,
-       "successMessage":{"fa":"پیش‌نویس ذخیره شد","en":"Draft saved"}}
+      {"id":"submit-exit","label":{"fa":"ثبت و خروج","en":"Submit and Exit"},"validate":false}
     ]
   }
 }

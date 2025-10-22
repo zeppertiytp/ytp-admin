@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v4.6.11
+### Draft action defaults and manual success handling cleanup
+
+* **Backend validation skips for drafts:** Actions that disable client-side validation now skip backend validation automatically unless they explicitly override it, removing the need for redundant `backendValidation: false` flags on draft-style buttons.
+* **Success message opt-in:** `FormSubmissionEvent#getSuccessMessage()` now only returns a value when the specification provides one, so hosts avoid unexpected default strings and can opt-in to messaging when desired.
+* **Docs & samples:** Updated the form generation guide and sample JSON to remove unnecessary action metadata, keeping manual handling examples focused on alignment and validation control.
+
 ## v4.6.10
 ### Manual submission handling and action alignment
 
