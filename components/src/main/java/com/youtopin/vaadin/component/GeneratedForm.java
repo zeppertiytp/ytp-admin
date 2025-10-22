@@ -14,7 +14,6 @@ import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -49,6 +48,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -90,6 +90,11 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
     private final List<SubmissionListener> submissionListeners = new ArrayList<>();
     private H3 formTitle;
     private Button submitButton;
+
+    private enum ActionPlacement {
+        LEFT,
+        RIGHT
+    }
 
     /**
      * Create a form from a JSON specification file located on the classpath
@@ -272,20 +277,48 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         actionsBar.setSpacing(false);
         actionsBar.setWidthFull();
         actionsBar.addClassName("form-actions");
-        actionsBar.setJustifyContentMode(JustifyContentMode.END);
+        actionsBar.setAlignItems(Alignment.CENTER);
+
+        HorizontalLayout leftGroup = new HorizontalLayout();
+        leftGroup.setPadding(false);
+        leftGroup.setSpacing(true);
+        leftGroup.setAlignItems(Alignment.CENTER);
+        leftGroup.setJustifyContentMode(JustifyContentMode.START);
+        leftGroup.addClassName("form-actions__left");
+
+        HorizontalLayout rightGroup = new HorizontalLayout();
+        rightGroup.setPadding(false);
+        rightGroup.setSpacing(true);
+        rightGroup.setAlignItems(Alignment.CENTER);
+        rightGroup.setJustifyContentMode(JustifyContentMode.END);
+        rightGroup.addClassName("form-actions__right");
+
+        Span spacer = new Span();
+        spacer.addClassName("form-actions__spacer");
+        spacer.getStyle().set("flex-grow", "1");
+
+        actionsBar.add(leftGroup, spacer, rightGroup);
+        actionsBar.expand(spacer);
 
         actions.forEach(action -> {
             Button button = new Button(resolveActionLabel(action));
             action.themeVariants().forEach(button::addThemeVariants);
             ActionDefinition enriched = action.withButton(button);
             button.addClickListener(e -> submit(enriched));
-            actionsBar.add(button);
+            if (enriched.placement() == ActionPlacement.LEFT) {
+                leftGroup.add(button);
+            } else {
+                rightGroup.add(button);
+            }
             if (submitButton == null) {
                 submitButton = button;
             }
             localeUpdaters.add(() -> button.setText(resolveActionLabel(enriched)));
             actionsById.put(enriched.id(), enriched);
         });
+
+        leftGroup.setVisible(leftGroup.getComponentCount() > 0);
+        rightGroup.setVisible(rightGroup.getComponentCount() > 0);
 
         add(actionsBar);
     }
@@ -331,8 +364,9 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         String successKey = actionNode.has("successMessageKey")
                 ? actionNode.get("successMessageKey").asText(null)
                 : null;
+        ActionPlacement placement = resolveActionPlacement(actionNode);
         return new ActionDefinition(id, labelNode, labelKey, variants, clientValidation, backendOverride, successNode,
-                successKey, actionNode, null);
+                successKey, actionNode, null, placement);
     }
 
     private List<ButtonVariant> parseButtonVariants(JsonNode actionNode, boolean isFirst) {
@@ -364,6 +398,27 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         return List.copyOf(variants);
     }
 
+    private ActionPlacement resolveActionPlacement(JsonNode actionNode) {
+        if (actionNode != null) {
+            String align = null;
+            if (actionNode.has("align")) {
+                align = actionNode.get("align").asText(null);
+            } else if (actionNode.has("side")) {
+                align = actionNode.get("side").asText(null);
+            } else if (actionNode.has("placement")) {
+                align = actionNode.get("placement").asText(null);
+            }
+            if (hasText(align)) {
+                return switch (align.trim().toLowerCase(Locale.ROOT)) {
+                    case "left", "start" -> ActionPlacement.LEFT;
+                    case "right", "end" -> ActionPlacement.RIGHT;
+                    default -> ActionPlacement.RIGHT;
+                };
+            }
+        }
+        return ActionPlacement.RIGHT;
+    }
+
     private void addButtonVariant(String value, LinkedHashSet<ButtonVariant> variants) {
         if (!hasText(value)) {
             return;
@@ -384,7 +439,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
 
     private ActionDefinition defaultActionDefinition() {
         return new ActionDefinition("submit", null, "form.submit", List.of(ButtonVariant.LUMO_PRIMARY), true, null, null,
-                null, null, null);
+                null, null, null, ActionPlacement.RIGHT);
     }
 
     private String resolveActionLabel(ActionDefinition action) {
@@ -1617,24 +1672,28 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
     }
 
     /**
-     * Perform form submission. First validate all client‑side rules and
-     * if none are violated, send the collected data to the validation
-     * service. Backend validation errors are then displayed on the
-     * corresponding fields. If no errors remain, a notification is
-     * shown indicating success.
+     * Perform form submission. First validate all client‑side rules and,
+     * when successful, send the collected data to the validation service.
+     * Backend validation errors are displayed on the corresponding
+     * fields. When no errors remain, the registered submission listeners
+     * are notified so the host application can react (e.g. persist data,
+     * show notifications, navigate, etc.).
      */
     private void submit(ActionDefinition action) {
-        if (action == null) {
-            action = actionsById.values().stream().findFirst().orElse(defaultActionDefinition());
+        ActionDefinition target = action;
+        if (target == null) {
+            target = actionsById.values().stream().findFirst().orElse(defaultActionDefinition());
         }
-        if (shouldRunClientValidation(action) && runClientValidation()) {
-            Notification.show(getTranslation("form.correctErrors"));
-            return;
+        if (shouldRunClientValidation(target)) {
+            boolean hasClientErrors = runClientValidation();
+            if (hasClientErrors) {
+                return;
+            }
         }
 
         Map<String, String> backendErrors = Collections.emptyMap();
-        if (shouldRunBackendValidation(action)) {
-            backendErrors = validationService.validate(formId, new HashMap<>(fieldValues), action.id());
+        if (shouldRunBackendValidation(target)) {
+            backendErrors = validationService.validate(formId, new HashMap<>(fieldValues), target.id());
         }
         if (!backendErrors.isEmpty()) {
             backendErrors.forEach((field, msgKey) -> {
@@ -1643,12 +1702,10 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                     setError(comp, getTranslation(msgKey));
                 }
             });
-            Notification.show(getTranslation("form.correctErrors"));
             return;
         }
 
-        Notification.show(resolveActionSuccessMessage(action));
-        fireSubmissionEvent(action);
+        fireSubmissionEvent(target, resolveActionSuccessMessage(target));
     }
 
     private boolean shouldRunClientValidation(ActionDefinition action) {
@@ -1701,13 +1758,13 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         return hasErrors;
     }
 
-    private void fireSubmissionEvent(ActionDefinition action) {
+    private void fireSubmissionEvent(ActionDefinition action, String successMessage) {
         if (submissionListeners.isEmpty()) {
             return;
         }
         Map<String, Object> snapshot = Collections.unmodifiableMap(new HashMap<>(fieldValues));
         FormSubmissionEvent event = new FormSubmissionEvent(this, action.id(), snapshot, action.rawNode(), submitConfig,
-                action.button());
+                action.button(), successMessage);
         submissionListeners.forEach(listener -> listener.onSubmit(event));
     }
 
@@ -1787,15 +1844,17 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         private final JsonNode actionSpec;
         private final JsonNode submitSpec;
         private final Button actionButton;
+        private final String successMessage;
 
         private FormSubmissionEvent(GeneratedForm source, String actionId, Map<String, Object> values, JsonNode actionSpec,
-                JsonNode submitSpec, Button actionButton) {
+                JsonNode submitSpec, Button actionButton, String successMessage) {
             this.source = source;
             this.actionId = actionId;
             this.values = values;
             this.actionSpec = actionSpec;
             this.submitSpec = submitSpec;
             this.actionButton = actionButton;
+            this.successMessage = successMessage;
         }
 
         public GeneratedForm getSource() {
@@ -1821,15 +1880,24 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         public Button getActionButton() {
             return actionButton;
         }
+
+        /**
+         * Optional, fully translated success message resolved for the action.
+         * Use this to display toast notifications or inline confirmations
+         * when handling the submission externally.
+         */
+        public Optional<String> getSuccessMessage() {
+            return Optional.ofNullable(successMessage);
+        }
     }
 
     private record ActionDefinition(String id, JsonNode labelNode, String labelKey, List<ButtonVariant> themeVariants,
             boolean clientValidation, Boolean backendValidationOverride, JsonNode successMessageNode,
-            String successMessageKey, JsonNode rawNode, Button button) {
+            String successMessageKey, JsonNode rawNode, Button button, ActionPlacement placement) {
 
         ActionDefinition withButton(Button enrichedButton) {
             return new ActionDefinition(id, labelNode, labelKey, themeVariants, clientValidation, backendValidationOverride,
-                    successMessageNode, successMessageKey, rawNode, enrichedButton);
+                    successMessageNode, successMessageKey, rawNode, enrichedButton, placement);
         }
     }
 }

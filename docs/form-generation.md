@@ -173,8 +173,12 @@ Declare an `actions` array under `submit` to render multiple buttons:
 | `theme` / `themeVariants` | string or array | Optional Vaadin Button theme variants (`primary`, `success`, `tertiary`, `tertiary-inline`, `icon`, `contrast`, `error`, `danger`). The first action defaults to `primary` if nothing is supplied. |
 | `validate` / `clientValidation` | boolean | Defaults to `true`. When `false`, skips client-side validation (useful for “Save draft” buttons). |
 | `backendValidation` | boolean | Overrides the root `submit.backendValidation` flag for the specific action. Defaults to the root value or `true` if unspecified. |
-| `successMessage` | object or string | Optional custom success notification message. Falls back to `form.success`. |
+| `align` | string | Optional button placement. Accepts `left`/`right` (or `start`/`end`). Defaults to `right`. Left-aligned actions render on the opposite side of the action bar, useful for secondary flows like “Cancel” or “Back”. |
+| `successMessage` | object or string | Optional custom success message (string or i18n map). Falls back to `form.success`. Exposed via `FormSubmissionEvent#getSuccessMessage()` so the host view can display or ignore it. |
 | `successMessageKey` | string | Translation key resolved at runtime; ignored when `successMessage` is provided. |
+
+Buttons marked with `align: "left"` are rendered on the opposite side of the footer bar so you can keep primary actions on the
+right while exposing secondary flows (e.g. “Cancel”, “Back”) on the left.
 
 ### Handling submissions programmatically
 
@@ -188,7 +192,17 @@ form.addSubmissionListener(event -> {
 });
 ```
 
-Listeners receive the immutable value map, the raw JSON node describing the action, the overall `submit` configuration and the button instance.  To trigger a submission manually (for example, from a keyboard shortcut), call `form.submit("submit")` with the desired action identifier.
+Listeners receive the immutable value map, the raw JSON node describing the action, the overall `submit` configuration and the button instance.  The form no longer shows success notifications automatically; instead, use the provided metadata to react appropriately:
+
+```java
+form.addSubmissionListener(event -> {
+    event.getSuccessMessage().ifPresent(message ->
+        Notification.show(message, 3000, Notification.Position.BOTTOM_CENTER));
+    routeToNextStep(event.getActionId(), event.getValues());
+});
+```
+
+To trigger a submission manually (for example, from a keyboard shortcut), call `form.submit("submit")` with the desired action identifier.
 
 ## Extending the Specification
 

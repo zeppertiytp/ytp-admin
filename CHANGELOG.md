@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v4.6.10
+### Manual submission handling and action alignment
+
+* **Left/right actions:** Added per-action `align` metadata so secondary buttons can anchor to the opposite side of the footer while primaries stay grouped on the right. The action bar now renders dedicated left/right clusters.
+* **Host-driven success handling:** Removed the built-in success/failure notifications. Successful submissions fire `FormSubmissionEvent`s with the translated success message so host views decide how to respond (toast, navigation, etc.).
+* **Docs & samples:** Documented the new alignment option and manual handling approach, and updated sample form JSON to showcase a left-aligned draft button.
+
 ## v4.6.9
 ### Multi-action submissions for generated forms
 

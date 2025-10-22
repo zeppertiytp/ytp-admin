@@ -286,6 +286,7 @@
       {
         "id": "submit-exit",
         "label": { "fa": "ثبت و خروج", "en": "Submit and Exit" },
+        "align": "left",
         "theme": ["tertiary"],
         "validate": false,
         "backendValidation": false,
