@@ -104,8 +104,10 @@ public final class FieldRegistry {
         });
         register(UiField.ComponentType.MONEY, (definition, context) -> {
             BigDecimalField field = new BigDecimalField();
-            Currency currency = Currency.getInstance(context.getLocale());
-            field.setSuffixComponent(new Span(currency.getSymbol(context.getLocale())));
+            Currency currency = resolveCurrency(context);
+            if (currency != null) {
+                field.setSuffixComponent(new Span(currency.getSymbol(context.getLocale())));
+            }
             field.setValueChangeMode(ValueChangeMode.EAGER);
             field.getElement().setProperty("dir", "ltr");
             return wrap(field);
@@ -203,6 +205,22 @@ public final class FieldRegistry {
 
     private void applyPlaceholder(TextArea field, FieldDefinition definition, FieldFactoryContext context) {
         field.setPlaceholder(context.translate(definition.getPlaceholderKey()));
+    }
+
+    private Currency resolveCurrency(FieldFactoryContext context) {
+        Locale locale = context.getLocale();
+        if (locale == null) {
+            return null;
+        }
+        String country = locale.getCountry();
+        if (country == null || country.isBlank()) {
+            return null;
+        }
+        try {
+            return Currency.getInstance(locale);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 
     private FieldInstance createRadioGroup(FieldDefinition definition, FieldFactoryContext context) {
