@@ -6,6 +6,7 @@ import com.youtopin.vaadin.formengine.annotation.UiForm;
 import com.youtopin.vaadin.formengine.annotation.UiGroup;
 import com.youtopin.vaadin.formengine.annotation.UiOptions;
 import com.youtopin.vaadin.formengine.annotation.UiSection;
+import com.youtopin.vaadin.formengine.annotation.UiValidation;
 import com.youtopin.vaadin.samples.ui.formengine.model.ProductCatalogFormData;
 
 /**
@@ -61,16 +62,18 @@ public final class ProductCatalogFormDefinition {
         }
 
         @UiField(path = "product.sku", component = UiField.ComponentType.TEXT,
-                labelKey = "forms.catalog.product.sku", helperKey = "forms.catalog.product.sku.helper")
+                labelKey = "forms.catalog.product.sku", helperKey = "forms.catalog.product.sku.helper",
+                requiredWhen = "true", requiredMessageKey = "forms.validation.required")
         public void sku() {
         }
 
         @UiField(path = "product.summary", component = UiField.ComponentType.TEXT_AREA,
-                labelKey = "forms.catalog.product.summary", colSpan = 2)
+                labelKey = "forms.catalog.product.summary", colSpan = 2,
+                validations = {@UiValidation(messageKey = "forms.validation.summaryLength", expression = "length>=20")})
         public void summary() {
         }
 
-        @UiField(path = "product.description", component = UiField.ComponentType.RICH_TEXT,
+        @UiField(path = "product.description", component = UiField.ComponentType.TEXT_AREA,
                 labelKey = "forms.catalog.product.description", colSpan = 2)
         public void description() {
         }
@@ -85,13 +88,15 @@ public final class ProductCatalogFormDefinition {
     public static class PricingGroup {
 
         @UiField(path = "pricing.price", component = UiField.ComponentType.MONEY,
-                labelKey = "forms.catalog.pricing.price", requiredWhen = "true", requiredMessageKey = "forms.validation.required")
+                labelKey = "forms.catalog.pricing.price", requiredWhen = "true", requiredMessageKey = "forms.validation.required",
+                validations = {@UiValidation(messageKey = "forms.validation.pricePositive", expression = "value > 0")})
         public void price() {
         }
 
         @UiField(path = "pricing.currency", component = UiField.ComponentType.SELECT,
                 labelKey = "forms.catalog.pricing.currency",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "catalog.currencies"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "catalog.currencies"),
+                requiredWhen = "true", requiredMessageKey = "forms.validation.required")
         public void currency() {
         }
 
@@ -107,13 +112,15 @@ public final class ProductCatalogFormDefinition {
 
         @UiField(path = "availability.status", component = UiField.ComponentType.SELECT,
                 labelKey = "forms.catalog.availability.status",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "catalog.stock-status"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "catalog.stock-status"),
+                requiredWhen = "true", requiredMessageKey = "forms.validation.required")
         public void status() {
         }
 
         @UiField(path = "availability.channels", component = UiField.ComponentType.MULTI_SELECT,
                 labelKey = "forms.catalog.availability.channels",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "catalog.channels"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "catalog.channels"),
+                requiredWhen = "true", requiredMessageKey = "forms.validation.required")
         public void channels() {
         }
 

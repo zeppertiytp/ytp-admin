@@ -51,7 +51,8 @@ public final class FormEngine {
         FormDefinition definition = scanner.scan(definitionClass);
         @SuppressWarnings("unchecked")
         Class<T> beanType = (Class<T>) definition.getBeanType();
-        BinderOrchestrator<T> orchestrator = new BinderOrchestrator<>(beanType, locale);
+        BinderOrchestrator<T> orchestrator = new BinderOrchestrator<>(beanType,
+                key -> key == null || key.isBlank() ? "" : provider.getTranslation(key, locale));
         FieldRegistry registry = new FieldRegistry(optionCatalogRegistry);
         VerticalLayout layout = new VerticalLayout();
         layout.setPadding(false);

@@ -1,22 +1,23 @@
 package com.youtopin.vaadin.formengine.binder;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
 import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.textfield.NumberField;
+import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.ValidationException;
 import com.youtopin.vaadin.formengine.annotation.UiField;
 import com.youtopin.vaadin.formengine.annotation.UiOptions;
 import com.youtopin.vaadin.formengine.definition.FieldDefinition;
 import com.youtopin.vaadin.formengine.definition.OptionsDefinition;
 import com.youtopin.vaadin.formengine.definition.SecurityDefinition;
+import com.youtopin.vaadin.formengine.definition.ValidationDefinition;
 import com.youtopin.vaadin.formengine.options.OptionItem;
 import com.youtopin.vaadin.formengine.registry.FieldInstance;
 
@@ -24,7 +25,7 @@ class BinderOrchestratorTest {
 
     @Test
     void convertsNumberField() throws ValidationException {
-        BinderOrchestrator<TestBean> orchestrator = new BinderOrchestrator<>(TestBean.class, Locale.US);
+        BinderOrchestrator<TestBean> orchestrator = new BinderOrchestrator<>(TestBean.class, key -> key);
         NumberField field = new NumberField();
         FieldDefinition definition = new FieldDefinition("amount", UiField.ComponentType.NUMBER, "amount", "", "", "",
                 "", "", "", "", new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false,
@@ -38,7 +39,7 @@ class BinderOrchestratorTest {
 
     @Test
     void convertsMultiSelectToList() throws ValidationException {
-        BinderOrchestrator<TestBean> orchestrator = new BinderOrchestrator<>(TestBean.class, Locale.US);
+        BinderOrchestrator<TestBean> orchestrator = new BinderOrchestrator<>(TestBean.class, key -> key);
         MultiSelectComboBox<OptionItem> comboBox = new MultiSelectComboBox<>();
         comboBox.setItems(new OptionItem("A", "A"), new OptionItem("B", "B"));
         FieldDefinition definition = new FieldDefinition("tags", UiField.ComponentType.MULTI_SELECT, "tags", "", "", "",
@@ -49,6 +50,41 @@ class BinderOrchestratorTest {
         TestBean bean = new TestBean();
         orchestrator.writeBean(bean);
         assertThat(bean.tags).containsExactlyInAnyOrder("A", "B");
+    }
+
+    @Test
+    void marksFieldInvalidWhenRequired() {
+        BinderOrchestrator<TestBean> orchestrator = new BinderOrchestrator<>(TestBean.class, key -> key);
+        TextField field = new TextField();
+        FieldDefinition definition = new FieldDefinition("amount", UiField.ComponentType.TEXT, "amount", "", "", "true",
+                "required", "", "", "",
+                new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false, "", true),
+                List.of(), List.of(), new SecurityDefinition("", "", List.of(), false), 0, 1, 1);
+        orchestrator.bindField(new FieldInstance(field, field, List.of()), definition);
+
+        ValidationException exception = assertThrows(ValidationException.class, () -> orchestrator.writeBean(new TestBean()));
+
+        assertThat(exception.getValidationErrors()).isNotEmpty();
+        assertThat(field.isInvalid()).isTrue();
+        assertThat(field.getErrorMessage()).isEqualTo("required");
+    }
+
+    @Test
+    void appliesExpressionValidation() {
+        BinderOrchestrator<TestBean> orchestrator = new BinderOrchestrator<>(TestBean.class, key -> key);
+        NumberField field = new NumberField();
+        field.setValue(-5d);
+        ValidationDefinition rule = new ValidationDefinition("positive", "value > 0", List.of(), "");
+        FieldDefinition definition = new FieldDefinition("amount", UiField.ComponentType.NUMBER, "amount", "", "", "",
+                "", "", "", "", new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "",
+                        false, "", true), List.of(rule), List.of(), new SecurityDefinition("", "", List.of(), false), 0, 1, 1);
+        orchestrator.bindField(new FieldInstance(field, field, List.of()), definition);
+
+        ValidationException exception = assertThrows(ValidationException.class, () -> orchestrator.writeBean(new TestBean()));
+
+        assertThat(exception.getValidationErrors()).isNotEmpty();
+        assertThat(field.isInvalid()).isTrue();
+        assertThat(field.getErrorMessage()).isEqualTo("positive");
     }
 
     static class TestBean {

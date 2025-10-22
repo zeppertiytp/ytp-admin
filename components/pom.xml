@@ -20,12 +20,6 @@
       <groupId>com.vaadin</groupId>
       <artifactId>vaadin-core</artifactId>
     </dependency>
-
-    <dependency>
-      <groupId>com.vaadin</groupId>
-      <artifactId>vaadin-rich-text-editor-flow</artifactId>
-    </dependency>
-
     <dependency>
       <groupId>jakarta.validation</groupId>
       <artifactId>jakarta.validation-api</artifactId>

@@ -161,7 +161,6 @@ public final class FieldRegistry {
             field.getElement().setProperty("dir", "ltr");
             return wrap(field);
         });
-        register(UiField.ComponentType.RICH_TEXT, (definition, context) -> wrap(new com.vaadin.flow.component.richtexteditor.RichTextEditor()));
         register(UiField.ComponentType.FILE, this::createFileUpload);
         register(UiField.ComponentType.ENUM, this::createComboBox);
         register(UiField.ComponentType.AUTOCOMPLETE, this::createComboBox);

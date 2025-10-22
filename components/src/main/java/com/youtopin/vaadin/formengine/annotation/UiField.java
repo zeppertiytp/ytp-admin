@@ -123,7 +123,6 @@ public @interface UiField {
         PASSWORD,
         EMAIL,
         PHONE,
-        RICH_TEXT,
         FILE,
         ENUM,
         AUTOCOMPLETE,
