@@ -2,6 +2,7 @@ package com.youtopin.vaadin.samples.ui.view;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.youtopin.vaadin.component.GeneratedForm;
 import com.youtopin.vaadin.form.FormValidationService;
 import com.youtopin.vaadin.formengine.FormEngine;
@@ -31,6 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import com.fasterxml.jackson.databind.SerializationFeature;
+
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -46,7 +49,7 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
 
     private final FormEngine formEngine;
     private final TranslationProvider translationProvider;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     private final H2 generatedDefaultHeading;
     private final H2 generatedLayoutHeading;
@@ -61,6 +64,9 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
                               FormValidationService validationService) {
         this.formEngine = Objects.requireNonNull(formEngine, "formEngine");
         this.translationProvider = Objects.requireNonNull(translationProvider, "translationProvider");
+        this.objectMapper = new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         pageTitle = createPageTitle("");
 
         generatedDefaultHeading = new H2();

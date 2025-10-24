@@ -2,12 +2,18 @@ package com.youtopin.vaadin.formengine.binder;
 
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
@@ -158,7 +164,185 @@ public final class BinderOrchestrator<T> {
                 .filter(method -> method.getName().equals("set" + capitalize(property)))
                 .findFirst()
                 .orElseThrow(() -> new NoSuchMethodException("set" + capitalize(property)));
-        setter.invoke(bean, value);
+        Class<?> parameterType = setter.getParameterTypes()[0];
+        if (value == null) {
+            if (parameterType.isPrimitive()) {
+                return;
+            }
+            setter.invoke(bean, value);
+            return;
+        }
+        Object coerced = coerceValue(value, parameterType);
+        setter.invoke(bean, coerced);
+    }
+
+    private Object coerceValue(Object value, Class<?> targetType) {
+        Class<?> boxedType = box(targetType);
+        if (boxedType.isInstance(value)) {
+            return value;
+        }
+        if (value instanceof OptionItem option && boxedType == String.class) {
+            return option.getId();
+        }
+        if (boxedType == BigDecimal.class) {
+            return toBigDecimal(value);
+        }
+        if (Number.class.isAssignableFrom(boxedType)) {
+            return coerceNumber(value, boxedType);
+        }
+        if (boxedType == Boolean.class) {
+            return toBoolean(value);
+        }
+        if (boxedType == String.class) {
+            return String.valueOf(value);
+        }
+        if (boxedType.isEnum()) {
+            return toEnum(value, boxedType);
+        }
+        if (java.time.temporal.Temporal.class.isAssignableFrom(boxedType) && value instanceof String str) {
+            return toTemporal(str, boxedType);
+        }
+        if (Collection.class.isAssignableFrom(boxedType) && value instanceof Collection<?> collection) {
+            return coerceCollection(collection, boxedType);
+        }
+        if (Map.class.isAssignableFrom(boxedType) && value instanceof Map<?, ?> map) {
+            return new LinkedHashMap<>(map);
+        }
+        return value;
+    }
+
+    private Object coerceCollection(Collection<?> collection, Class<?> targetType) {
+        Collection<?> normalized = collection.stream()
+                .map(item -> item instanceof OptionItem option ? option.getId() : item)
+                .toList();
+        if (Set.class.isAssignableFrom(targetType)) {
+            return new LinkedHashSet<>(normalized);
+        }
+        return new ArrayList<>(normalized);
+    }
+
+    private Object coerceNumber(Object value, Class<?> targetType) {
+        Number number;
+        if (value instanceof Number candidate) {
+            number = candidate;
+        } else if (value instanceof String str && !str.isBlank()) {
+            try {
+                number = new BigDecimal(str);
+            } catch (NumberFormatException ex) {
+                return value;
+            }
+        } else {
+            return value;
+        }
+        if (targetType == Integer.class) {
+            return number.intValue();
+        }
+        if (targetType == Long.class) {
+            return number.longValue();
+        }
+        if (targetType == Short.class) {
+            return number.shortValue();
+        }
+        if (targetType == Byte.class) {
+            return number.byteValue();
+        }
+        if (targetType == Double.class) {
+            return number.doubleValue();
+        }
+        if (targetType == Float.class) {
+            return number.floatValue();
+        }
+        return number;
+    }
+
+    private BigDecimal toBigDecimal(Object value) {
+        if (value instanceof BigDecimal bigDecimal) {
+            return bigDecimal;
+        }
+        if (value instanceof Number number) {
+            return BigDecimal.valueOf(number.doubleValue());
+        }
+        if (value instanceof String str && !str.isBlank()) {
+            try {
+                return new BigDecimal(str);
+            } catch (NumberFormatException ex) {
+                return BigDecimal.ZERO;
+            }
+        }
+        return BigDecimal.ZERO;
+    }
+
+    private Boolean toBoolean(Object value) {
+        if (value instanceof Boolean bool) {
+            return bool;
+        }
+        if (value instanceof String str) {
+            return Boolean.parseBoolean(str);
+        }
+        if (value instanceof Number number) {
+            return Math.abs(number.doubleValue()) > 0d;
+        }
+        return Boolean.FALSE;
+    }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    private Object toEnum(Object value, Class<?> enumType) {
+        if (value == null) {
+            return null;
+        }
+        String candidate;
+        if (enumType.isInstance(value)) {
+            return value;
+        }
+        if (value instanceof Enum<?> enumValue) {
+            candidate = enumValue.name();
+        } else {
+            candidate = String.valueOf(value);
+        }
+        for (Object constant : enumType.getEnumConstants()) {
+            Enum<?> enumConstant = (Enum<?>) constant;
+            if (Objects.equals(enumConstant.name(), candidate) || enumConstant.name().equalsIgnoreCase(candidate)) {
+                return enumConstant;
+            }
+        }
+        return null;
+    }
+
+    private Object toTemporal(String value, Class<?> targetType) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            if (targetType == LocalDateTime.class) {
+                return LocalDateTime.parse(value);
+            }
+            if (targetType == LocalDate.class) {
+                return LocalDate.parse(value);
+            }
+            if (targetType == LocalTime.class) {
+                return LocalTime.parse(value);
+            }
+        } catch (DateTimeParseException ex) {
+            return null;
+        }
+        return null;
+    }
+
+    private Class<?> box(Class<?> type) {
+        if (!type.isPrimitive()) {
+            return type;
+        }
+        return switch (type.getName()) {
+            case "int" -> Integer.class;
+            case "long" -> Long.class;
+            case "double" -> Double.class;
+            case "float" -> Float.class;
+            case "short" -> Short.class;
+            case "byte" -> Byte.class;
+            case "boolean" -> Boolean.class;
+            case "char" -> Character.class;
+            default -> type;
+        };
     }
 
     private boolean evaluateExpression(String expression, Object value) {

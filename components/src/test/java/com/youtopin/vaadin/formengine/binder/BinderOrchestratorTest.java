@@ -9,6 +9,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import com.vaadin.flow.component.combobox.MultiSelectComboBox;
+import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.ValidationException;
@@ -87,6 +88,37 @@ class BinderOrchestratorTest {
         assertThat(field.getErrorMessage()).isEqualTo("positive");
     }
 
+    @Test
+    void skipsPrimitiveSetterWhenValueNull() throws ValidationException {
+        BinderOrchestrator<PrimitiveBean> orchestrator = new BinderOrchestrator<>(PrimitiveBean.class, key -> key);
+        IntegerField field = new IntegerField();
+        FieldDefinition definition = new FieldDefinition("count", UiField.ComponentType.INTEGER, "count", "", "", "", "",
+                "", "", "", new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false,
+                "", true), List.of(), List.of(), new SecurityDefinition("", "", List.of(), false), 0, 1, 1);
+        orchestrator.bindField(new FieldInstance(field, field, List.of()), definition);
+
+        PrimitiveBean bean = new PrimitiveBean();
+        orchestrator.writeBean(bean);
+
+        assertThat(bean.count).isZero();
+    }
+
+    @Test
+    void coercesStringToEnumValue() throws ValidationException {
+        BinderOrchestrator<EnumBean> orchestrator = new BinderOrchestrator<>(EnumBean.class, key -> key);
+        TextField field = new TextField();
+        field.setValue("ACTIVE");
+        FieldDefinition definition = new FieldDefinition("status", UiField.ComponentType.TEXT, "status", "", "", "", "",
+                "", "", "", new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false,
+                "", true), List.of(), List.of(), new SecurityDefinition("", "", List.of(), false), 0, 1, 1);
+        orchestrator.bindField(new FieldInstance(field, field, List.of()), definition);
+
+        EnumBean bean = new EnumBean();
+        orchestrator.writeBean(bean);
+
+        assertThat(bean.status).isEqualTo(EnumBean.Status.ACTIVE);
+    }
+
     static class TestBean {
         double amount;
         List<String> tags;
@@ -105,6 +137,35 @@ class BinderOrchestratorTest {
 
         public void setTags(List<String> tags) {
             this.tags = tags;
+        }
+    }
+
+    static class PrimitiveBean {
+        private int count;
+
+        public int getCount() {
+            return count;
+        }
+
+        public void setCount(int count) {
+            this.count = count;
+        }
+    }
+
+    static class EnumBean {
+        private Status status = Status.NEW;
+
+        public Status getStatus() {
+            return status;
+        }
+
+        public void setStatus(Status status) {
+            this.status = status;
+        }
+
+        enum Status {
+            NEW,
+            ACTIVE
         }
     }
 }
