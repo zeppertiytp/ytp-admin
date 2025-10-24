@@ -69,6 +69,37 @@
       "navigationTarget": "design-system"
     },
     {
+      "group": "components",
+      "labelKey": "menu.components",
+      "icon": "LAYERS",
+      "children": [
+        {
+          "group": "components",
+          "labelKey": "menu.components.accordion",
+          "icon": "MENU",
+          "navigationTarget": "components/accordion"
+        },
+        {
+          "group": "components",
+          "labelKey": "menu.components.appLayout",
+          "icon": "LAYOUT",
+          "navigationTarget": "components/app-layout"
+        },
+        {
+          "group": "components",
+          "labelKey": "menu.components.card",
+          "icon": "CREDIT_CARD",
+          "navigationTarget": "components/card"
+        },
+        {
+          "group": "components",
+          "labelKey": "menu.components.confirmDialog",
+          "icon": "QUESTION_CIRCLE",
+          "navigationTarget": "components/confirm-dialog"
+        }
+      ]
+    },
+    {
       "group": "other",
       "labelKey": "menu.placeholder",
       "icon": "CLIPBOARD_TEXT"
