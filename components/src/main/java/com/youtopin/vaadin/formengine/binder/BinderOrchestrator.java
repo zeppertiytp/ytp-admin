@@ -20,9 +20,7 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.HasValue;
-import com.vaadin.flow.component.HasValidation;
 import com.vaadin.flow.data.binder.ValidationException;
 import com.vaadin.flow.data.binder.ValidationResult;
 import com.vaadin.flow.function.SerializablePredicate;
@@ -382,50 +380,23 @@ public final class BinderOrchestrator<T> {
     }
 
     private void clearValidationState(FieldInstance instance) {
-        HasValue<?, ?> valueComponent = instance.getValueComponent();
-        if (valueComponent instanceof HasValidation hasValidation) {
-            hasValidation.setErrorMessage("");
-            hasValidation.setInvalid(false);
+        boolean handled = instance.getCustomValidationHandler()
+                .map(handler -> {
+                    handler.clear(instance);
+                    return true;
+                })
+                .orElse(false);
+        if (!handled) {
+            instance.getDefaultValidationHandler().clear(instance);
         }
-        if (valueComponent instanceof Component component) {
-            component.getElement().removeAttribute("aria-invalid");
-            component.getElement().getThemeList().remove("error");
-            component.getElement().setProperty("title", "");
-        }
-        Component component = instance.getComponent();
-        if (component instanceof HasValidation hasValidation) {
-            hasValidation.setErrorMessage("");
-            hasValidation.setInvalid(false);
-        }
-        component.getElement().removeAttribute("aria-invalid");
-        component.getElement().getThemeList().remove("error");
-        component.getElement().setProperty("title", "");
     }
 
     private void applyValidationError(FieldInstance instance, String message) {
-        HasValue<?, ?> valueComponent = instance.getValueComponent();
-        boolean handled = false;
-        if (valueComponent instanceof HasValidation hasValidation) {
-            hasValidation.setErrorMessage(message);
-            hasValidation.setInvalid(true);
-            handled = true;
-        }
-        Component component = instance.getComponent();
-        if (!handled && component instanceof HasValidation hasValidation) {
-            hasValidation.setErrorMessage(message);
-            hasValidation.setInvalid(true);
-            handled = true;
-        }
+        boolean handled = instance.getCustomValidationHandler()
+                .map(handler -> handler.apply(instance, message))
+                .orElse(false);
         if (!handled) {
-            if (valueComponent instanceof Component valueAsComponent) {
-                valueAsComponent.getElement().setProperty("title", message);
-                valueAsComponent.getElement().setAttribute("aria-invalid", "true");
-                valueAsComponent.getElement().getThemeList().add("error");
-            } else {
-                component.getElement().setProperty("title", message);
-                component.getElement().setAttribute("aria-invalid", "true");
-                component.getElement().getThemeList().add("error");
-            }
+            instance.getDefaultValidationHandler().apply(instance, message);
         }
     }
 

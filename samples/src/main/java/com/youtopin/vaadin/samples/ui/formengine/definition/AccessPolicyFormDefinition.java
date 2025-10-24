@@ -5,6 +5,7 @@ import com.youtopin.vaadin.formengine.annotation.UiField;
 import com.youtopin.vaadin.formengine.annotation.UiForm;
 import com.youtopin.vaadin.formengine.annotation.UiGroup;
 import com.youtopin.vaadin.formengine.annotation.UiOptions;
+import com.youtopin.vaadin.formengine.annotation.UiRepeatable;
 import com.youtopin.vaadin.formengine.annotation.UiSection;
 import com.youtopin.vaadin.samples.ui.formengine.model.AccessPolicyFormData;
 
@@ -36,7 +37,8 @@ public final class AccessPolicyFormDefinition {
     }
 
     @UiSection(id = "policy", titleKey = "forms.policy.section.policy", groups = {
-            PolicyGroup.class
+            PolicyGroup.class,
+            ConditionGroup.class
     }, order = 0)
     public static class PolicySection {
     }
@@ -83,6 +85,31 @@ public final class AccessPolicyFormDefinition {
         @UiField(path = "policy.description", component = UiField.ComponentType.TEXT_AREA,
                 labelKey = "forms.policy.policy.description", colSpan = 2)
         public void description() {
+        }
+
+        @UiField(path = "policy.delegation", component = UiField.ComponentType.SUBFORM,
+                labelKey = "forms.policy.policy.delegation", helperKey = "forms.policy.policy.delegation.helper", colSpan = 2)
+        public void delegation() {
+        }
+    }
+
+    @UiGroup(id = "policy-conditions", columns = 3, repeatable = @UiRepeatable(enabled = true, min = 1, max = 5, mode = UiRepeatable.RepeatableMode.INLINE_PANEL))
+    public static class ConditionGroup {
+
+        @UiField(path = "policy.conditions.attribute", component = UiField.ComponentType.TEXT,
+                labelKey = "forms.policy.conditions.attribute")
+        public void attribute() {
+        }
+
+        @UiField(path = "policy.conditions.operator", component = UiField.ComponentType.SELECT,
+                labelKey = "forms.policy.conditions.operator",
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "catalog.condition-operators"))
+        public void operator() {
+        }
+
+        @UiField(path = "policy.conditions.value", component = UiField.ComponentType.TEXT,
+                labelKey = "forms.policy.conditions.value")
+        public void value() {
         }
     }
 

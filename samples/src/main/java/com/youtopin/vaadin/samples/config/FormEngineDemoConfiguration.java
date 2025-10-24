@@ -103,6 +103,11 @@ public class FormEngineDemoConfiguration {
                 "hossein", "forms.options.reviewers.hossein",
                 "sara", "forms.options.reviewers.sara"
         )));
+        registry.register("catalog.condition-operators", messageCatalog(Map.of(
+                "equals", "forms.options.conditionOperator.equals",
+                "contains", "forms.options.conditionOperator.contains",
+                "startsWith", "forms.options.conditionOperator.startsWith"
+        )));
         return registry;
     }
 

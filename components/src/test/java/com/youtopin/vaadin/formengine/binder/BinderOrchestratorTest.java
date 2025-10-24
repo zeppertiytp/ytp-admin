@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 
@@ -86,6 +88,39 @@ class BinderOrchestratorTest {
         assertThat(exception.getValidationErrors()).isNotEmpty();
         assertThat(field.isInvalid()).isTrue();
         assertThat(field.getErrorMessage()).isEqualTo("positive");
+    }
+
+    @Test
+    void supportsCustomValidationHandler() {
+        BinderOrchestrator<TestBean> orchestrator = new BinderOrchestrator<>(TestBean.class, key -> key);
+        TextField field = new TextField();
+        FieldDefinition definition = new FieldDefinition("amount", UiField.ComponentType.TEXT, "amount", "", "", "true",
+                "required", "", "", "",
+                new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false, "", true),
+                List.of(), List.of(), new SecurityDefinition("", "", List.of(), false), 0, 1, 1);
+        FieldInstance instance = new FieldInstance(field, field, List.of());
+        AtomicBoolean cleared = new AtomicBoolean();
+        AtomicReference<String> appliedMessage = new AtomicReference<>();
+        instance.setCustomValidationHandler(new FieldInstance.ValidationHandler() {
+            @Override
+            public void clear(FieldInstance fieldInstance) {
+                cleared.set(true);
+            }
+
+            @Override
+            public boolean apply(FieldInstance fieldInstance, String message) {
+                appliedMessage.set(message);
+                return true;
+            }
+        });
+        orchestrator.bindField(instance, definition);
+
+        ValidationException exception = assertThrows(ValidationException.class, () -> orchestrator.writeBean(new TestBean()));
+
+        assertThat(exception.getValidationErrors()).isNotEmpty();
+        assertThat(cleared).isTrue();
+        assertThat(appliedMessage.get()).isEqualTo("required");
+        assertThat(field.isInvalid()).isFalse();
     }
 
     @Test

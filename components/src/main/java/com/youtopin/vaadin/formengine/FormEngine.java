@@ -8,11 +8,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.data.binder.ValidationException;
 import com.vaadin.flow.i18n.I18NProvider;
 import com.youtopin.vaadin.formengine.annotation.UiForm;
 import com.youtopin.vaadin.formengine.binder.BinderOrchestrator;
@@ -67,6 +69,7 @@ public final class FormEngine {
                 });
         List<SectionDefinition> orderedSections = new ArrayList<>(definition.getSections());
         orderedSections.sort(Comparator.comparingInt(SectionDefinition::getOrder));
+        Map<SectionDefinition, VerticalLayout> sectionLayouts = new LinkedHashMap<>();
 
         Map<String, List<ActionDefinition>> sectionActions = definition.getActions().stream()
                 .filter(action -> action.getPlacement() == com.youtopin.vaadin.formengine.annotation.UiAction.Placement.SECTION_FOOTER)
@@ -85,6 +88,7 @@ public final class FormEngine {
                 Component renderedGroup = renderGroup(group, registry, context, instances, repeatableGroups);
                 sectionLayout.add(renderedGroup);
             }
+            sectionLayouts.put(section, sectionLayout);
             List<ActionDefinition> actionsForSection = sectionActions.getOrDefault(section.getId(), List.of());
             if (!actionsForSection.isEmpty()) {
                 com.vaadin.flow.component.orderedlayout.HorizontalLayout sectionActionRow = createActionRow();
@@ -115,7 +119,7 @@ public final class FormEngine {
         }
 
         return new RenderedForm<>(definition, orchestrator, layout, instances, headerActions, footerActions, actionButtons,
-                repeatableGroups);
+                repeatableGroups, sectionLayouts);
     }
 
     public static final class RenderedForm<T> {
@@ -128,7 +132,9 @@ public final class FormEngine {
         private final com.vaadin.flow.component.orderedlayout.HorizontalLayout headerActions;
         private final com.vaadin.flow.component.orderedlayout.HorizontalLayout footerActions;
         private final Map<String, List<Map<FieldDefinition, FieldInstance>>> repeatableGroups;
+        private final Map<SectionDefinition, VerticalLayout> sections;
         private java.util.function.Supplier<T> actionBeanSupplier;
+        private final List<ValidationFailureListener<T>> validationFailureListeners = new CopyOnWriteArrayList<>();
 
         private RenderedForm(FormDefinition definition,
                              BinderOrchestrator<T> orchestrator,
@@ -137,7 +143,8 @@ public final class FormEngine {
                              com.vaadin.flow.component.orderedlayout.HorizontalLayout headerActions,
                              com.vaadin.flow.component.orderedlayout.HorizontalLayout footerActions,
                              Map<String, Button> actionButtons,
-                             Map<String, List<Map<FieldDefinition, FieldInstance>>> repeatableGroups) {
+                             Map<String, List<Map<FieldDefinition, FieldInstance>>> repeatableGroups,
+                             Map<SectionDefinition, VerticalLayout> sections) {
             this.definition = definition;
             this.orchestrator = orchestrator;
             this.layout = layout;
@@ -149,6 +156,7 @@ public final class FormEngine {
                     .collect(java.util.stream.Collectors.toMap(ActionDefinition::getId, def -> def, (a, b) -> a,
                             LinkedHashMap::new));
             this.repeatableGroups = repeatableGroups;
+            this.sections = sections;
         }
 
         public FormDefinition getDefinition() {
@@ -183,6 +191,11 @@ public final class FormEngine {
                                     .toList()));
         }
 
+        public Map<SectionDefinition, VerticalLayout> getSections() {
+            return sections.entrySet().stream()
+                    .collect(java.util.stream.Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
+        }
+
         public void setActionBeanSupplier(java.util.function.Supplier<T> supplier) {
             this.actionBeanSupplier = supplier;
         }
@@ -204,12 +217,26 @@ public final class FormEngine {
                 try {
                     orchestrator.writeBean(bean);
                     handler.onAction(new ActionExecutionContext<>(actionDefinitions.get(actionId), bean, orchestrator));
-                } catch (com.vaadin.flow.data.binder.ValidationException ex) {
-                    throw new RuntimeException("Validation failed for action " + actionId, ex);
+                } catch (ValidationException ex) {
+                    boolean handled = notifyValidationFailure(actionDefinitions.get(actionId), ex);
+                    if (!handled) {
+                        throw new RuntimeException("Validation failed for action " + actionId, ex);
+                    }
                 }
             });
         }
 
+        public void addValidationFailureListener(ValidationFailureListener<T> listener) {
+            validationFailureListeners.add(Objects.requireNonNull(listener, "listener"));
+        }
+
+        private boolean notifyValidationFailure(ActionDefinition actionDefinition, ValidationException exception) {
+            if (validationFailureListeners.isEmpty()) {
+                return false;
+            }
+            validationFailureListeners.forEach(listener -> listener.onValidationFailure(actionDefinition, exception));
+            return true;
+        }
     }
 
     private void layoutSectionActions(List<ActionDefinition> definitions,
@@ -383,6 +410,11 @@ public final class FormEngine {
 
     public interface ActionHandler<T> {
         void onAction(ActionExecutionContext<T> context) throws com.vaadin.flow.data.binder.ValidationException;
+    }
+
+    @FunctionalInterface
+    public interface ValidationFailureListener<T> {
+        void onValidationFailure(ActionDefinition actionDefinition, ValidationException exception);
     }
 
     public static final class ActionExecutionContext<T> {

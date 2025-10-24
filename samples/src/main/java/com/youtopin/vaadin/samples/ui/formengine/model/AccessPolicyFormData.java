@@ -2,7 +2,9 @@ package com.youtopin.vaadin.samples.ui.formengine.model;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -32,6 +34,7 @@ public class AccessPolicyFormData {
         private String description = "";
         private final List<String> resources = new ArrayList<>();
         private final List<String> actions = new ArrayList<>();
+        private Map<String, Object> delegation = new LinkedHashMap<>();
 
         public String getName() {
             return name;
@@ -77,6 +80,14 @@ public class AccessPolicyFormData {
             if (actions != null) {
                 this.actions.addAll(actions);
             }
+        }
+
+        public Map<String, Object> getDelegation() {
+            return delegation;
+        }
+
+        public void setDelegation(Map<String, Object> delegation) {
+            this.delegation = delegation == null ? new LinkedHashMap<>() : new LinkedHashMap<>(delegation);
         }
     }
 

@@ -11,9 +11,11 @@ import com.youtopin.vaadin.formengine.definition.FieldDefinition;
 import com.youtopin.vaadin.formengine.registry.FieldInstance;
 import com.youtopin.vaadin.i18n.TranslationProvider;
 import com.youtopin.vaadin.samples.ui.formengine.definition.AccessPolicyFormDefinition;
+import com.youtopin.vaadin.samples.ui.formengine.definition.DailyPlanFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.EmployeeOnboardingFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.ProductCatalogFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.model.AccessPolicyFormData;
+import com.youtopin.vaadin.samples.ui.formengine.model.DailyPlanFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.EmployeeOnboardingFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.ProductCatalogFormData;
 import com.youtopin.vaadin.samples.ui.layout.AppPageLayout;
@@ -21,10 +23,14 @@ import com.youtopin.vaadin.samples.ui.layout.MainLayout;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.ListItem;
 import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.html.UnorderedList;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.HasValue;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
 import com.vaadin.flow.router.Route;
@@ -34,13 +40,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.fasterxml.jackson.databind.SerializationFeature;
 
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
- * Demonstrates the annotation-driven form engine through three sample forms.
+ * Demonstrates the annotation-driven form engine through four sample forms.
  */
 @Route(value = "forms", layout = MainLayout.class)
 public class FormGenerationView extends AppPageLayout implements LocaleChangeObserver {
@@ -100,26 +109,39 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
     private void renderSamples() {
         updateHeadings();
         sampleContainer.removeAll();
-        sampleContainer.add(
-                buildSampleCard(
+        List<SampleDescriptor<?>> descriptors = List.of(
+                new SampleDescriptor<>(
                         "forms.sample.onboarding.heading",
                         "forms.sample.onboarding.description",
+                        "forms.sample.onboarding.features",
                         EmployeeOnboardingFormDefinition.class,
                         EmployeeOnboardingFormData::new
                 ),
-                buildSampleCard(
+                new SampleDescriptor<>(
                         "forms.sample.catalog.heading",
                         "forms.sample.catalog.description",
+                        "forms.sample.catalog.features",
                         ProductCatalogFormDefinition.class,
                         ProductCatalogFormData::new
                 ),
-                buildSampleCard(
+                new SampleDescriptor<>(
                         "forms.sample.policy.heading",
                         "forms.sample.policy.description",
+                        "forms.sample.policy.features",
                         AccessPolicyFormDefinition.class,
                         AccessPolicyFormData::new
+                ),
+                new SampleDescriptor<>(
+                        "forms.sample.plan.heading",
+                        "forms.sample.plan.description",
+                        "forms.sample.plan.features",
+                        DailyPlanFormDefinition.class,
+                        DailyPlanFormData::new
                 )
         );
+        descriptors.stream()
+                .map(this::buildSampleCard)
+                .forEach(sampleContainer::add);
     }
 
     private void updateHeadings() {
@@ -136,24 +158,41 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
         }
     }
 
-    private <T> Component buildSampleCard(String headingKey,
-                                          String descriptionKey,
-                                          Class<?> definitionClass,
-                                          Supplier<T> beanSupplier) {
-        H2 heading = new H2(getTranslation(headingKey));
+    private <T> Component buildSampleCard(SampleDescriptor<T> descriptor) {
+        H2 heading = new H2(getTranslation(descriptor.headingKey()));
         heading.addClassNames("text-primary", "mt-0");
-        Paragraph description = new Paragraph(getTranslation(descriptionKey));
+        Paragraph description = new Paragraph(getTranslation(descriptor.descriptionKey()));
         description.addClassNames("text-secondary", "mb-s");
 
-        RenderedForm<T> rendered = renderForm(definitionClass, beanSupplier);
+        UnorderedList featureList = buildFeatureList(descriptor.featurePrefix());
+        featureList.addClassNames("text-secondary");
+
+        RenderedForm<T> rendered = renderForm(descriptor.definitionClass(), descriptor.beanSupplier());
         rendered.getLayout().setWidthFull();
 
-        VerticalLayout content = new VerticalLayout(heading, description, rendered.getLayout());
+        VerticalLayout content = new VerticalLayout(heading, description, featureList, rendered.getLayout());
         content.setSpacing(true);
         content.setPadding(false);
         content.setDefaultHorizontalComponentAlignment(Alignment.STRETCH);
 
         return createCard(content);
+    }
+
+    private UnorderedList buildFeatureList(String featurePrefix) {
+        UnorderedList list = new UnorderedList();
+        int index = 1;
+        while (true) {
+            String key = featurePrefix + "." + index;
+            String translation = getTranslation(key);
+            if (translation == null || translation.equals(key)) {
+                break;
+            }
+            ListItem item = new ListItem(translation);
+            list.add(item);
+            index++;
+        }
+        list.setVisible(list.getChildren().findAny().isPresent());
+        return list;
     }
 
     private <T> RenderedForm<T> renderForm(Class<?> definitionClass, Supplier<T> beanSupplier) {
@@ -167,7 +206,64 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
         rendered.getActionButtons().keySet().forEach(actionId ->
                 rendered.addActionHandler(actionId, context -> logSubmission(definitionClass.getSimpleName(), context.getActionDefinition().getId(), context.getBean()))
         );
+        rendered.addValidationFailureListener((actionDefinition, exception) ->
+                log.warn("Validation failed for action '{}' in form '{}'", actionDefinition.getId(), definitionClass.getSimpleName(), exception));
+        if (definitionClass.equals(DailyPlanFormDefinition.class)) {
+            configureDynamicPlan(rendered);
+        }
         return rendered;
+    }
+
+    private <T> void configureDynamicPlan(RenderedForm<T> rendered) {
+        Map<String, VerticalLayout> daySections = rendered.getSections().entrySet().stream()
+                .filter(entry -> entry.getKey().getId().startsWith("day-"))
+                .collect(Collectors.toMap(entry -> entry.getKey().getId(), Map.Entry::getValue, (a, b) -> a, LinkedHashMap::new));
+        FieldDefinition dayCountDefinition = rendered.getFields().keySet().stream()
+                .filter(definition -> "schedule.dayCount".equals(definition.getPath()))
+                .findFirst()
+                .orElse(null);
+        FieldInstance dayCountInstance = dayCountDefinition == null ? null : rendered.getFields().get(dayCountDefinition);
+        if (dayCountInstance != null) {
+            HasValue<?, ?> component = dayCountInstance.getValueComponent();
+            component.addValueChangeListener(event -> updateDayVisibility(daySections, toInteger(event.getValue())));
+            updateDayVisibility(daySections, toInteger(component.getValue()));
+            Button resetButton = rendered.getActionButtons().get("plan-reset");
+            if (resetButton != null) {
+                resetButton.addClickListener(event -> {
+                    component.setValue(null);
+                    updateDayVisibility(daySections, 0);
+                });
+            }
+        }
+    }
+
+    private void updateDayVisibility(Map<String, VerticalLayout> daySections, int activeDays) {
+        int index = 1;
+        for (Map.Entry<String, VerticalLayout> entry : daySections.entrySet()) {
+            entry.getValue().setVisible(index <= activeDays);
+            index++;
+        }
+    }
+
+    private int toInteger(Object value) {
+        if (value instanceof Number number) {
+            return Math.max(number.intValue(), 0);
+        }
+        if (value instanceof String str && !str.isBlank()) {
+            try {
+                return Math.max(Integer.parseInt(str), 0);
+            } catch (NumberFormatException ex) {
+                return 0;
+            }
+        }
+        return 0;
+    }
+
+    private record SampleDescriptor<T>(String headingKey,
+                                       String descriptionKey,
+                                       String featurePrefix,
+                                       Class<?> definitionClass,
+                                       Supplier<T> beanSupplier) {
     }
 
     private boolean isRtl(Locale locale) {
