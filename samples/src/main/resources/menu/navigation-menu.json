@@ -96,6 +96,18 @@
           "labelKey": "menu.components.confirmDialog",
           "icon": "QUESTION_CIRCLE",
           "navigationTarget": "components/confirm-dialog"
+        },
+        {
+          "group": "components",
+          "labelKey": "menu.components.masterDetailLayout",
+          "icon": "COLUMNS",
+          "navigationTarget": "components/master-detail-layout"
+        },
+        {
+          "group": "components",
+          "labelKey": "menu.components.progressBar",
+          "icon": "TRENDING_UP",
+          "navigationTarget": "components/progress-bar"
         }
       ]
     },
