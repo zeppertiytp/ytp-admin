@@ -24,12 +24,12 @@ import java.util.stream.Stream;
 public class AppCard extends Component implements HasComponents, HasSize {
 
     /**
-     * The Vaadin Card npm package version aligned with the Flow platform version
-     * declared in the build. Keep this in sync with {@code vaadin.version} from
-     * the Maven configuration to avoid npm resolution issues during
-     * {@code prepare-frontend}.
+     * The Vaadin Card npm package version. Versions below {@code 24.6.0} were
+     * never published to npm, so we pin the dependency to the first generally
+     * available release to keep {@code npm install} healthy until the platform
+     * BOM is updated.
      */
-    public static final String CARD_NPM_VERSION = "24.2.6";
+    public static final String CARD_NPM_VERSION = "24.6.0";
 
     private static final String SLOT_MEDIA = "media";
     private static final String SLOT_SUBTITLE = "subtitle";
