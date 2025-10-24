@@ -52,6 +52,13 @@ class AnnotationFormScannerTest {
                         com.youtopin.vaadin.formengine.annotation.UiAction.Placement.FOOTER);
     }
 
+    @Test
+    void collectionPathResolvesWhenGenericTypeIsKnown() {
+        FormDefinition definition = scanner.scan(CollectionForm.class);
+        assertThat(definition.getSections()).hasSize(1);
+        assertThat(definition.getSections().get(0).getGroups().get(0).getFields()).hasSize(1);
+    }
+
     @UiForm(id = "sample-form", bean = SampleBean.class, sections = {SampleSection.class})
     static class SampleForm {
     }
@@ -117,5 +124,46 @@ class AnnotationFormScannerTest {
                             placement = com.youtopin.vaadin.formengine.annotation.UiAction.Placement.FOOTER, order = 2)
             })
     static class ActionForm {
+    }
+
+    @UiForm(id = "collection-form", bean = CollectionBean.class, sections = {CollectionSection.class})
+    static class CollectionForm {
+    }
+
+    @UiSection(id = "cs", groups = {CollectionGroup.class})
+    static class CollectionSection {
+    }
+
+    @UiGroup(id = "cg")
+    static class CollectionGroup {
+        @UiField(path = "items.value", labelKey = "field.value")
+        String value;
+    }
+
+    static class CollectionBean {
+        private final java.util.List<Item> items = new java.util.ArrayList<>();
+
+        public java.util.List<Item> getItems() {
+            return items;
+        }
+
+        public void setItems(java.util.List<Item> items) {
+            this.items.clear();
+            if (items != null) {
+                this.items.addAll(items);
+            }
+        }
+    }
+
+    static class Item {
+        private String value;
+
+        public String getValue() {
+            return value;
+        }
+
+        public void setValue(String value) {
+            this.value = value;
+        }
     }
 }

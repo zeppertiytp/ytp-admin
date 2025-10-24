@@ -34,6 +34,7 @@ public class AccessPolicyFormData {
         private String description = "";
         private final List<String> resources = new ArrayList<>();
         private final List<String> actions = new ArrayList<>();
+        private final List<Condition> conditions = new ArrayList<>();
         private Map<String, Object> delegation = new LinkedHashMap<>();
 
         public String getName() {
@@ -82,12 +83,72 @@ public class AccessPolicyFormData {
             }
         }
 
+        public List<Condition> getConditions() {
+            return conditions;
+        }
+
+        public void setConditions(List<Condition> conditions) {
+            this.conditions.clear();
+            if (conditions != null) {
+                conditions.stream()
+                        .filter(Objects::nonNull)
+                        .map(Condition::copyOf)
+                        .forEach(this.conditions::add);
+            }
+        }
+
         public Map<String, Object> getDelegation() {
             return delegation;
         }
 
         public void setDelegation(Map<String, Object> delegation) {
             this.delegation = delegation == null ? new LinkedHashMap<>() : new LinkedHashMap<>(delegation);
+        }
+
+        public static class Condition {
+            private String attribute = "";
+            private String operator = "";
+            private String value = "";
+
+            public Condition() {
+            }
+
+            public Condition(String attribute, String operator, String value) {
+                this.attribute = Objects.toString(attribute, "");
+                this.operator = Objects.toString(operator, "");
+                this.value = Objects.toString(value, "");
+            }
+
+            public String getAttribute() {
+                return attribute;
+            }
+
+            public void setAttribute(String attribute) {
+                this.attribute = Objects.toString(attribute, "");
+            }
+
+            public String getOperator() {
+                return operator;
+            }
+
+            public void setOperator(String operator) {
+                this.operator = Objects.toString(operator, "");
+            }
+
+            public String getValue() {
+                return value;
+            }
+
+            public void setValue(String value) {
+                this.value = Objects.toString(value, "");
+            }
+
+            private static Condition copyOf(Condition source) {
+                if (source == null) {
+                    return new Condition();
+                }
+                return new Condition(source.getAttribute(), source.getOperator(), source.getValue());
+            }
         }
     }
 

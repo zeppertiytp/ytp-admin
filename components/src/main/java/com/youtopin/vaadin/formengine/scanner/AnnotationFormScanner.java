@@ -5,8 +5,11 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -157,7 +160,8 @@ public final class AnnotationFormScanner {
         try {
             String[] segments = path.split("\\.");
             Class<?> currentType = beanType;
-            for (String segment : segments) {
+            for (int index = 0; index < segments.length; index++) {
+                String segment = segments[index];
                 if (segment.isBlank()) {
                     throw new FormDefinitionException("Invalid property path '" + path + "'");
                 }
@@ -166,10 +170,14 @@ public final class AnnotationFormScanner {
                     throw new FormDefinitionException("Unable to resolve property '" + segment + "' on "
                             + currentType.getName() + " for path '" + path + "'");
                 }
-                currentType = descriptor.getPropertyType();
+                currentType = resolvePropertyType(descriptor);
                 if (currentType == null) {
                     throw new FormDefinitionException("Property '" + segment + "' has no accessible type on path '" + path
                             + "'");
+                }
+                if (currentType == Object.class && index < segments.length - 1) {
+                    // Generic type information is erased; stop validation to avoid false positives.
+                    return;
                 }
             }
         } catch (IntrospectionException e) {
@@ -181,6 +189,56 @@ public final class AnnotationFormScanner {
         for (PropertyDescriptor descriptor : Introspector.getBeanInfo(type).getPropertyDescriptors()) {
             if (descriptor.getName().equals(name)) {
                 return descriptor;
+            }
+        }
+        return null;
+    }
+
+    private Class<?> resolvePropertyType(PropertyDescriptor descriptor) {
+        Class<?> propertyType = descriptor.getPropertyType();
+        if (propertyType == null) {
+            return null;
+        }
+        if (propertyType.isArray()) {
+            return propertyType.getComponentType();
+        }
+        if (Collection.class.isAssignableFrom(propertyType)) {
+            Class<?> elementType = resolveTypeArgument(descriptor, 0);
+            return elementType == null ? Object.class : elementType;
+        }
+        if (Map.class.isAssignableFrom(propertyType)) {
+            Class<?> valueType = resolveTypeArgument(descriptor, 1);
+            return valueType == null ? Object.class : valueType;
+        }
+        return propertyType;
+    }
+
+    private Class<?> resolveTypeArgument(PropertyDescriptor descriptor, int index) {
+        Method readMethod = descriptor.getReadMethod();
+        if (readMethod != null) {
+            Class<?> resolved = resolveTypeArgument(readMethod.getGenericReturnType(), index);
+            if (resolved != null) {
+                return resolved;
+            }
+        }
+        Method writeMethod = descriptor.getWriteMethod();
+        if (writeMethod != null && writeMethod.getGenericParameterTypes().length == 1) {
+            Class<?> resolved = resolveTypeArgument(writeMethod.getGenericParameterTypes()[0], index);
+            if (resolved != null) {
+                return resolved;
+            }
+        }
+        return null;
+    }
+
+    private Class<?> resolveTypeArgument(Type type, int index) {
+        if (type instanceof ParameterizedType parameterized) {
+            Type[] arguments = parameterized.getActualTypeArguments();
+            if (index >= 0 && index < arguments.length) {
+                Type argument = arguments[index];
+                if (argument instanceof Class<?> clazz) {
+                    return clazz;
+                }
             }
         }
         return null;
