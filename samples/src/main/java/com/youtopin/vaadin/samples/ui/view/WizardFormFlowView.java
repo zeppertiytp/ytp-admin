@@ -125,6 +125,7 @@ public class WizardFormFlowView extends AppPageLayout implements LocaleChangeObs
 
         String initialStep = determineInitialStep();
         wizard.setCurrentStepId(initialStep);
+        showStep(initialStep);
     }
 
     private void rebuildForms() {
@@ -306,6 +307,7 @@ public class WizardFormFlowView extends AppPageLayout implements LocaleChangeObs
         String currentStep = wizard.getCurrentStepId().orElse(determineInitialStep());
         wizard.setSteps(buildWizardSteps());
         wizard.setCurrentStepId(currentStep);
+        showStep(currentStep);
     }
 
     private boolean isRtl(Locale locale) {
