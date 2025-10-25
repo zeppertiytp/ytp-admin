@@ -1,5 +1,6 @@
 package com.youtopin.vaadin.formengine.definition;
 
+import com.youtopin.vaadin.formengine.RepeatableTitleGenerator;
 import com.youtopin.vaadin.formengine.annotation.UiRepeatable;
 
 /**
@@ -13,6 +14,9 @@ public final class RepeatableDefinition {
     private final int max;
     private final String uniqueBy;
     private final String summaryTemplate;
+    private final String itemTitleKey;
+    private final int itemTitleOffset;
+    private final RepeatableTitleGenerator titleGenerator;
     private final boolean allowReorder;
     private final boolean allowDuplicate;
 
@@ -22,6 +26,9 @@ public final class RepeatableDefinition {
                                 int max,
                                 String uniqueBy,
                                 String summaryTemplate,
+                                String itemTitleKey,
+                                int itemTitleOffset,
+                                RepeatableTitleGenerator titleGenerator,
                                 boolean allowReorder,
                                 boolean allowDuplicate) {
         this.enabled = enabled;
@@ -30,6 +37,9 @@ public final class RepeatableDefinition {
         this.max = max;
         this.uniqueBy = uniqueBy == null ? "" : uniqueBy;
         this.summaryTemplate = summaryTemplate == null ? "" : summaryTemplate;
+        this.itemTitleKey = itemTitleKey == null ? "" : itemTitleKey;
+        this.itemTitleOffset = itemTitleOffset;
+        this.titleGenerator = titleGenerator == null ? new RepeatableTitleGenerator.Default() : titleGenerator;
         this.allowReorder = allowReorder;
         this.allowDuplicate = allowDuplicate;
     }
@@ -56,6 +66,18 @@ public final class RepeatableDefinition {
 
     public String getSummaryTemplate() {
         return summaryTemplate;
+    }
+
+    public String getItemTitleKey() {
+        return itemTitleKey;
+    }
+
+    public int getItemTitleOffset() {
+        return itemTitleOffset;
+    }
+
+    public RepeatableTitleGenerator getTitleGenerator() {
+        return titleGenerator;
     }
 
     public boolean isAllowReorder() {

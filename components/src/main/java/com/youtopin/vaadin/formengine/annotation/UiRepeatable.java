@@ -5,6 +5,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.youtopin.vaadin.formengine.RepeatableTitleGenerator;
+
 /**
  * Configures repeatable groups rendering lists of entries.
  */
@@ -42,6 +44,23 @@ public @interface UiRepeatable {
      * @return Template string used for item summary badges.
      */
     String summaryTemplate() default "";
+
+    /**
+     * @return Message key formatted for individual item titles. Supports {@link java.text.MessageFormat} placeholders where
+     * {0} resolves to the index after applying {@link #itemTitleOffset()} and {1} resolves to the zero-based index.
+     */
+    String itemTitleKey() default "";
+
+    /**
+     * @return Offset added to the zero-based index before substituting the value into {@link #itemTitleKey()} templates.
+     */
+    int itemTitleOffset() default 1;
+
+    /**
+     * @return Strategy used to generate item titles. Implementations must provide a public no-argument constructor and can
+     * leverage the provided index to build custom numbering.
+     */
+    Class<? extends RepeatableTitleGenerator> titleGenerator() default RepeatableTitleGenerator.Default.class;
 
     /**
      * @return Enables drag and drop reordering.

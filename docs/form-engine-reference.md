@@ -290,15 +290,21 @@ Enables repeatable groups where users can manage collections of items with add/r
 | `min` / `max` | Minimum and maximum item counts. `Integer.MAX_VALUE` disables the max constraint. |
 | `uniqueBy` | Property path within the item used to enforce uniqueness. |
 | `summaryTemplate` | Template for summary chips or cards, using `{{item.property}}` placeholders. |
+| `itemTitleKey` | Message key applied to entry headers. Supports `MessageFormat` where `{0}` equals the index after the configured offset and `{1}` is the zero-based index. |
+| `itemTitleOffset` | Offset added to the zero-based index before substitution. Defaults to `1` for human-friendly numbering. |
+| `titleGenerator` | Custom `com.youtopin.vaadin.formengine.RepeatableTitleGenerator` implementation used when templates are insufficient. |
 | `allowReorder` | Enables drag-and-drop ordering. |
 | `allowDuplicate` | Allows duplicating an existing item. |
+
+Use `itemTitleKey` in combination with `itemTitleOffset` for numbered captions (for example, `Segment {0}` yields `Segment 1`, `Segment 2`, ...). When titles depend on richer logic—such as locale-specific ordinals or composite metadata—provide a custom `titleGenerator`; the engine supplies the zero-based index so implementations can apply their own math.
 
 **Example – deep nesting with card dialogs**
 
 ```java
 @UiGroup(id = "policies", titleKey = "form.access.policies",
          repeatable = @UiRepeatable(enabled = true, mode = UiRepeatable.RepeatableMode.CARD_DIALOG,
-                                     uniqueBy = "code", min = 1))
+                                     uniqueBy = "code", min = 1,
+                                     itemTitleKey = "form.access.policy.entryTitle"))
 class PolicyGroup {
     @UiField(path = "policies[].code", labelKey = "form.access.policy.code")
     String code;

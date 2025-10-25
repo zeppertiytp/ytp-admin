@@ -93,7 +93,10 @@ public final class AccessPolicyFormDefinition {
         }
     }
 
-    @UiGroup(id = "policy-conditions", columns = 3, repeatable = @UiRepeatable(enabled = true, min = 1, max = 5, mode = UiRepeatable.RepeatableMode.INLINE_PANEL))
+    @UiGroup(id = "policy-conditions", titleKey = "forms.policy.conditions.title", columns = 3,
+            repeatable = @UiRepeatable(enabled = true, min = 1, max = 5,
+                    mode = UiRepeatable.RepeatableMode.INLINE_PANEL,
+                    itemTitleKey = "forms.policy.condition.entryTitle"))
     public static class ConditionGroup {
 
         @UiField(path = "policy.conditions.attribute", component = UiField.ComponentType.TEXT,

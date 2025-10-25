@@ -582,6 +582,7 @@ public final class FormEngine {
         wrapper.add(entriesContainer);
         Button addEntry = new Button(context.translate("form.repeatable.addGroup"));
         addEntry.getElement().setAttribute("aria-label", context.translate("form.repeatable.addGroup"));
+        addEntry.getElement().setAttribute("data-repeatable-add", group.getId());
         context.applyTheme(addEntry);
         addEntry.addClickListener(event -> {
             if (entries.size() >= repeatable.getMax()) {
@@ -596,6 +597,7 @@ public final class FormEngine {
         }
         updateAddButtonState(addEntry, repeatable, entries);
         updateRemoveButtons(entriesContainer, repeatable, entries.size());
+        updateRepeatableTitles(entriesContainer, repeatable, context, group);
         wrapper.add(addEntry);
         return wrapper;
     }
@@ -616,10 +618,24 @@ public final class FormEngine {
         entryWrapper.setSpacing(false);
         entryWrapper.getElement().setAttribute("data-repeatable-entry", group.getId());
         Button removeButton = new Button(context.translate("form.repeatable.removeGroup"));
-        removeButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        removeButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY_INLINE);
+        removeButton.getStyle().set("color", "var(--color-danger-500)");
+        removeButton.getStyle().set("--lumo-button-color", "var(--color-danger-500)");
+        removeButton.getStyle().set("--lumo-error-color", "var(--color-danger-500)");
         removeButton.getElement().setAttribute("data-repeatable-remove", "true");
         removeButton.getElement().setAttribute("aria-label", context.translate("form.repeatable.removeGroup"));
         context.applyTheme(removeButton);
+        com.vaadin.flow.component.orderedlayout.HorizontalLayout header = new com.vaadin.flow.component.orderedlayout.HorizontalLayout();
+        header.setWidthFull();
+        header.setJustifyContentMode(com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode.BETWEEN);
+        header.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.CENTER);
+        header.getStyle().set("gap", "var(--lumo-space-s)");
+        header.getElement().setAttribute("data-repeatable-header", "true");
+        com.vaadin.flow.component.html.Span title = new com.vaadin.flow.component.html.Span();
+        title.getElement().setAttribute("data-repeatable-title", "true");
+        title.addClassName("form-engine-repeatable-title");
+        title.setText(repeatable.getTitleGenerator().generate(entries.size(), context, group, repeatable));
+        header.add(title, removeButton);
         com.vaadin.flow.component.formlayout.FormLayout formLayout = new com.vaadin.flow.component.formlayout.FormLayout();
         formLayout.setResponsiveSteps(new com.vaadin.flow.component.formlayout.FormLayout.ResponsiveStep("0", group.getColumns()));
         Map<FieldDefinition, FieldInstance> entryInstances = new LinkedHashMap<>();
@@ -643,12 +659,14 @@ public final class FormEngine {
             entries.remove(entryInstances);
             updateAddButtonState(addEntryButton, repeatable, entries);
             updateRemoveButtons(entriesContainer, repeatable, entries.size());
+            updateRepeatableTitles(entriesContainer, repeatable, context, group);
         });
-        entryWrapper.add(removeButton, formLayout);
+        entryWrapper.add(header, formLayout);
         entriesContainer.add(entryWrapper);
         entries.add(entryInstances);
         updateAddButtonState(addEntryButton, repeatable, entries);
         updateRemoveButtons(entriesContainer, repeatable, entries.size());
+        updateRepeatableTitles(entriesContainer, repeatable, context, group);
     }
 
     private void updateAddButtonState(Button addEntryButton,
@@ -669,6 +687,30 @@ public final class FormEngine {
                         .map(child -> (Button) child)
                         .filter(button -> "true".equals(button.getElement().getAttribute("data-repeatable-remove")))
                         .forEach(button -> button.setEnabled(canRemove)));
+    }
+
+    private void updateRepeatableTitles(com.vaadin.flow.component.orderedlayout.VerticalLayout entriesContainer,
+                                        RepeatableDefinition repeatable,
+                                        FieldFactoryContext context,
+                                        GroupDefinition group) {
+        java.util.concurrent.atomic.AtomicInteger counter = new java.util.concurrent.atomic.AtomicInteger();
+        entriesContainer.getChildren()
+                .filter(component -> component instanceof com.vaadin.flow.component.orderedlayout.VerticalLayout)
+                .map(component -> (com.vaadin.flow.component.orderedlayout.VerticalLayout) component)
+                .forEach(wrapper -> {
+                    int index = counter.getAndIncrement();
+                    String title = repeatable.getTitleGenerator().generate(index, context, group, repeatable);
+                    wrapper.getChildren()
+                            .filter(child -> child instanceof com.vaadin.flow.component.orderedlayout.HorizontalLayout
+                                    && "true".equals(child.getElement().getAttribute("data-repeatable-header")))
+                            .findFirst()
+                            .ifPresent(header -> header.getChildren()
+                                    .filter(hasTextComponent -> hasTextComponent instanceof com.vaadin.flow.component.HasText)
+                                    .filter(hasTextComponent -> "true".equals(hasTextComponent.getElement()
+                                            .getAttribute("data-repeatable-title")))
+                                    .map(hasTextComponent -> (com.vaadin.flow.component.HasText) hasTextComponent)
+                                    .forEach(hasText -> hasText.setText(title)));
+                });
     }
 
     private com.vaadin.flow.component.orderedlayout.HorizontalLayout createActionRow() {

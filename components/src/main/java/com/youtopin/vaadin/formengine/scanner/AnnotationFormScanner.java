@@ -17,6 +17,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.youtopin.vaadin.formengine.RepeatableTitleGenerator;
 import com.youtopin.vaadin.formengine.annotation.UiAction;
 import com.youtopin.vaadin.formengine.annotation.UiCrossField;
 import com.youtopin.vaadin.formengine.annotation.UiField;
@@ -123,9 +124,20 @@ public final class AnnotationFormScanner {
     }
 
     private RepeatableDefinition toRepeatable(UiRepeatable repeatable) {
+        RepeatableTitleGenerator generator = instantiateRepeatableTitleGenerator(repeatable.titleGenerator());
         return new RepeatableDefinition(repeatable.enabled(), repeatable.mode(), repeatable.min(), repeatable.max(),
-                repeatable.uniqueBy(), repeatable.summaryTemplate(), repeatable.allowReorder(),
-                repeatable.allowDuplicate());
+                repeatable.uniqueBy(), repeatable.summaryTemplate(), repeatable.itemTitleKey(),
+                repeatable.itemTitleOffset(), generator, repeatable.allowReorder(), repeatable.allowDuplicate());
+    }
+
+    private RepeatableTitleGenerator instantiateRepeatableTitleGenerator(
+            Class<? extends RepeatableTitleGenerator> generatorType) {
+        try {
+            return generatorType.getDeclaredConstructor().newInstance();
+        } catch (ReflectiveOperationException ex) {
+            throw new FormDefinitionException(
+                    "Unable to instantiate repeatable title generator '" + generatorType.getName() + "'", ex);
+        }
     }
 
     private SubformDefinition toSubform(UiSubform subform) {

@@ -71,7 +71,8 @@ public final class AgendaBuilderFormDefinition {
 
     @UiGroup(id = "agenda-segment-group", columns = 2,
             repeatable = @UiRepeatable(enabled = true, min = 1, max = 6,
-                    mode = UiRepeatable.RepeatableMode.CARD_DIALOG, uniqueBy = "title", allowDuplicate = false))
+                    mode = UiRepeatable.RepeatableMode.CARD_DIALOG, uniqueBy = "title",
+                    itemTitleKey = "forms.agenda.segment.entryTitle", allowDuplicate = false))
     public static class SegmentGroup {
 
         @UiField(path = "agenda.segments.title", component = UiField.ComponentType.TEXT,
