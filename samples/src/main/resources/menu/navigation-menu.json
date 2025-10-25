@@ -69,6 +69,49 @@
       "navigationTarget": "design-system"
     },
     {
+      "group": "components",
+      "labelKey": "menu.components",
+      "icon": "CUBES",
+      "children": [
+        {
+          "group": "components",
+          "labelKey": "menu.components.accordion",
+          "icon": "MENU",
+          "navigationTarget": "components/accordion"
+        },
+        {
+          "group": "components",
+          "labelKey": "menu.components.appLayout",
+          "icon": "LAYOUT",
+          "navigationTarget": "components/app-layout"
+        },
+        {
+          "group": "components",
+          "labelKey": "menu.components.card",
+          "icon": "CREDIT_CARD",
+          "navigationTarget": "components/card"
+        },
+        {
+          "group": "components",
+          "labelKey": "menu.components.confirmDialog",
+          "icon": "QUESTION_CIRCLE",
+          "navigationTarget": "components/confirm-dialog"
+        },
+        {
+          "group": "components",
+          "labelKey": "menu.components.masterDetailLayout",
+          "icon": "GRID",
+          "navigationTarget": "components/master-detail-layout"
+        },
+        {
+          "group": "components",
+          "labelKey": "menu.components.progressBar",
+          "icon": "TRENDING_UP",
+          "navigationTarget": "components/progress-bar"
+        }
+      ]
+    },
+    {
       "group": "other",
       "labelKey": "menu.wizard",
       "icon": "LIST",
