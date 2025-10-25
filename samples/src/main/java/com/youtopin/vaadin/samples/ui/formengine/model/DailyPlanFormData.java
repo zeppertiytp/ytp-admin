@@ -29,7 +29,8 @@ public class DailyPlanFormData {
         }
 
         public void setDayCount(Integer dayCount) {
-            this.dayCount = dayCount == null ? 0 : Math.max(dayCount, 0);
+            int sanitized = dayCount == null ? 0 : Math.max(dayCount, 0);
+            this.dayCount = Math.min(sanitized, 7);
         }
 
         public String getObjective() {

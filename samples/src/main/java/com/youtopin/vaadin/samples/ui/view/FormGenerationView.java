@@ -7,14 +7,18 @@ import com.youtopin.vaadin.component.GeneratedForm;
 import com.youtopin.vaadin.form.FormValidationService;
 import com.youtopin.vaadin.formengine.FormEngine;
 import com.youtopin.vaadin.formengine.FormEngine.RenderedForm;
+import com.youtopin.vaadin.formengine.annotation.UiAction;
 import com.youtopin.vaadin.formengine.definition.FieldDefinition;
+import com.youtopin.vaadin.formengine.definition.SectionDefinition;
 import com.youtopin.vaadin.formengine.registry.FieldInstance;
 import com.youtopin.vaadin.i18n.TranslationProvider;
 import com.youtopin.vaadin.samples.ui.formengine.definition.AccessPolicyFormDefinition;
+import com.youtopin.vaadin.samples.ui.formengine.definition.AgendaBuilderFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.DailyPlanFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.EmployeeOnboardingFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.ProductCatalogFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.model.AccessPolicyFormData;
+import com.youtopin.vaadin.samples.ui.formengine.model.AgendaBuilderFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.DailyPlanFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.EmployeeOnboardingFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.ProductCatalogFormData;
@@ -40,11 +44,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.fasterxml.jackson.databind.SerializationFeature;
 
-import java.util.LinkedHashMap;
+import com.vaadin.flow.component.textfield.IntegerField;
+
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -137,6 +145,13 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
                         "forms.sample.plan.features",
                         DailyPlanFormDefinition.class,
                         DailyPlanFormData::new
+                ),
+                new SampleDescriptor<>(
+                        "forms.sample.agenda.heading",
+                        "forms.sample.agenda.description",
+                        "forms.sample.agenda.features",
+                        AgendaBuilderFormDefinition.class,
+                        AgendaBuilderFormData::new
                 )
         );
         descriptors.stream()
@@ -203,21 +218,26 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
             rendered.getOrchestrator().bindField(entry.getValue(), entry.getKey());
         }
         rendered.setActionBeanSupplier(() -> beanSupplier.get());
-        rendered.getActionButtons().keySet().forEach(actionId ->
-                rendered.addActionHandler(actionId, context -> logSubmission(definitionClass.getSimpleName(), context.getActionDefinition().getId(), context.getBean()))
-        );
+        rendered.getDefinition().getActions().stream()
+                .filter(action -> action.getType() == UiAction.ActionType.SUBMIT)
+                .forEach(action -> rendered.addActionHandler(action.getId(), context ->
+                        logSubmission(definitionClass.getSimpleName(), context.getActionDefinition().getId(), context.getBean())));
         rendered.addValidationFailureListener((actionDefinition, exception) ->
                 log.warn("Validation failed for action '{}' in form '{}'", actionDefinition.getId(), definitionClass.getSimpleName(), exception));
         if (definitionClass.equals(DailyPlanFormDefinition.class)) {
             configureDynamicPlan(rendered);
+        } else if (definitionClass.equals(AgendaBuilderFormDefinition.class)) {
+            configureAgendaSections(rendered);
         }
         return rendered;
     }
 
     private <T> void configureDynamicPlan(RenderedForm<T> rendered) {
-        Map<String, VerticalLayout> daySections = rendered.getSections().entrySet().stream()
+        List<VerticalLayout> daySections = rendered.getSections().entrySet().stream()
                 .filter(entry -> entry.getKey().getId().startsWith("day-"))
-                .collect(Collectors.toMap(entry -> entry.getKey().getId(), Map.Entry::getValue, (a, b) -> a, LinkedHashMap::new));
+                .sorted(Comparator.comparingInt(entry -> resolveNumericSuffix(entry.getKey().getId())))
+                .map(Map.Entry::getValue)
+                .collect(Collectors.toCollection(ArrayList::new));
         FieldDefinition dayCountDefinition = rendered.getFields().keySet().stream()
                 .filter(definition -> "schedule.dayCount".equals(definition.getPath()))
                 .findFirst()
@@ -225,6 +245,10 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
         FieldInstance dayCountInstance = dayCountDefinition == null ? null : rendered.getFields().get(dayCountDefinition);
         if (dayCountInstance != null) {
             HasValue<?, ?> component = dayCountInstance.getValueComponent();
+            if (component instanceof IntegerField integerField) {
+                integerField.setMin(0);
+                integerField.setMax(daySections.size());
+            }
             component.addValueChangeListener(event -> updateDayVisibility(daySections, toInteger(event.getValue())));
             updateDayVisibility(daySections, toInteger(component.getValue()));
             Button resetButton = rendered.getActionButtons().get("plan-reset");
@@ -237,11 +261,75 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
         }
     }
 
-    private void updateDayVisibility(Map<String, VerticalLayout> daySections, int activeDays) {
-        int index = 1;
-        for (Map.Entry<String, VerticalLayout> entry : daySections.entrySet()) {
-            entry.getValue().setVisible(index <= activeDays);
-            index++;
+    private void updateDayVisibility(List<VerticalLayout> daySections, int requestedActiveDays) {
+        int activeDays = clampActiveDays(requestedActiveDays, daySections.size());
+        for (int index = 0; index < daySections.size(); index++) {
+            daySections.get(index).setVisible(index < activeDays);
+        }
+    }
+
+    private int clampActiveDays(int requestedActiveDays, int max) {
+        return Math.min(Math.max(requestedActiveDays, 0), max);
+    }
+
+    private <T> void configureAgendaSections(RenderedForm<T> rendered) {
+        List<Map.Entry<SectionDefinition, VerticalLayout>> adjustableSections = rendered.getSections().entrySet().stream()
+                .filter(entry -> entry.getKey().getId().startsWith("agenda-segment-"))
+                .sorted(Comparator.comparingInt(entry -> resolveNumericSuffix(entry.getKey().getId())))
+                .collect(Collectors.toCollection(ArrayList::new));
+        if (adjustableSections.isEmpty()) {
+            return;
+        }
+        List<VerticalLayout> segmentLayouts = adjustableSections.stream()
+                .map(Map.Entry::getValue)
+                .collect(Collectors.toCollection(ArrayList::new));
+        segmentLayouts.forEach(layout -> layout.setVisible(false));
+        AtomicInteger visibleCount = new AtomicInteger(0);
+        Button addButton = rendered.getActionButtons().get("agenda-add-section");
+        Button removeButton = rendered.getActionButtons().get("agenda-remove-section");
+        updateAgendaButtonStates(addButton, removeButton, visibleCount.get(), segmentLayouts.size());
+        if (addButton != null) {
+            addButton.addClickListener(event -> {
+                int current = visibleCount.get();
+                if (current < segmentLayouts.size()) {
+                    segmentLayouts.get(current).setVisible(true);
+                    visibleCount.incrementAndGet();
+                    updateAgendaButtonStates(addButton, removeButton, visibleCount.get(), segmentLayouts.size());
+                }
+            });
+        }
+        if (removeButton != null) {
+            removeButton.addClickListener(event -> {
+                int current = visibleCount.get();
+                if (current > 0) {
+                    int indexToHide = current - 1;
+                    segmentLayouts.get(indexToHide).setVisible(false);
+                    visibleCount.decrementAndGet();
+                    updateAgendaButtonStates(addButton, removeButton, visibleCount.get(), segmentLayouts.size());
+                }
+            });
+        }
+    }
+
+    private void updateAgendaButtonStates(Button addButton, Button removeButton, int visibleCount, int totalSegments) {
+        if (addButton != null) {
+            addButton.setEnabled(visibleCount < totalSegments);
+        }
+        if (removeButton != null) {
+            removeButton.setEnabled(visibleCount > 0);
+        }
+    }
+
+    private int resolveNumericSuffix(String id) {
+        if (id == null || id.isBlank()) {
+            return Integer.MAX_VALUE;
+        }
+        int separator = id.lastIndexOf('-');
+        String numericPortion = separator >= 0 && separator < id.length() - 1 ? id.substring(separator + 1) : id;
+        try {
+            return Integer.parseInt(numericPortion);
+        } catch (NumberFormatException ex) {
+            return Integer.MAX_VALUE;
         }
     }
 
