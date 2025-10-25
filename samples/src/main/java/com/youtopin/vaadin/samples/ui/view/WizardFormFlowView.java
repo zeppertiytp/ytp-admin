@@ -38,6 +38,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.stream.IntStream;
 
 /**
  * Demonstrates how the horizontal wizard component can orchestrate multiple form engine steps
@@ -80,6 +81,7 @@ public class WizardFormFlowView extends AppPageLayout implements LocaleChangeObs
     private final Paragraph stepDescription = new Paragraph();
     private final VerticalLayout formCard;
     private Component activeFormLayout;
+    private boolean updatingWizardSteps;
 
     @Autowired
     public WizardFormFlowView(FormEngine formEngine,
@@ -107,10 +109,14 @@ public class WizardFormFlowView extends AppPageLayout implements LocaleChangeObs
         add(formCard);
 
         wizard.addCurrentStepChangeListener(event -> {
+            if (updatingWizardSteps) {
+                return;
+            }
             String stepId = event.getCurrentStep().getId();
-            wizardState.setCurrentStepId(stepId);
+            String activeStepId = refreshWizardSteps(stepId);
+            wizardState.setCurrentStepId(activeStepId);
             wizardService.store(wizardState);
-            showStep(stepId);
+            showStep(activeStepId);
         });
         wizard.addStepClickListener(event -> {
             String stepId = event.getStep().getId();
@@ -121,11 +127,11 @@ public class WizardFormFlowView extends AppPageLayout implements LocaleChangeObs
 
         rebuildForms();
         updateTexts();
-        wizard.setSteps(buildWizardSteps());
-
         String initialStep = determineInitialStep();
-        wizard.setCurrentStepId(initialStep);
-        showStep(initialStep);
+        String activeStepId = refreshWizardSteps(initialStep);
+        wizardState.setCurrentStepId(activeStepId);
+        wizardService.store(wizardState);
+        showStep(activeStepId);
     }
 
     private void rebuildForms() {
@@ -157,9 +163,13 @@ public class WizardFormFlowView extends AppPageLayout implements LocaleChangeObs
         forms.put(ProjectLaunchWizardState.STEP_CHECKLIST, checklistForm);
     }
 
-    private List<WizardStep> buildWizardSteps() {
-        return stepOrder.stream()
-                .map(step -> WizardStep.of(step, getTranslation(stepLabelKeys.get(step))))
+    private List<WizardStep> buildWizardSteps(int resumeIndex) {
+        return IntStream.range(0, stepOrder.size())
+                .mapToObj(index -> {
+                    String stepId = stepOrder.get(index);
+                    WizardStep step = WizardStep.of(stepId, getTranslation(stepLabelKeys.get(stepId)));
+                    return step.withClickable(index <= resumeIndex);
+                })
                 .toList();
     }
 
@@ -206,7 +216,11 @@ public class WizardFormFlowView extends AppPageLayout implements LocaleChangeObs
         }
         form.addActionHandler("project-launch-finish", context -> {
             wizardState.markStepCompleted(ProjectLaunchWizardState.STEP_CHECKLIST);
+            String currentStep = wizard.getCurrentStepId().orElse(ProjectLaunchWizardState.STEP_CHECKLIST);
+            String activeStep = refreshWizardSteps(currentStep);
+            wizardState.setCurrentStepId(activeStep);
             wizardService.store(wizardState);
+            showStep(activeStep);
             Notification notification = Notification.show(getTranslation("wizardform.finish.success"));
             notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         });
@@ -300,14 +314,38 @@ public class WizardFormFlowView extends AppPageLayout implements LocaleChangeObs
         }
     }
 
+    private String refreshWizardSteps(String desiredCurrentStep) {
+        updatingWizardSteps = true;
+        try {
+            int resumeIndex = computeResumeIndex();
+            wizard.setSteps(buildWizardSteps(resumeIndex));
+            String targetStep = desiredCurrentStep;
+            if (targetStep == null || !stepOrder.contains(targetStep)) {
+                targetStep = stepOrder.get(Math.min(resumeIndex, stepOrder.size() - 1));
+            }
+            wizard.setCurrentStepId(targetStep);
+            return targetStep;
+        } finally {
+            updatingWizardSteps = false;
+        }
+    }
+
     @Override
     public void localeChange(LocaleChangeEvent event) {
         rebuildForms();
         updateTexts();
-        String currentStep = wizard.getCurrentStepId().orElse(determineInitialStep());
-        wizard.setSteps(buildWizardSteps());
-        wizard.setCurrentStepId(currentStep);
-        showStep(currentStep);
+        String currentStep = wizard.getCurrentStepId()
+                .orElseGet(() -> {
+                    String stored = wizardState.getCurrentStepId();
+                    if (stored != null && stepOrder.contains(stored)) {
+                        return stored;
+                    }
+                    return determineInitialStep();
+                });
+        String activeStep = refreshWizardSteps(currentStep);
+        wizardState.setCurrentStepId(activeStep);
+        wizardService.store(wizardState);
+        showStep(activeStep);
     }
 
     private boolean isRtl(Locale locale) {
