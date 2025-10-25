@@ -834,6 +834,7 @@ public final class FormEngine {
         removeButton.getElement().setAttribute("data-repeatable-remove", "true");
         removeButton.getElement().setAttribute("aria-label", context.translate("form.repeatable.removeGroup"));
         context.applyTheme(removeButton);
+        updateRepeatableRemoveButtonStyles(removeButton, removeButton.isEnabled());
         com.vaadin.flow.component.orderedlayout.HorizontalLayout header = new com.vaadin.flow.component.orderedlayout.HorizontalLayout();
         header.setWidthFull();
         header.setJustifyContentMode(com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode.BETWEEN);
@@ -861,7 +862,7 @@ public final class FormEngine {
                 component.getElement().getStyle().set("grid-row-end", "span " + fieldDefinition.getRowSpan());
             }
         }
-        RepeatableEntry entry = new RepeatableEntry(entryWrapper, entryInstances);
+        RepeatableEntry entry = new RepeatableEntry(entryWrapper, entryInstances, removeButton);
         removeButton.addClickListener(event -> {
             if (state.getEntries().size() <= state.getRepeatable().getMin()) {
                 return;
@@ -886,13 +887,11 @@ public final class FormEngine {
 
     private void updateRemoveButtons(RepeatableGroupState state) {
         boolean canRemove = state.getEntries().size() > state.getRepeatable().getMin();
-        state.getEntries().stream()
-                .map(RepeatableEntry::wrapper)
-                .forEach(wrapper -> wrapper.getChildren()
-                        .filter(child -> child instanceof Button)
-                        .map(child -> (Button) child)
-                        .filter(button -> "true".equals(button.getElement().getAttribute("data-repeatable-remove")))
-                        .forEach(button -> button.setEnabled(canRemove)));
+        state.getEntries().forEach(entry -> {
+            Button button = entry.removeButton();
+            button.setEnabled(canRemove);
+            updateRepeatableRemoveButtonStyles(button, canRemove);
+        });
     }
 
     private void updateRepeatableTitles(RepeatableGroupState state, FieldFactoryContext context) {
@@ -1007,14 +1006,32 @@ public final class FormEngine {
         }
     }
 
+    private void updateRepeatableRemoveButtonStyles(Button button, boolean enabled) {
+        if (enabled) {
+            button.getStyle().set("color", "var(--color-danger-500)");
+            button.getStyle().set("--lumo-button-color", "var(--color-danger-500)");
+            button.getStyle().set("--lumo-error-color", "var(--color-danger-500)");
+            button.getStyle().remove("opacity");
+        } else {
+            button.getStyle().set("color", "var(--lumo-disabled-text-color)");
+            button.getStyle().set("--lumo-button-color", "var(--lumo-disabled-text-color)");
+            button.getStyle().set("--lumo-error-color", "var(--lumo-disabled-text-color)");
+            button.getStyle().set("opacity", "0.6");
+        }
+        button.getElement().setAttribute("aria-disabled", String.valueOf(!enabled));
+    }
+
     private static final class RepeatableEntry {
         private final com.vaadin.flow.component.orderedlayout.VerticalLayout wrapper;
         private final Map<FieldDefinition, FieldInstance> fields;
+        private final Button removeButton;
 
         private RepeatableEntry(com.vaadin.flow.component.orderedlayout.VerticalLayout wrapper,
-                                Map<FieldDefinition, FieldInstance> fields) {
+                                Map<FieldDefinition, FieldInstance> fields,
+                                Button removeButton) {
             this.wrapper = wrapper;
             this.fields = fields;
+            this.removeButton = removeButton;
         }
 
         private com.vaadin.flow.component.orderedlayout.VerticalLayout wrapper() {
@@ -1023,6 +1040,10 @@ public final class FormEngine {
 
         private Map<FieldDefinition, FieldInstance> fields() {
             return fields;
+        }
+
+        private Button removeButton() {
+            return removeButton;
         }
     }
 
