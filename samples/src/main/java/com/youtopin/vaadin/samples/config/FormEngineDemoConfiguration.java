@@ -16,6 +16,7 @@ import com.youtopin.vaadin.i18n.TranslationProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+
 /**
  * Spring configuration wiring the form engine and registering option catalogs used by the demo samples.
  */

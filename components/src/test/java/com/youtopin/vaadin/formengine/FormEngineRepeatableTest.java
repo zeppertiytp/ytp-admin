@@ -2,7 +2,6 @@ package com.youtopin.vaadin.formengine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -34,7 +33,7 @@ import com.youtopin.vaadin.formengine.registry.FieldInstance;
 class FormEngineRepeatableTest {
 
     @Test
-    void propagatesRepeatableEntryValuesToBean() throws Exception {
+    void propagatesRepeatableEntryValuesToBean() {
         FormEngine engine = new FormEngine(new OptionCatalogRegistry());
         RenderedForm<RepeatableBean> rendered = engine.render(
                 TestRepeatableForm.class,
@@ -47,7 +46,7 @@ class FormEngineRepeatableTest {
         rendered.getFields().forEach((definition, instance) ->
                 rendered.getOrchestrator().bindField(instance, definition));
 
-        Map<String, List<Map<FieldDefinition, FieldInstance>>> repeatables = repeatableGroups(rendered);
+        Map<String, List<Map<FieldDefinition, FieldInstance>>> repeatables = rendered.getRepeatableGroups();
         Map<FieldDefinition, FieldInstance> entry = repeatables.get("test-repeatable-group").get(0);
         entry.entrySet().stream()
                 .filter(e -> "plan.segments.title".equals(e.getKey().getPath()))
@@ -92,12 +91,36 @@ class FormEngineRepeatableTest {
         assertThat(updatedTitles).containsExactly("Segment 1", "Segment 2");
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, List<Map<FieldDefinition, FieldInstance>>> repeatableGroups(RenderedForm<?> rendered)
-            throws NoSuchFieldException, IllegalAccessException {
-        Field field = rendered.getClass().getDeclaredField("repeatableGroups");
-        field.setAccessible(true);
-        return (Map<String, List<Map<FieldDefinition, FieldInstance>>>) field.get(rendered);
+    @Test
+    void initializeWithBeanPrefillsRepeatableValues() {
+        FormEngine engine = new FormEngine(new OptionCatalogRegistry());
+        RenderedForm<RepeatableBean> rendered = engine.render(
+                TestRepeatableForm.class,
+                new StubI18NProvider(),
+                Locale.ENGLISH,
+                false);
+
+        rendered.getFields().forEach((definition, instance) ->
+                rendered.getOrchestrator().bindField(instance, definition));
+
+        RepeatableBean bean = new RepeatableBean();
+        Segment segment = new Segment();
+        segment.setTitle("Agenda");
+        segment.setNotes("Discuss roadmap");
+        bean.getPlan().getSegments().add(segment);
+
+        rendered.initializeWithBean(bean);
+
+        Map<String, List<Map<FieldDefinition, FieldInstance>>> repeatables = rendered.getRepeatableGroups();
+        Map<FieldDefinition, FieldInstance> entry = repeatables.get("test-repeatable-group").get(0);
+        entry.entrySet().stream()
+                .filter(e -> "plan.segments.title".equals(e.getKey().getPath()))
+                .findFirst()
+                .ifPresent(e -> assertThat(((TextField) e.getValue().getValueComponent()).getValue()).isEqualTo("Agenda"));
+        entry.entrySet().stream()
+                .filter(e -> "plan.segments.notes".equals(e.getKey().getPath()))
+                .findFirst()
+                .ifPresent(e -> assertThat(((TextArea) e.getValue().getValueComponent()).getValue()).isEqualTo("Discuss roadmap"));
     }
 
     private List<String> repeatableTitles(RenderedForm<?> rendered) {

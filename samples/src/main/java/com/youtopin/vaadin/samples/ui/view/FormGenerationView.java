@@ -17,11 +17,14 @@ import com.youtopin.vaadin.samples.ui.formengine.definition.AgendaBuilderFormDef
 import com.youtopin.vaadin.samples.ui.formengine.definition.DailyPlanFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.EmployeeOnboardingFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.ProductCatalogFormDefinition;
+import com.youtopin.vaadin.samples.ui.formengine.definition.InventoryManagementFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.model.AccessPolicyFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.AgendaBuilderFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.DailyPlanFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.EmployeeOnboardingFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.ProductCatalogFormData;
+import com.youtopin.vaadin.samples.application.formengine.model.InventoryManagementFormData;
+import com.youtopin.vaadin.samples.application.formengine.InventoryPlanService;
 import com.youtopin.vaadin.samples.ui.layout.AppPageLayout;
 import com.youtopin.vaadin.samples.ui.layout.MainLayout;
 import com.vaadin.flow.component.Component;
@@ -66,6 +69,7 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
     private final FormEngine formEngine;
     private final TranslationProvider translationProvider;
     private final ObjectMapper objectMapper;
+    private final InventoryPlanService inventoryPlanService;
 
     private final H2 generatedDefaultHeading;
     private final H2 generatedLayoutHeading;
@@ -77,9 +81,11 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
     @Autowired
     public FormGenerationView(FormEngine formEngine,
                               TranslationProvider translationProvider,
-                              FormValidationService validationService) {
+                              FormValidationService validationService,
+                              InventoryPlanService inventoryPlanService) {
         this.formEngine = Objects.requireNonNull(formEngine, "formEngine");
         this.translationProvider = Objects.requireNonNull(translationProvider, "translationProvider");
+        this.inventoryPlanService = Objects.requireNonNull(inventoryPlanService, "inventoryPlanService");
         this.objectMapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule())
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -151,6 +157,13 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
                         "forms.sample.agenda.features",
                         AgendaBuilderFormDefinition.class,
                         AgendaBuilderFormData::new
+                ),
+                new SampleDescriptor<>(
+                        "forms.sample.inventory.heading",
+                        "forms.sample.inventory.description",
+                        "forms.sample.inventory.features",
+                        InventoryManagementFormDefinition.class,
+                        () -> InventoryManagementFormData.copyOf(inventoryPlanService.load())
                 )
         );
         descriptors.stream()
@@ -216,7 +229,9 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
         for (Map.Entry<FieldDefinition, FieldInstance> entry : rendered.getFields().entrySet()) {
             rendered.getOrchestrator().bindField(entry.getValue(), entry.getKey());
         }
-        rendered.setActionBeanSupplier(() -> beanSupplier.get());
+        T initialBean = beanSupplier.get();
+        rendered.initializeWithBean(initialBean);
+        rendered.setActionBeanSupplier(beanSupplier);
         rendered.getDefinition().getActions().stream()
                 .filter(action -> action.getType() == UiAction.ActionType.SUBMIT)
                 .forEach(action -> rendered.addActionHandler(action.getId(), context ->
@@ -227,6 +242,10 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
             configureDynamicPlan(rendered);
         } else if (definitionClass.equals(AgendaBuilderFormDefinition.class)) {
             configureAgendaSections(rendered);
+        } else if (definitionClass.equals(InventoryManagementFormDefinition.class)) {
+            @SuppressWarnings("unchecked")
+            RenderedForm<InventoryManagementFormData> inventoryForm = (RenderedForm<InventoryManagementFormData>) rendered;
+            configureInventoryPlan(inventoryForm);
         }
         return rendered;
     }
@@ -391,6 +410,14 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
             }
         }
         return 0;
+    }
+
+    private void configureInventoryPlan(RenderedForm<InventoryManagementFormData> rendered) {
+        rendered.addActionHandler("inventory-save", context -> {
+            inventoryPlanService.save(context.getBean());
+            InventoryManagementFormData refreshed = InventoryManagementFormData.copyOf(inventoryPlanService.load());
+            rendered.initializeWithBean(refreshed);
+        });
     }
 
     private record SampleDescriptor<T>(String headingKey,

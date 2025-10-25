@@ -7,8 +7,14 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -34,7 +40,9 @@ import com.youtopin.vaadin.formengine.definition.FormDefinition;
 import com.youtopin.vaadin.formengine.definition.GroupDefinition;
 import com.youtopin.vaadin.formengine.definition.RepeatableDefinition;
 import com.youtopin.vaadin.formengine.definition.SectionDefinition;
+import com.youtopin.vaadin.formengine.options.OptionCatalog;
 import com.youtopin.vaadin.formengine.options.OptionCatalogRegistry;
+import com.youtopin.vaadin.formengine.options.OptionItem;
 import com.youtopin.vaadin.formengine.registry.FieldFactoryContext;
 import com.youtopin.vaadin.formengine.registry.FieldInstance;
 import com.youtopin.vaadin.formengine.registry.FieldRegistry;
@@ -72,7 +80,7 @@ public final class FormEngine {
         layout.getStyle().set("gap", "var(--lumo-space-l)");
         Map<FieldDefinition, FieldInstance> instances = new HashMap<>();
         Map<String, Button> actionButtons = new java.util.LinkedHashMap<>();
-        Map<String, List<Map<FieldDefinition, FieldInstance>>> repeatableGroups = new LinkedHashMap<>();
+        Map<String, RepeatableGroupState> repeatableGroups = new LinkedHashMap<>();
         FieldFactoryContext context = new FieldFactoryContext(definition, locale, rtl,
                 (key, loc) -> provider.getTranslation(key, loc), component -> {
                     component.getElement().getThemeList().add("ytp-field");
@@ -129,10 +137,10 @@ public final class FormEngine {
         }
 
         return new RenderedForm<>(definition, orchestrator, layout, instances, headerActions, footerActions, actionButtons,
-                repeatableGroups, sectionLayouts);
+                repeatableGroups, sectionLayouts, registry, context, optionCatalogRegistry, locale);
     }
 
-    public static final class RenderedForm<T> {
+    public final class RenderedForm<T> {
         private final FormDefinition definition;
         private final BinderOrchestrator<T> orchestrator;
         private final VerticalLayout layout;
@@ -141,10 +149,14 @@ public final class FormEngine {
         private final Map<String, ActionDefinition> actionDefinitions;
         private final com.vaadin.flow.component.orderedlayout.HorizontalLayout headerActions;
         private final com.vaadin.flow.component.orderedlayout.HorizontalLayout footerActions;
-        private final Map<String, List<Map<FieldDefinition, FieldInstance>>> repeatableGroups;
+        private final Map<String, RepeatableGroupState> repeatableGroups;
         private final Map<SectionDefinition, VerticalLayout> sections;
         private java.util.function.Supplier<T> actionBeanSupplier;
         private final List<ValidationFailureListener<T>> validationFailureListeners = new CopyOnWriteArrayList<>();
+        private final FieldRegistry fieldRegistry;
+        private final FieldFactoryContext fieldContext;
+        private final OptionCatalogRegistry optionCatalogRegistry;
+        private final Locale locale;
 
         private RenderedForm(FormDefinition definition,
                              BinderOrchestrator<T> orchestrator,
@@ -153,8 +165,12 @@ public final class FormEngine {
                              com.vaadin.flow.component.orderedlayout.HorizontalLayout headerActions,
                              com.vaadin.flow.component.orderedlayout.HorizontalLayout footerActions,
                              Map<String, Button> actionButtons,
-                             Map<String, List<Map<FieldDefinition, FieldInstance>>> repeatableGroups,
-                             Map<SectionDefinition, VerticalLayout> sections) {
+                             Map<String, RepeatableGroupState> repeatableGroups,
+                             Map<SectionDefinition, VerticalLayout> sections,
+                             FieldRegistry fieldRegistry,
+                             FieldFactoryContext fieldContext,
+                             OptionCatalogRegistry optionCatalogRegistry,
+                             Locale locale) {
             this.definition = definition;
             this.orchestrator = orchestrator;
             this.layout = layout;
@@ -167,6 +183,10 @@ public final class FormEngine {
                             LinkedHashMap::new));
             this.repeatableGroups = repeatableGroups;
             this.sections = sections;
+            this.fieldRegistry = fieldRegistry;
+            this.fieldContext = fieldContext;
+            this.optionCatalogRegistry = optionCatalogRegistry;
+            this.locale = locale;
         }
 
         public FormDefinition getDefinition() {
@@ -196,7 +216,8 @@ public final class FormEngine {
         public Map<String, List<Map<FieldDefinition, FieldInstance>>> getRepeatableGroups() {
             return repeatableGroups.entrySet().stream()
                     .collect(java.util.stream.Collectors.toUnmodifiableMap(Map.Entry::getKey,
-                            entry -> entry.getValue().stream()
+                            entry -> entry.getValue().getEntries().stream()
+                                    .map(RepeatableEntry::fields)
                                     .map(Map::copyOf)
                                     .toList()));
         }
@@ -208,6 +229,17 @@ public final class FormEngine {
 
         public void setActionBeanSupplier(java.util.function.Supplier<T> supplier) {
             this.actionBeanSupplier = supplier;
+        }
+
+        public void initializeWithBean(T bean) {
+            if (bean == null) {
+                return;
+            }
+            fields.forEach((definition, instance) -> {
+                Object propertyValue = orchestrator.readProperty(definition.getPath(), bean);
+                applyComponentValue(instance, definition, propertyValue);
+            });
+            repeatableGroups.values().forEach(state -> populateRepeatableState(state, bean));
         }
 
         public void addActionHandler(String actionId, ActionHandler<T> handler) {
@@ -249,22 +281,214 @@ public final class FormEngine {
             return true;
         }
 
+        private void populateRepeatableState(RepeatableGroupState state, T bean) {
+            if (state.getParentPath().isBlank()) {
+                return;
+            }
+            Object rawCollection = orchestrator.readProperty(state.getParentPath(), bean);
+            List<Map<String, Object>> values = extractCollectionValues(rawCollection, state);
+            ensureRepeatableEntryCount(state, values.size());
+            List<RepeatableEntry> entries = state.getEntries();
+            for (int index = 0; index < entries.size(); index++) {
+                Map<String, Object> valueMap = index < values.size() ? values.get(index) : Collections.emptyMap();
+                Map<FieldDefinition, FieldInstance> fieldMap = entries.get(index).fields();
+                for (Map.Entry<FieldDefinition, FieldInstance> fieldEntry : fieldMap.entrySet()) {
+                    FieldDefinition definition = fieldEntry.getKey();
+                    FieldInstance instance = fieldEntry.getValue();
+                    String path = definition.getPath();
+                    int lastDot = path.lastIndexOf('.');
+                    String property = lastDot >= 0 ? path.substring(lastDot + 1) : path;
+                    Object propertyValue = valueMap.get(property);
+                    applyComponentValue(instance, definition, propertyValue);
+                }
+            }
+            FormEngine.this.updateAddButtonState(state);
+            FormEngine.this.updateRemoveButtons(state);
+            FormEngine.this.updateRepeatableTitles(state, fieldContext);
+        }
+
+        private void ensureRepeatableEntryCount(RepeatableGroupState state, int desiredCount) {
+            int target = Math.max(state.getRepeatable().getMin(), Math.min(desiredCount, state.getRepeatable().getMax()));
+            while (state.getEntries().size() < target) {
+                FormEngine.this.addRepeatableEntry(state, fieldRegistry, fieldContext);
+            }
+            while (state.getEntries().size() > target) {
+                RepeatableEntry removed = state.getEntries().remove(state.getEntries().size() - 1);
+                state.getContainer().remove(removed.wrapper());
+            }
+        }
+
+        private List<Map<String, Object>> extractCollectionValues(Object raw, RepeatableGroupState state) {
+            if (raw == null) {
+                return List.of();
+            }
+            Collection<?> collection;
+            if (raw instanceof Collection<?> coll) {
+                collection = coll;
+            } else if (raw.getClass().isArray()) {
+                collection = Arrays.asList((Object[]) raw);
+            } else {
+                collection = List.of(raw);
+            }
+            List<Map<String, Object>> values = new ArrayList<>();
+            for (Object element : collection) {
+                if (element == null) {
+                    continue;
+                }
+                Map<String, Object> entryValues = new LinkedHashMap<>();
+                for (FieldDefinition field : state.getGroup().getFields()) {
+                    String path = field.getPath();
+                    int lastDot = path.lastIndexOf('.');
+                    String property = lastDot >= 0 ? path.substring(lastDot + 1) : path;
+                    Object propertyValue = readPropertyValue(element, property);
+                    entryValues.put(property, propertyValue);
+                }
+                values.add(entryValues);
+            }
+            return values;
+        }
+
+        private Object readPropertyValue(Object target, String property) {
+            if (target == null || property == null || property.isBlank()) {
+                return null;
+            }
+            if (target instanceof Map<?, ?> map) {
+                return map.get(property);
+            }
+            try {
+                Method getter = target.getClass().getMethod("get" + capitalize(property));
+                return getter.invoke(target);
+            } catch (NoSuchMethodException ex) {
+                try {
+                    Method booleanGetter = target.getClass().getMethod("is" + capitalize(property));
+                    return booleanGetter.invoke(target);
+                } catch (NoSuchMethodException ignored) {
+                    return null;
+                } catch (ReflectiveOperationException reflectionEx) {
+                    throw new IllegalStateException("Unable to access property '" + property + "' on "
+                            + target.getClass().getName(), reflectionEx);
+                }
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException("Unable to access property '" + property + "' on "
+                        + target.getClass().getName(), e);
+            }
+        }
+
+        private void applyComponentValue(FieldInstance instance, FieldDefinition definition, Object value) {
+            com.vaadin.flow.component.HasValue<?, ?> component = instance.getValueComponent();
+            Object presentation = convertForComponent(definition, value);
+            setPresentation(component, definition, presentation);
+        }
+
+        private Object convertForComponent(FieldDefinition definition, Object value) {
+            if (value == null) {
+                return null;
+            }
+            return switch (definition.getComponentType()) {
+                case NUMBER -> value instanceof Number number ? number.doubleValue()
+                        : Double.valueOf(String.valueOf(value));
+                case INTEGER -> value instanceof Number number ? number.intValue()
+                        : Integer.valueOf(String.valueOf(value));
+                case MONEY -> value instanceof BigDecimal bigDecimal ? bigDecimal
+                        : new BigDecimal(String.valueOf(value));
+                case CHECKBOX, SWITCH -> value instanceof Boolean bool ? bool : Boolean.valueOf(String.valueOf(value));
+                case DATE -> value instanceof LocalDate ? value : null;
+                case DATETIME, JALALI_DATE_TIME -> value instanceof LocalDateTime ? value : null;
+                case TIME -> value instanceof LocalTime ? value : null;
+                case JALALI_DATE -> value instanceof LocalDate ? value : null;
+                case MULTI_SELECT, TAGS -> resolveOptionItems(definition, value);
+                case SELECT, AUTOCOMPLETE, ENUM, RADIO -> resolveOptionItem(definition, value);
+                case MAP -> value instanceof Map<?, ?> map ? Map.copyOf(map) : null;
+                default -> value;
+            };
+        }
+
+        private OptionItem resolveOptionItem(FieldDefinition definition, Object candidate) {
+            if (candidate == null) {
+                return null;
+            }
+            if (candidate instanceof OptionItem option) {
+                return option;
+            }
+            String id;
+            if (candidate instanceof Enum<?> enumValue) {
+                id = enumValue.name();
+            } else {
+                id = String.valueOf(candidate);
+            }
+            OptionCatalog catalog = optionCatalogRegistry.resolve(definition, locale);
+            return catalog.byIds(List.of(id)).stream()
+                    .findFirst()
+                    .orElse(new OptionItem(id, id));
+        }
+
+        private Set<OptionItem> resolveOptionItems(FieldDefinition definition, Object value) {
+            if (value == null) {
+                return Collections.emptySet();
+            }
+            Collection<?> collection;
+            if (value instanceof Collection<?> coll) {
+                collection = coll;
+            } else if (value.getClass().isArray()) {
+                collection = Arrays.asList((Object[]) value);
+            } else {
+                collection = List.of(value);
+            }
+            Set<OptionItem> resolved = new LinkedHashSet<>();
+            for (Object element : collection) {
+                OptionItem option = resolveOptionItem(definition, element);
+                if (option != null) {
+                    resolved.add(option);
+                }
+            }
+            return resolved;
+        }
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        private void setPresentation(com.vaadin.flow.component.HasValue component,
+                                     FieldDefinition definition,
+                                     Object presentation) {
+            if (presentation == null) {
+                switch (definition.getComponentType()) {
+                    case CHECKBOX, SWITCH -> component.setValue(Boolean.FALSE);
+                    case MULTI_SELECT, TAGS -> component.setValue(Collections.emptySet());
+                    default -> component.clear();
+                }
+                return;
+            }
+            component.setValue(presentation);
+        }
+
+        private String capitalize(String value) {
+            if (value == null || value.isBlank()) {
+                return "";
+            }
+            if (value.length() == 1) {
+                return value.toUpperCase();
+            }
+            return Character.toUpperCase(value.charAt(0)) + value.substring(1);
+        }
+
         private void applyRepeatableValues(T bean) {
             if (repeatableGroups.isEmpty()) {
                 return;
             }
             Map<String, List<Map<String, Object>>> aggregated = new LinkedHashMap<>();
-            repeatableGroups.values().forEach(entries -> {
-                if (entries == null) {
+            repeatableGroups.values().forEach(state -> {
+                if (state == null || state.getEntries().isEmpty()) {
                     return;
                 }
-                for (Map<FieldDefinition, FieldInstance> entry : entries) {
-                    if (entry == null || entry.isEmpty()) {
+                String parentPath = state.getParentPath();
+                if (parentPath.isBlank()) {
+                    return;
+                }
+                for (RepeatableEntry entry : state.getEntries()) {
+                    Map<FieldDefinition, FieldInstance> fields = entry.fields();
+                    if (fields == null || fields.isEmpty()) {
                         continue;
                     }
                     Map<String, Object> valuesByProperty = new LinkedHashMap<>();
-                    String parentPath = null;
-                    for (Map.Entry<FieldDefinition, FieldInstance> fieldEntry : entry.entrySet()) {
+                    for (Map.Entry<FieldDefinition, FieldInstance> fieldEntry : fields.entrySet()) {
                         FieldDefinition definition = fieldEntry.getKey();
                         FieldInstance instance = fieldEntry.getValue();
                         String path = definition.getPath();
@@ -272,18 +496,12 @@ public final class FormEngine {
                         if (lastDot <= 0) {
                             continue;
                         }
-                        String entryParentPath = path.substring(0, lastDot);
-                        if (parentPath == null) {
-                            parentPath = entryParentPath;
-                        } else if (!parentPath.equals(entryParentPath)) {
-                            continue;
-                        }
                         String property = path.substring(lastDot + 1);
                         Object rawValue = ((com.vaadin.flow.component.HasValue<?, ?>) instance.getValueComponent()).getValue();
                         Object converted = orchestrator.convertRawValue(definition, rawValue);
                         valuesByProperty.put(property, converted);
                     }
-                    if (parentPath == null || isEmptyValueMap(valuesByProperty)) {
+                    if (isEmptyValueMap(valuesByProperty)) {
                         continue;
                     }
                     aggregated.computeIfAbsent(parentPath, key -> new ArrayList<>()).add(valuesByProperty);
@@ -544,7 +762,7 @@ public final class FormEngine {
                                   FieldRegistry registry,
                                   FieldFactoryContext context,
                                   Map<FieldDefinition, FieldInstance> instances,
-                                  Map<String, List<Map<FieldDefinition, FieldInstance>>> repeatableGroups) {
+                                  Map<String, RepeatableGroupState> repeatableGroups) {
         if (group.getRepeatableDefinition().isEnabled()) {
             return createRepeatableGroup(group, registry, context, repeatableGroups);
         }
@@ -568,13 +786,12 @@ public final class FormEngine {
     private Component createRepeatableGroup(GroupDefinition group,
                                             FieldRegistry registry,
                                             FieldFactoryContext context,
-                                            Map<String, List<Map<FieldDefinition, FieldInstance>>> repeatableGroups) {
+                                            Map<String, RepeatableGroupState> repeatableGroups) {
         com.vaadin.flow.component.orderedlayout.VerticalLayout wrapper = new com.vaadin.flow.component.orderedlayout.VerticalLayout();
         wrapper.setPadding(false);
         wrapper.setSpacing(false);
         wrapper.addClassName("form-engine-repeatable-group");
         RepeatableDefinition repeatable = group.getRepeatableDefinition();
-        List<Map<FieldDefinition, FieldInstance>> entries = repeatableGroups.computeIfAbsent(group.getId(), key -> new ArrayList<>());
         com.vaadin.flow.component.orderedlayout.VerticalLayout entriesContainer = new com.vaadin.flow.component.orderedlayout.VerticalLayout();
         entriesContainer.setPadding(false);
         entriesContainer.setSpacing(true);
@@ -584,39 +801,31 @@ public final class FormEngine {
         addEntry.getElement().setAttribute("aria-label", context.translate("form.repeatable.addGroup"));
         addEntry.getElement().setAttribute("data-repeatable-add", group.getId());
         context.applyTheme(addEntry);
-        addEntry.addClickListener(event -> {
-            if (entries.size() >= repeatable.getMax()) {
-                addEntry.setEnabled(false);
-                return;
-            }
-            addRepeatableEntry(group, registry, context, entriesContainer, entries, repeatable, addEntry);
-        });
+        RepeatableGroupState state = repeatableGroups.computeIfAbsent(group.getId(), key ->
+                new RepeatableGroupState(group, repeatable, entriesContainer, addEntry, new ArrayList<>(), deriveParentPath(group)));
+        addEntry.addClickListener(event -> addRepeatableEntry(state, registry, context));
         int initial = repeatable.getMin();
         for (int i = 0; i < initial; i++) {
-            addRepeatableEntry(group, registry, context, entriesContainer, entries, repeatable, addEntry);
+            addRepeatableEntry(state, registry, context);
         }
-        updateAddButtonState(addEntry, repeatable, entries);
-        updateRemoveButtons(entriesContainer, repeatable, entries.size());
-        updateRepeatableTitles(entriesContainer, repeatable, context, group);
+        updateAddButtonState(state);
+        updateRemoveButtons(state);
+        updateRepeatableTitles(state, context);
         wrapper.add(addEntry);
         return wrapper;
     }
 
-    private void addRepeatableEntry(GroupDefinition group,
+    private void addRepeatableEntry(RepeatableGroupState state,
                                     FieldRegistry registry,
-                                    FieldFactoryContext context,
-                                    com.vaadin.flow.component.orderedlayout.VerticalLayout entriesContainer,
-                                    List<Map<FieldDefinition, FieldInstance>> entries,
-                                    RepeatableDefinition repeatable,
-                                    Button addEntryButton) {
-        if (entries.size() >= repeatable.getMax()) {
-            updateAddButtonState(addEntryButton, repeatable, entries);
+                                    FieldFactoryContext context) {
+        if (state.getEntries().size() >= state.getRepeatable().getMax()) {
+            updateAddButtonState(state);
             return;
         }
         com.vaadin.flow.component.orderedlayout.VerticalLayout entryWrapper = new com.vaadin.flow.component.orderedlayout.VerticalLayout();
         entryWrapper.setPadding(false);
         entryWrapper.setSpacing(false);
-        entryWrapper.getElement().setAttribute("data-repeatable-entry", group.getId());
+        entryWrapper.getElement().setAttribute("data-repeatable-entry", state.getGroup().getId());
         Button removeButton = new Button(context.translate("form.repeatable.removeGroup"));
         removeButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY_INLINE);
         removeButton.getStyle().set("color", "var(--color-danger-500)");
@@ -634,12 +843,13 @@ public final class FormEngine {
         com.vaadin.flow.component.html.Span title = new com.vaadin.flow.component.html.Span();
         title.getElement().setAttribute("data-repeatable-title", "true");
         title.addClassName("form-engine-repeatable-title");
-        title.setText(repeatable.getTitleGenerator().generate(entries.size(), context, group, repeatable));
+        title.setText(state.getRepeatable().getTitleGenerator()
+                .generate(state.getEntries().size(), context, state.getGroup(), state.getRepeatable()));
         header.add(title, removeButton);
         com.vaadin.flow.component.formlayout.FormLayout formLayout = new com.vaadin.flow.component.formlayout.FormLayout();
-        formLayout.setResponsiveSteps(new com.vaadin.flow.component.formlayout.FormLayout.ResponsiveStep("0", group.getColumns()));
+        formLayout.setResponsiveSteps(new com.vaadin.flow.component.formlayout.FormLayout.ResponsiveStep("0", state.getGroup().getColumns()));
         Map<FieldDefinition, FieldInstance> entryInstances = new LinkedHashMap<>();
-        for (FieldDefinition fieldDefinition : group.getFields()) {
+        for (FieldDefinition fieldDefinition : state.getGroup().getFields()) {
             FieldInstance instance = registry.create(fieldDefinition, context);
             entryInstances.put(fieldDefinition, instance);
             Component component = instance.getComponent();
@@ -651,37 +861,33 @@ public final class FormEngine {
                 component.getElement().getStyle().set("grid-row-end", "span " + fieldDefinition.getRowSpan());
             }
         }
+        RepeatableEntry entry = new RepeatableEntry(entryWrapper, entryInstances);
         removeButton.addClickListener(event -> {
-            if (entries.size() <= repeatable.getMin()) {
+            if (state.getEntries().size() <= state.getRepeatable().getMin()) {
                 return;
             }
-            entriesContainer.remove(entryWrapper);
-            entries.remove(entryInstances);
-            updateAddButtonState(addEntryButton, repeatable, entries);
-            updateRemoveButtons(entriesContainer, repeatable, entries.size());
-            updateRepeatableTitles(entriesContainer, repeatable, context, group);
+            state.getContainer().remove(entryWrapper);
+            state.getEntries().remove(entry);
+            updateAddButtonState(state);
+            updateRemoveButtons(state);
+            updateRepeatableTitles(state, context);
         });
         entryWrapper.add(header, formLayout);
-        entriesContainer.add(entryWrapper);
-        entries.add(entryInstances);
-        updateAddButtonState(addEntryButton, repeatable, entries);
-        updateRemoveButtons(entriesContainer, repeatable, entries.size());
-        updateRepeatableTitles(entriesContainer, repeatable, context, group);
+        state.getContainer().add(entryWrapper);
+        state.getEntries().add(entry);
+        updateAddButtonState(state);
+        updateRemoveButtons(state);
+        updateRepeatableTitles(state, context);
     }
 
-    private void updateAddButtonState(Button addEntryButton,
-                                      RepeatableDefinition repeatable,
-                                      List<Map<FieldDefinition, FieldInstance>> entries) {
-        addEntryButton.setEnabled(entries.size() < repeatable.getMax());
+    private void updateAddButtonState(RepeatableGroupState state) {
+        state.getAddButton().setEnabled(state.getEntries().size() < state.getRepeatable().getMax());
     }
 
-    private void updateRemoveButtons(com.vaadin.flow.component.orderedlayout.VerticalLayout entriesContainer,
-                                     RepeatableDefinition repeatable,
-                                     int entryCount) {
-        boolean canRemove = entryCount > repeatable.getMin();
-        entriesContainer.getChildren()
-                .filter(component -> component instanceof com.vaadin.flow.component.orderedlayout.VerticalLayout)
-                .map(component -> (com.vaadin.flow.component.orderedlayout.VerticalLayout) component)
+    private void updateRemoveButtons(RepeatableGroupState state) {
+        boolean canRemove = state.getEntries().size() > state.getRepeatable().getMin();
+        state.getEntries().stream()
+                .map(RepeatableEntry::wrapper)
                 .forEach(wrapper -> wrapper.getChildren()
                         .filter(child -> child instanceof Button)
                         .map(child -> (Button) child)
@@ -689,28 +895,43 @@ public final class FormEngine {
                         .forEach(button -> button.setEnabled(canRemove)));
     }
 
-    private void updateRepeatableTitles(com.vaadin.flow.component.orderedlayout.VerticalLayout entriesContainer,
-                                        RepeatableDefinition repeatable,
-                                        FieldFactoryContext context,
-                                        GroupDefinition group) {
+    private void updateRepeatableTitles(RepeatableGroupState state, FieldFactoryContext context) {
         java.util.concurrent.atomic.AtomicInteger counter = new java.util.concurrent.atomic.AtomicInteger();
-        entriesContainer.getChildren()
-                .filter(component -> component instanceof com.vaadin.flow.component.orderedlayout.VerticalLayout)
-                .map(component -> (com.vaadin.flow.component.orderedlayout.VerticalLayout) component)
-                .forEach(wrapper -> {
-                    int index = counter.getAndIncrement();
-                    String title = repeatable.getTitleGenerator().generate(index, context, group, repeatable);
-                    wrapper.getChildren()
-                            .filter(child -> child instanceof com.vaadin.flow.component.orderedlayout.HorizontalLayout
-                                    && "true".equals(child.getElement().getAttribute("data-repeatable-header")))
-                            .findFirst()
-                            .ifPresent(header -> header.getChildren()
-                                    .filter(hasTextComponent -> hasTextComponent instanceof com.vaadin.flow.component.HasText)
-                                    .filter(hasTextComponent -> "true".equals(hasTextComponent.getElement()
-                                            .getAttribute("data-repeatable-title")))
-                                    .map(hasTextComponent -> (com.vaadin.flow.component.HasText) hasTextComponent)
-                                    .forEach(hasText -> hasText.setText(title)));
-                });
+        state.getEntries().forEach(entry -> {
+            int index = counter.getAndIncrement();
+            String title = state.getRepeatable().getTitleGenerator()
+                    .generate(index, context, state.getGroup(), state.getRepeatable());
+            entry.wrapper().getChildren()
+                    .filter(child -> child instanceof com.vaadin.flow.component.orderedlayout.HorizontalLayout
+                            && "true".equals(child.getElement().getAttribute("data-repeatable-header")))
+                    .findFirst()
+                    .ifPresent(header -> header.getChildren()
+                            .filter(hasTextComponent -> hasTextComponent instanceof com.vaadin.flow.component.HasText)
+                            .filter(hasTextComponent -> "true".equals(hasTextComponent.getElement()
+                                    .getAttribute("data-repeatable-title")))
+                            .map(hasTextComponent -> (com.vaadin.flow.component.HasText) hasTextComponent)
+                            .forEach(hasText -> hasText.setText(title)));
+        });
+    }
+
+    private String deriveParentPath(GroupDefinition group) {
+        return group.getFields().stream()
+                .map(FieldDefinition::getPath)
+                .map(this::extractParentPath)
+                .filter(path -> !path.isBlank())
+                .findFirst()
+                .orElse("");
+    }
+
+    private String extractParentPath(String path) {
+        if (path == null) {
+            return "";
+        }
+        int lastDot = path.lastIndexOf('.');
+        if (lastDot <= 0) {
+            return "";
+        }
+        return path.substring(0, lastDot);
     }
 
     private com.vaadin.flow.component.orderedlayout.HorizontalLayout createActionRow() {
@@ -737,6 +958,72 @@ public final class FormEngine {
         button.setId(definition.getId());
         context.applyTheme(button);
         return button;
+    }
+
+    private static final class RepeatableGroupState {
+        private final GroupDefinition group;
+        private final RepeatableDefinition repeatable;
+        private final com.vaadin.flow.component.orderedlayout.VerticalLayout container;
+        private final Button addButton;
+        private final List<RepeatableEntry> entries;
+        private final String parentPath;
+
+        private RepeatableGroupState(GroupDefinition group,
+                                     RepeatableDefinition repeatable,
+                                     com.vaadin.flow.component.orderedlayout.VerticalLayout container,
+                                     Button addButton,
+                                     List<RepeatableEntry> entries,
+                                     String parentPath) {
+            this.group = group;
+            this.repeatable = repeatable;
+            this.container = container;
+            this.addButton = addButton;
+            this.entries = entries;
+            this.parentPath = parentPath == null ? "" : parentPath;
+        }
+
+        private GroupDefinition getGroup() {
+            return group;
+        }
+
+        private RepeatableDefinition getRepeatable() {
+            return repeatable;
+        }
+
+        private com.vaadin.flow.component.orderedlayout.VerticalLayout getContainer() {
+            return container;
+        }
+
+        private Button getAddButton() {
+            return addButton;
+        }
+
+        private List<RepeatableEntry> getEntries() {
+            return entries;
+        }
+
+        private String getParentPath() {
+            return parentPath;
+        }
+    }
+
+    private static final class RepeatableEntry {
+        private final com.vaadin.flow.component.orderedlayout.VerticalLayout wrapper;
+        private final Map<FieldDefinition, FieldInstance> fields;
+
+        private RepeatableEntry(com.vaadin.flow.component.orderedlayout.VerticalLayout wrapper,
+                                Map<FieldDefinition, FieldInstance> fields) {
+            this.wrapper = wrapper;
+            this.fields = fields;
+        }
+
+        private com.vaadin.flow.component.orderedlayout.VerticalLayout wrapper() {
+            return wrapper;
+        }
+
+        private Map<FieldDefinition, FieldInstance> fields() {
+            return fields;
+        }
     }
 
     public interface ActionHandler<T> {

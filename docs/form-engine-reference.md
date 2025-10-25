@@ -17,6 +17,9 @@ action orchestration support.
    editors).
 4. **Binder orchestrator** – `BinderOrchestrator` wraps Vaadin `Binder<T>` to support nested property paths (`a.b.c`), value
    converters (numbers, money, enums), list bindings (tags), asynchronous validation, and error mapping.
+   The rendered form exposes `initializeWithBean` to pre-populate components from an existing bean instance. The helper walks the
+   configured `@UiField` paths, resolves repeatable collections, and applies option items so prefilled forms remain consistent
+   with their data providers.
 5. **Option catalog** – Providers such as `StaticOptions`, `EnumOptions`, `CallbackOptions`, `RemoteOptions`, and
    `CascadingOptions` standardise fetch and search capabilities for select-like components, including debounced search,
    pagination, empty states, and `allowCreate` subform hand-offs.
@@ -150,6 +153,41 @@ class AttachmentGroup {
 ```
 
 Users can add up to five attachment entries, each edited in a dialog card and summarised by the template.
+
+### Prefilling and repository-backed forms
+
+The `FormEngine.RenderedForm#initializeWithBean` helper reads the values of every bound field and repeatable entry from a given
+bean, applying the correct presentation values (including `OptionItem` instances) to the underlying components. This makes it
+straightforward to load an existing record or expose a repository snapshot when the form opens:
+
+```java
+InventoryManagementFormData data = inventoryRepository.load();
+RenderedForm<InventoryManagementFormData> rendered = formEngine.render(
+        InventoryManagementFormDefinition.class, provider, locale, rtl);
+rendered.getFields().forEach((definition, instance) ->
+        rendered.getOrchestrator().bindField(instance, definition));
+rendered.initializeWithBean(data); // fields and repeatable items now match persisted state
+rendered.setActionBeanSupplier(inventoryRepository::load);
+rendered.addActionHandler("inventory-save", context -> inventoryRepository.save(context.getBean()));
+```
+
+When combined with an action handler that persists submissions back into an in-memory or remote repository, this pattern
+delivers a full edit experience without additional boilerplate.
+
+### Sample coverage map
+
+The demo application under `samples/` ships multiple annotated forms that exercise distinct engine features:
+
+| Sample | Highlights |
+| --- | --- |
+| Employee onboarding | Jalali inputs, map picker, validation groups |
+| Product catalog | Money converters, async validation, cascading selects |
+| Access policy designer | Multi-action workflow, repeatable conditions, subforms |
+| Dynamic day planner | State-driven sections, numeric triggers |
+| Agenda builder | External buttons driving repeatable groups |
+| Inventory manager | Prefilled data, repository persistence, repeatable collections |
+
+Use these references to see how annotations map to runtime behaviour and to copy working patterns into your own projects.
 
 ### `@UiField`
 

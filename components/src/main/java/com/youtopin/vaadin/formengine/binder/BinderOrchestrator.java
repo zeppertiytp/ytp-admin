@@ -155,6 +155,25 @@ public final class BinderOrchestrator<T> {
         }
     }
 
+    public Object readProperty(String path, T bean) {
+        if (bean == null || path == null || path.isBlank()) {
+            return null;
+        }
+        try {
+            Object current = bean;
+            String[] segments = path.split("\\.");
+            for (String segment : segments) {
+                if (current == null) {
+                    return null;
+                }
+                current = accessGetter(current, segment);
+            }
+            return current;
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Unable to read property " + path, e);
+        }
+    }
+
     private Object accessGetter(Object bean, String property) throws ReflectiveOperationException {
         try {
             Method getter = bean.getClass().getMethod("get" + capitalize(property));
