@@ -140,6 +140,31 @@ Defines a layout container inside a section. Groups control the column count, ne
 | `repeatable` | `@UiRepeatable` configuration enabling list-style editing (grid, cards, inline panels). |
 | `subform` | `@UiSubform` configuration applied when the group contains SUBFORM components. |
 
+#### Responsive layout behaviour
+
+Groups honour their declared column count on wide viewports while automatically collapsing to a single column on smaller screens.
+Fields continue to respect their `colSpan` and `rowSpan` hints after the layout snaps back to the configured grid size.
+
+```java
+@UiGroup(id = "schedule", titleKey = "form.schedule.title", columns = 3)
+class ScheduleGroup {
+
+    @UiField(path = "schedule.morning", labelKey = "form.schedule.morning", colSpan = 1)
+    String morningPlan;
+
+    @UiField(path = "schedule.afternoon", labelKey = "form.schedule.afternoon", colSpan = 1)
+    String afternoonPlan;
+
+    @UiField(path = "schedule.notes", labelKey = "form.schedule.notes", component = UiField.ComponentType.TEXT_AREA,
+            colSpan = 3)
+    String notes;
+}
+```
+
+On mobile widths the engine stacks the inputs vertically, ensuring readability without requiring additional breakpoints. When the
+viewport widens again, the original three-column grid (and the wider notes text area) are restored. The behaviour applies to
+repeatable entry layouts as well, keeping nested editors consistent with the base group definition.
+
 **Example – repeatable group**
 
 ```java
