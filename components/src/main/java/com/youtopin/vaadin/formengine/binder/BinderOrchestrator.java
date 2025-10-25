@@ -86,6 +86,14 @@ public final class BinderOrchestrator<T> {
         }
     }
 
+    public Object convertRawValue(FieldDefinition definition, Object value) {
+        return convertToBean(definition, value);
+    }
+
+    public Object coerceValueForType(Object value, Class<?> targetType) {
+        return coerceValue(value, targetType);
+    }
+
     private List<String> validate(FieldDefinition definition, Object value) {
         List<String> messages = new ArrayList<>();
         if (!definition.getRequiredWhen().isBlank() && isEmpty(value)) {

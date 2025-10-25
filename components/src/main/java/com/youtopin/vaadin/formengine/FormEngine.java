@@ -1,13 +1,23 @@
 package com.youtopin.vaadin.formengine;
 
+import java.beans.IntrospectionException;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import com.vaadin.flow.component.Component;
@@ -216,6 +226,7 @@ public final class FormEngine {
                 }
                 try {
                     orchestrator.writeBean(bean);
+                    applyRepeatableValues(bean);
                     handler.onAction(new ActionExecutionContext<>(actionDefinitions.get(actionId), bean, orchestrator));
                 } catch (ValidationException ex) {
                     boolean handled = notifyValidationFailure(actionDefinitions.get(actionId), ex);
@@ -236,6 +247,283 @@ public final class FormEngine {
             }
             validationFailureListeners.forEach(listener -> listener.onValidationFailure(actionDefinition, exception));
             return true;
+        }
+
+        private void applyRepeatableValues(T bean) {
+            if (repeatableGroups.isEmpty()) {
+                return;
+            }
+            Map<String, List<Map<String, Object>>> aggregated = new LinkedHashMap<>();
+            repeatableGroups.values().forEach(entries -> {
+                if (entries == null) {
+                    return;
+                }
+                for (Map<FieldDefinition, FieldInstance> entry : entries) {
+                    if (entry == null || entry.isEmpty()) {
+                        continue;
+                    }
+                    Map<String, Object> valuesByProperty = new LinkedHashMap<>();
+                    String parentPath = null;
+                    for (Map.Entry<FieldDefinition, FieldInstance> fieldEntry : entry.entrySet()) {
+                        FieldDefinition definition = fieldEntry.getKey();
+                        FieldInstance instance = fieldEntry.getValue();
+                        String path = definition.getPath();
+                        int lastDot = path.lastIndexOf('.');
+                        if (lastDot <= 0) {
+                            continue;
+                        }
+                        String entryParentPath = path.substring(0, lastDot);
+                        if (parentPath == null) {
+                            parentPath = entryParentPath;
+                        } else if (!parentPath.equals(entryParentPath)) {
+                            continue;
+                        }
+                        String property = path.substring(lastDot + 1);
+                        Object rawValue = ((com.vaadin.flow.component.HasValue<?, ?>) instance.getValueComponent()).getValue();
+                        Object converted = orchestrator.convertRawValue(definition, rawValue);
+                        valuesByProperty.put(property, converted);
+                    }
+                    if (parentPath == null || isEmptyValueMap(valuesByProperty)) {
+                        continue;
+                    }
+                    aggregated.computeIfAbsent(parentPath, key -> new ArrayList<>()).add(valuesByProperty);
+                }
+            });
+            aggregated.forEach((path, values) -> {
+                try {
+                    applyCollectionValues(bean, path, values);
+                } catch (IntrospectionException | ReflectiveOperationException ex) {
+                    throw new IllegalStateException("Unable to apply repeatable values for path '" + path + "'", ex);
+                }
+            });
+        }
+
+        private boolean isEmptyValueMap(Map<String, Object> values) {
+            if (values.isEmpty()) {
+                return true;
+            }
+            for (Object value : values.values()) {
+                if (!isEmptyValue(value)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private boolean isEmptyValue(Object value) {
+            if (value == null) {
+                return true;
+            }
+            if (value instanceof String str) {
+                return str.isBlank();
+            }
+            if (value instanceof Collection<?> collection) {
+                return collection.isEmpty();
+            }
+            if (value instanceof Map<?, ?> map) {
+                return map.isEmpty();
+            }
+            return false;
+        }
+
+        private void applyCollectionValues(T bean, String parentPath, List<Map<String, Object>> values)
+                throws IntrospectionException, ReflectiveOperationException {
+            PathResolution resolution = resolvePath(bean, parentPath);
+            PropertyDescriptor descriptor = resolution.descriptor();
+            Collection<Object> targetCollection = instantiateCollection(descriptor.getPropertyType());
+            if (targetCollection == null) {
+                return;
+            }
+            Class<?> elementType = resolution.elementType();
+            for (Map<String, Object> valueMap : values) {
+                Object element = createElement(elementType, valueMap);
+                if (element != null) {
+                    targetCollection.add(element);
+                }
+            }
+            Method writeMethod = descriptor.getWriteMethod();
+            if (writeMethod != null) {
+                writeMethod.invoke(resolution.owner(), targetCollection);
+            } else {
+                Method readMethod = descriptor.getReadMethod();
+                if (readMethod == null) {
+                    return;
+                }
+                Object existing = readMethod.invoke(resolution.owner());
+                if (existing instanceof Collection<?> existingCollection) {
+                    @SuppressWarnings("unchecked")
+                    Collection<Object> mutable = (Collection<Object>) existingCollection;
+                    mutable.clear();
+                    mutable.addAll(targetCollection);
+                }
+            }
+        }
+
+        private Collection<Object> instantiateCollection(Class<?> propertyType) {
+            if (propertyType == null) {
+                return null;
+            }
+            if (List.class.isAssignableFrom(propertyType)) {
+                return new ArrayList<>();
+            }
+            if (Set.class.isAssignableFrom(propertyType)) {
+                return new LinkedHashSet<>();
+            }
+            if (Collection.class.isAssignableFrom(propertyType)) {
+                return new ArrayList<>();
+            }
+            return null;
+        }
+
+        private Object createElement(Class<?> elementType, Map<String, Object> values)
+                throws IntrospectionException, InvocationTargetException, InstantiationException, IllegalAccessException, NoSuchMethodException {
+            if (values.isEmpty()) {
+                return null;
+            }
+            if (elementType == null || elementType == Object.class || Map.class.isAssignableFrom(elementType)) {
+                return new LinkedHashMap<>(values);
+            }
+            if (CharSequence.class.isAssignableFrom(elementType) || elementType == String.class) {
+                return values.values().stream()
+                        .filter(Objects::nonNull)
+                        .map(Object::toString)
+                        .findFirst()
+                        .orElse("");
+            }
+            Object element = elementType.getDeclaredConstructor().newInstance();
+            for (Map.Entry<String, Object> entry : values.entrySet()) {
+                PropertyDescriptor descriptor = findDescriptor(elementType, entry.getKey());
+                if (descriptor == null) {
+                    continue;
+                }
+                Method write = descriptor.getWriteMethod();
+                if (write == null) {
+                    continue;
+                }
+                Object coerced = orchestrator.coerceValueForType(entry.getValue(), write.getParameterTypes()[0]);
+                write.invoke(element, coerced);
+            }
+            return element;
+        }
+
+        private PathResolution resolvePath(Object root, String path)
+                throws IntrospectionException, InvocationTargetException, InstantiationException, IllegalAccessException, NoSuchMethodException {
+            String[] segments = path.split("\\.");
+            Object current = root;
+            Class<?> currentType = root.getClass();
+            PropertyDescriptor descriptor = null;
+            for (int index = 0; index < segments.length; index++) {
+                descriptor = findDescriptor(currentType, segments[index]);
+                if (descriptor == null) {
+                    throw new IllegalStateException("Unable to resolve property '" + segments[index] + "' on path '" + path + "'");
+                }
+                if (index == segments.length - 1) {
+                    Class<?> elementType = resolveElementType(descriptor);
+                    return new PathResolution(current, descriptor, elementType);
+                }
+                Method read = descriptor.getReadMethod();
+                if (read == null) {
+                    throw new IllegalStateException("Property '" + segments[index] + "' on path '" + path + "' has no getter");
+                }
+                Object next = read.invoke(current);
+                if (next == null) {
+                    next = instantiateIntermediate(descriptor.getPropertyType());
+                    Method write = descriptor.getWriteMethod();
+                    if (write != null) {
+                        write.invoke(current, next);
+                    } else {
+                        throw new IllegalStateException("Property '" + segments[index] + "' on path '" + path + "' is null and cannot be initialised");
+                    }
+                }
+                current = next;
+                currentType = next.getClass();
+            }
+            throw new IllegalStateException("Unable to resolve path '" + path + "'");
+        }
+
+        private Object instantiateIntermediate(Class<?> type)
+                throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+            if (type == null) {
+                return null;
+            }
+            if (type.isInterface()) {
+                if (List.class.isAssignableFrom(type)) {
+                    return new ArrayList<>();
+                }
+                if (Set.class.isAssignableFrom(type)) {
+                    return new LinkedHashSet<>();
+                }
+                if (Map.class.isAssignableFrom(type)) {
+                    return new LinkedHashMap<>();
+                }
+                if (Collection.class.isAssignableFrom(type)) {
+                    return new ArrayList<>();
+                }
+                throw new IllegalStateException("Cannot instantiate interface type " + type.getName());
+            }
+            return type.getDeclaredConstructor().newInstance();
+        }
+
+        private PropertyDescriptor findDescriptor(Class<?> type, String name) throws IntrospectionException {
+            for (PropertyDescriptor descriptor : Introspector.getBeanInfo(type).getPropertyDescriptors()) {
+                if (descriptor.getName().equals(name)) {
+                    return descriptor;
+                }
+            }
+            return null;
+        }
+
+        private Class<?> resolveElementType(PropertyDescriptor descriptor) {
+            Class<?> propertyType = descriptor.getPropertyType();
+            if (propertyType == null) {
+                return null;
+            }
+            if (propertyType.isArray()) {
+                return propertyType.getComponentType();
+            }
+            if (Collection.class.isAssignableFrom(propertyType)) {
+                Class<?> elementType = resolveTypeArgument(descriptor, 0);
+                return elementType == null ? Object.class : elementType;
+            }
+            if (Map.class.isAssignableFrom(propertyType)) {
+                Class<?> valueType = resolveTypeArgument(descriptor, 1);
+                return valueType == null ? Object.class : valueType;
+            }
+            return propertyType;
+        }
+
+        private Class<?> resolveTypeArgument(PropertyDescriptor descriptor, int index) {
+            Method read = descriptor.getReadMethod();
+            if (read != null) {
+                Class<?> resolved = resolveTypeArgument(read.getGenericReturnType(), index);
+                if (resolved != null) {
+                    return resolved;
+                }
+            }
+            Method write = descriptor.getWriteMethod();
+            if (write != null && write.getGenericParameterTypes().length == 1) {
+                Class<?> resolved = resolveTypeArgument(write.getGenericParameterTypes()[0], index);
+                if (resolved != null) {
+                    return resolved;
+                }
+            }
+            return null;
+        }
+
+        private Class<?> resolveTypeArgument(Type type, int index) {
+            if (type instanceof ParameterizedType parameterized) {
+                Type[] arguments = parameterized.getActualTypeArguments();
+                if (index >= 0 && index < arguments.length) {
+                    Type argument = arguments[index];
+                    if (argument instanceof Class<?> clazz) {
+                        return clazz;
+                    }
+                }
+            }
+            return null;
+        }
+
+        private record PathResolution(Object owner, PropertyDescriptor descriptor, Class<?> elementType) {
         }
     }
 
@@ -290,6 +578,7 @@ public final class FormEngine {
         com.vaadin.flow.component.orderedlayout.VerticalLayout entriesContainer = new com.vaadin.flow.component.orderedlayout.VerticalLayout();
         entriesContainer.setPadding(false);
         entriesContainer.setSpacing(true);
+        entriesContainer.getElement().setAttribute("data-repeatable-container", group.getId());
         wrapper.add(entriesContainer);
         Button addEntry = new Button(context.translate("form.repeatable.addGroup"));
         addEntry.getElement().setAttribute("aria-label", context.translate("form.repeatable.addGroup"));

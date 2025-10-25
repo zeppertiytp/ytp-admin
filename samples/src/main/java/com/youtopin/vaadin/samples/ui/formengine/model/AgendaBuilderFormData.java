@@ -18,10 +18,7 @@ public class AgendaBuilderFormData {
         private String facilitator = "";
         private String location = "";
         private String summary = "";
-        private String segment1 = "";
-        private String segment2 = "";
-        private String segment3 = "";
-        private String segment4 = "";
+        private final java.util.List<Segment> segments = new java.util.ArrayList<>();
 
         public String getSessionName() {
             return sessionName;
@@ -55,36 +52,54 @@ public class AgendaBuilderFormData {
             this.summary = Objects.toString(summary, "");
         }
 
-        public String getSegment1() {
-            return segment1;
+        public java.util.List<Segment> getSegments() {
+            return segments;
         }
 
-        public void setSegment1(String segment1) {
-            this.segment1 = Objects.toString(segment1, "");
+        public void setSegments(java.util.List<Segment> segments) {
+            this.segments.clear();
+            if (segments != null) {
+                segments.stream()
+                        .filter(Objects::nonNull)
+                        .map(Segment::copyOf)
+                        .forEach(this.segments::add);
+            }
         }
 
-        public String getSegment2() {
-            return segment2;
-        }
+        public static class Segment {
+            private String title = "";
+            private String description = "";
 
-        public void setSegment2(String segment2) {
-            this.segment2 = Objects.toString(segment2, "");
-        }
+            public Segment() {
+            }
 
-        public String getSegment3() {
-            return segment3;
-        }
+            public Segment(String title, String description) {
+                this.title = Objects.toString(title, "");
+                this.description = Objects.toString(description, "");
+            }
 
-        public void setSegment3(String segment3) {
-            this.segment3 = Objects.toString(segment3, "");
-        }
+            public String getTitle() {
+                return title;
+            }
 
-        public String getSegment4() {
-            return segment4;
-        }
+            public void setTitle(String title) {
+                this.title = Objects.toString(title, "");
+            }
 
-        public void setSegment4(String segment4) {
-            this.segment4 = Objects.toString(segment4, "");
+            public String getDescription() {
+                return description;
+            }
+
+            public void setDescription(String description) {
+                this.description = Objects.toString(description, "");
+            }
+
+            private static Segment copyOf(Segment source) {
+                if (source == null) {
+                    return new Segment();
+                }
+                return new Segment(source.getTitle(), source.getDescription());
+            }
         }
     }
 }

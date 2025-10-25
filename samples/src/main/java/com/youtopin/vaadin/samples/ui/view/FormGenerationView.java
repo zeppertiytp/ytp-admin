@@ -52,7 +52,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -273,51 +272,98 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
     }
 
     private <T> void configureAgendaSections(RenderedForm<T> rendered) {
-        List<Map.Entry<SectionDefinition, VerticalLayout>> adjustableSections = rendered.getSections().entrySet().stream()
-                .filter(entry -> entry.getKey().getId().startsWith("agenda-segment-"))
-                .sorted(Comparator.comparingInt(entry -> resolveNumericSuffix(entry.getKey().getId())))
-                .collect(Collectors.toCollection(ArrayList::new));
-        if (adjustableSections.isEmpty()) {
+        SectionDefinition segmentsDefinition = rendered.getSections().keySet().stream()
+                .filter(section -> "agenda-segments".equals(section.getId()))
+                .findFirst()
+                .orElse(null);
+        if (segmentsDefinition == null) {
             return;
         }
-        List<VerticalLayout> segmentLayouts = adjustableSections.stream()
-                .map(Map.Entry::getValue)
-                .collect(Collectors.toCollection(ArrayList::new));
-        segmentLayouts.forEach(layout -> layout.setVisible(false));
-        AtomicInteger visibleCount = new AtomicInteger(0);
+        VerticalLayout sectionLayout = rendered.getSections().get(segmentsDefinition);
+        if (sectionLayout == null) {
+            return;
+        }
         Button addButton = rendered.getActionButtons().get("agenda-add-section");
         Button removeButton = rendered.getActionButtons().get("agenda-remove-section");
-        updateAgendaButtonStates(addButton, removeButton, visibleCount.get(), segmentLayouts.size());
+        VerticalLayout repeatableLayout = sectionLayout.getChildren()
+                .filter(component -> component instanceof VerticalLayout)
+                .map(component -> (VerticalLayout) component)
+                .filter(layout -> layout.getElement().getClassList().contains("form-engine-repeatable-group"))
+                .findFirst()
+                .orElse(null);
+        if (repeatableLayout == null) {
+            return;
+        }
+        String groupId = segmentsDefinition.getGroups().isEmpty() ? "" : segmentsDefinition.getGroups().get(0).getId();
+        VerticalLayout entriesContainer = repeatableLayout.getChildren()
+                .filter(component -> component instanceof VerticalLayout)
+                .map(component -> (VerticalLayout) component)
+                .filter(layout -> groupId.equals(layout.getElement().getAttribute("data-repeatable-container")))
+                .findFirst()
+                .orElse(null);
+        Button internalAdd = repeatableLayout.getChildren()
+                .filter(component -> component instanceof Button)
+                .map(component -> (Button) component)
+                .findFirst()
+                .orElse(null);
+        if (entriesContainer == null || internalAdd == null) {
+            return;
+        }
         if (addButton != null) {
             addButton.addClickListener(event -> {
-                int current = visibleCount.get();
-                if (current < segmentLayouts.size()) {
-                    segmentLayouts.get(current).setVisible(true);
-                    visibleCount.incrementAndGet();
-                    updateAgendaButtonStates(addButton, removeButton, visibleCount.get(), segmentLayouts.size());
+                if (internalAdd.isEnabled()) {
+                    internalAdd.click();
+                    syncAgendaButtons(addButton, removeButton, internalAdd, entriesContainer);
                 }
             });
         }
         if (removeButton != null) {
             removeButton.addClickListener(event -> {
-                int current = visibleCount.get();
-                if (current > 0) {
-                    int indexToHide = current - 1;
-                    segmentLayouts.get(indexToHide).setVisible(false);
-                    visibleCount.decrementAndGet();
-                    updateAgendaButtonStates(addButton, removeButton, visibleCount.get(), segmentLayouts.size());
+                if (removeLastRepeatableEntry(entriesContainer)) {
+                    syncAgendaButtons(addButton, removeButton, internalAdd, entriesContainer);
                 }
             });
         }
+        syncAgendaButtons(addButton, removeButton, internalAdd, entriesContainer);
     }
 
-    private void updateAgendaButtonStates(Button addButton, Button removeButton, int visibleCount, int totalSegments) {
-        if (addButton != null) {
-            addButton.setEnabled(visibleCount < totalSegments);
+    private void syncAgendaButtons(Button addButton, Button removeButton, Button internalAdd, VerticalLayout entriesContainer) {
+        if (addButton != null && internalAdd != null) {
+            addButton.setEnabled(internalAdd.isEnabled());
         }
         if (removeButton != null) {
-            removeButton.setEnabled(visibleCount > 0);
+            boolean canRemove = entriesContainer.getChildren()
+                    .filter(component -> component instanceof VerticalLayout)
+                    .map(component -> (VerticalLayout) component)
+                    .filter(layout -> layout.getElement().hasAttribute("data-repeatable-entry"))
+                    .flatMap(VerticalLayout::getChildren)
+                    .filter(child -> child instanceof Button)
+                    .map(child -> (Button) child)
+                    .anyMatch(button -> "true".equals(button.getElement().getAttribute("data-repeatable-remove")) && button.isEnabled());
+            removeButton.setEnabled(canRemove);
         }
+    }
+
+    private boolean removeLastRepeatableEntry(VerticalLayout entriesContainer) {
+        java.util.List<VerticalLayout> wrappers = entriesContainer.getChildren()
+                .filter(component -> component instanceof VerticalLayout)
+                .map(component -> (VerticalLayout) component)
+                .filter(layout -> layout.getElement().hasAttribute("data-repeatable-entry"))
+                .collect(Collectors.toCollection(ArrayList::new));
+        if (wrappers.isEmpty()) {
+            return false;
+        }
+        VerticalLayout lastWrapper = wrappers.get(wrappers.size() - 1);
+        return lastWrapper.getChildren()
+                .filter(child -> child instanceof Button)
+                .map(child -> (Button) child)
+                .filter(button -> "true".equals(button.getElement().getAttribute("data-repeatable-remove")) && button.isEnabled())
+                .findFirst()
+                .map(button -> {
+                    button.click();
+                    return true;
+                })
+                .orElse(false);
     }
 
     private int resolveNumericSuffix(String id) {
