@@ -73,6 +73,16 @@ public @interface UiRepeatable {
     boolean allowDuplicate() default true;
 
     /**
+     * @return Enables the default "add group" control so end users can insert entries manually.
+     */
+    boolean allowManualAdd() default true;
+
+    /**
+     * @return Enables the default "remove group" control so end users can delete entries manually.
+     */
+    boolean allowManualRemove() default true;
+
+    /**
      * Rendering modes supported for repeatable groups.
      */
     enum RepeatableMode {

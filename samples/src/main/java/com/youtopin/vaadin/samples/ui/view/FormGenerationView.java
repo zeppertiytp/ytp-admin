@@ -297,56 +297,18 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
                 .findFirst()
                 .orElse(null);
         FieldInstance dayCountInstance = dayCountDefinition == null ? null : rendered.getFields().get(dayCountDefinition);
-
-        SectionDefinition daysSectionDefinition = rendered.getDefinition().getSections().stream()
+        GroupDefinition repeatableGroup = rendered.getDefinition().getSections().stream()
                 .filter(section -> "plan-list-days".equals(section.getId()))
                 .findFirst()
+                .map(section -> section.getGroups().isEmpty() ? null : section.getGroups().get(0))
                 .orElse(null);
-        VerticalLayout sectionLayout = daysSectionDefinition == null ? null : rendered.getSections().get(daysSectionDefinition);
-        if (dayCountInstance == null || sectionLayout == null) {
-            return;
-        }
-        VerticalLayout repeatableLayout = sectionLayout.getChildren()
-                .filter(component -> component instanceof VerticalLayout)
-                .map(component -> (VerticalLayout) component)
-                .filter(layout -> layout.getElement().getClassList().contains("form-engine-repeatable-group"))
-                .findFirst()
-                .orElse(null);
-        if (repeatableLayout == null) {
-            return;
-        }
-        String containerCandidate = "";
-        if (daysSectionDefinition != null && !daysSectionDefinition.getGroups().isEmpty()) {
-            containerCandidate = daysSectionDefinition.getGroups().get(0).getId();
-        }
-        final String repeatableContainerId = containerCandidate;
-        VerticalLayout entriesContainer = repeatableLayout.getChildren()
-                .filter(component -> component instanceof VerticalLayout)
-                .map(component -> (VerticalLayout) component)
-                .filter(layout -> {
-                    String attribute = layout.getElement().getAttribute("data-repeatable-container");
-                    return attribute != null && attribute.equals(repeatableContainerId);
-                })
-                .findFirst()
-                .orElse(null);
-        Button internalAdd = repeatableLayout.getChildren()
-                .filter(component -> component instanceof Button)
-                .map(component -> (Button) component)
-                .findFirst()
-                .orElse(null);
-        if (entriesContainer == null || internalAdd == null) {
+        if (dayCountInstance == null || repeatableGroup == null) {
             return;
         }
 
-        int resolvedMin = 0;
-        int resolvedMax = Integer.MAX_VALUE;
-        if (daysSectionDefinition != null && !daysSectionDefinition.getGroups().isEmpty()) {
-            GroupDefinition repeatableGroup = daysSectionDefinition.getGroups().get(0);
-            resolvedMin = repeatableGroup.getRepeatableDefinition().getMin();
-            resolvedMax = repeatableGroup.getRepeatableDefinition().getMax();
-        }
-        final int minEntries = resolvedMin;
-        final int maxEntries = resolvedMax;
+        int minEntries = repeatableGroup.getRepeatableDefinition().getMin();
+        int maxEntries = repeatableGroup.getRepeatableDefinition().getMax();
+        String groupId = repeatableGroup.getId();
 
         HasValue<?, ?> dayCountComponent = dayCountInstance.getValueComponent();
         if (dayCountComponent instanceof IntegerField integerField) {
@@ -354,17 +316,26 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
             integerField.setMax(maxEntries);
         }
 
-        syncRepeatableEntries(entriesContainer, internalAdd, minEntries, maxEntries, toInteger(dayCountComponent.getValue()));
+        syncDailyPlanRepeatable(rendered, groupId, minEntries, maxEntries, toInteger(dayCountComponent.getValue()));
         dayCountComponent.addValueChangeListener(event ->
-                syncRepeatableEntries(entriesContainer, internalAdd, minEntries, maxEntries, toInteger(event.getValue())));
+                syncDailyPlanRepeatable(rendered, groupId, minEntries, maxEntries, toInteger(event.getValue())));
 
         Button resetButton = rendered.getActionButtons().get("planlist-reset");
         if (resetButton != null) {
             resetButton.addClickListener(event -> {
                 dayCountComponent.clear();
-                syncRepeatableEntries(entriesContainer, internalAdd, minEntries, maxEntries, 0);
+                syncDailyPlanRepeatable(rendered, groupId, minEntries, maxEntries, 0);
             });
         }
+    }
+
+    private <T> void syncDailyPlanRepeatable(RenderedForm<T> rendered,
+                                             String groupId,
+                                             int minEntries,
+                                             int maxEntries,
+                                             int requestedEntries) {
+        int desired = Math.max(minEntries, Math.min(requestedEntries, maxEntries));
+        rendered.setRepeatableEntryCount(groupId, desired);
     }
 
     private void updateDayVisibility(List<VerticalLayout> daySections, int requestedActiveDays) {
@@ -467,29 +438,6 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
                     return true;
                 })
                 .orElse(false);
-    }
-
-    private void syncRepeatableEntries(VerticalLayout entriesContainer,
-                                       Button addButton,
-                                       int minEntries,
-                                       int maxEntries,
-                                       int requestedEntries) {
-        int desired = Math.max(minEntries, Math.min(requestedEntries, maxEntries));
-        java.util.List<VerticalLayout> wrappers = collectRepeatableEntryWrappers(entriesContainer);
-        while (wrappers.size() < desired && addButton.isEnabled()) {
-            addButton.click();
-            wrappers = collectRepeatableEntryWrappers(entriesContainer);
-        }
-        while (wrappers.size() > desired) {
-            if (!removeLastRepeatableEntry(entriesContainer)) {
-                break;
-            }
-            wrappers = collectRepeatableEntryWrappers(entriesContainer);
-        }
-        while (wrappers.size() < minEntries && addButton.isEnabled()) {
-            addButton.click();
-            wrappers = collectRepeatableEntryWrappers(entriesContainer);
-        }
     }
 
     private java.util.List<VerticalLayout> collectRepeatableEntryWrappers(VerticalLayout entriesContainer) {

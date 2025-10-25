@@ -59,6 +59,7 @@ public final class DailyPlanListFormDefinition {
             repeatable = @UiRepeatable(enabled = true, min = 0, max = 7,
                     mode = UiRepeatable.RepeatableMode.INLINE_PANEL,
                     itemTitleKey = "forms.planlist.entry.title", allowDuplicate = false,
+                    allowManualAdd = false, allowManualRemove = false,
                     summaryTemplate = "{plan}"))
     public static class PlanEntryGroup {
 

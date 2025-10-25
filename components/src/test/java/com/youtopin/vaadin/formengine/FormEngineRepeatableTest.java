@@ -123,6 +123,37 @@ class FormEngineRepeatableTest {
                 .ifPresent(e -> assertThat(((TextArea) e.getValue().getValueComponent()).getValue()).isEqualTo("Discuss roadmap"));
     }
 
+    @Test
+    void setRepeatableEntryCountRespectsManualControls() {
+        FormEngine engine = new FormEngine(new OptionCatalogRegistry());
+        RenderedForm<RepeatableBean> rendered = engine.render(
+                ManualControlForm.class,
+                new StubI18NProvider(),
+                Locale.ENGLISH,
+                false);
+
+        Button addButton = findRepeatableAddButton(rendered, "manual-repeatable-group");
+        assertThat(addButton.isEnabled()).isFalse();
+
+        rendered.setRepeatableEntryCount("manual-repeatable-group", 3);
+        assertThat(rendered.getRepeatableGroups().get("manual-repeatable-group")).hasSize(3);
+
+        rendered.setRepeatableEntryCount("manual-repeatable-group", 1);
+        assertThat(rendered.getRepeatableGroups().get("manual-repeatable-group")).hasSize(1);
+
+        rendered.setRepeatableEntryCount("manual-repeatable-group", 10);
+        assertThat(rendered.getRepeatableGroups().get("manual-repeatable-group")).hasSize(5);
+
+        List<Button> removeButtons = flatten(rendered.getLayout())
+                .filter(component -> component instanceof Button)
+                .map(component -> (Button) component)
+                .filter(button -> "true".equals(button.getElement().getAttribute("data-repeatable-remove")))
+                .toList();
+
+        assertThat(removeButtons).isNotEmpty();
+        removeButtons.forEach(button -> assertThat(button.isEnabled()).isFalse());
+    }
+
     private List<String> repeatableTitles(RenderedForm<?> rendered) {
         return flatten(rendered.getLayout())
                 .filter(component -> "true".equals(component.getElement().getAttribute("data-repeatable-title")))
@@ -181,6 +212,38 @@ class FormEngineRepeatableTest {
                     uniqueBy = "title", itemTitleKey = "test.repeatable.itemTitle",
                     allowDuplicate = false))
     public static class TestRepeatableGroup {
+
+        @UiField(path = "plan.segments.title", component = UiField.ComponentType.TEXT, labelKey = "segmentTitle")
+        public void title() {
+        }
+
+        @UiField(path = "plan.segments.notes", component = UiField.ComponentType.TEXT_AREA, labelKey = "segmentNotes")
+        public void notes() {
+        }
+    }
+
+    @UiForm(
+            id = "manual-repeatable",
+            titleKey = "",
+            descriptionKey = "",
+            bean = RepeatableBean.class,
+            sections = ManualControlSection.class,
+            actions = @UiAction(id = "manual-submit", labelKey = "submit", placement = UiAction.Placement.FOOTER,
+                    type = UiAction.ActionType.SUBMIT, order = 0)
+    )
+    public static class ManualControlForm {
+    }
+
+    @UiSection(id = "manual-section", titleKey = "", groups = ManualControlGroup.class, order = 0)
+    public static class ManualControlSection {
+    }
+
+    @UiGroup(id = "manual-repeatable-group", columns = 1,
+            repeatable = @UiRepeatable(enabled = true, min = 0, max = 5,
+                    mode = UiRepeatable.RepeatableMode.INLINE_PANEL,
+                    itemTitleKey = "test.repeatable.itemTitle", allowDuplicate = false,
+                    allowManualAdd = false, allowManualRemove = false))
+    public static class ManualControlGroup {
 
         @UiField(path = "plan.segments.title", component = UiField.ComponentType.TEXT, labelKey = "segmentTitle")
         public void title() {

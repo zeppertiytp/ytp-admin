@@ -19,6 +19,8 @@ public final class RepeatableDefinition {
     private final RepeatableTitleGenerator titleGenerator;
     private final boolean allowReorder;
     private final boolean allowDuplicate;
+    private final boolean allowManualAdd;
+    private final boolean allowManualRemove;
 
     public RepeatableDefinition(boolean enabled,
                                 UiRepeatable.RepeatableMode mode,
@@ -30,7 +32,9 @@ public final class RepeatableDefinition {
                                 int itemTitleOffset,
                                 RepeatableTitleGenerator titleGenerator,
                                 boolean allowReorder,
-                                boolean allowDuplicate) {
+                                boolean allowDuplicate,
+                                boolean allowManualAdd,
+                                boolean allowManualRemove) {
         this.enabled = enabled;
         this.mode = mode;
         this.min = min;
@@ -42,6 +46,8 @@ public final class RepeatableDefinition {
         this.titleGenerator = titleGenerator == null ? new RepeatableTitleGenerator.Default() : titleGenerator;
         this.allowReorder = allowReorder;
         this.allowDuplicate = allowDuplicate;
+        this.allowManualAdd = allowManualAdd;
+        this.allowManualRemove = allowManualRemove;
     }
 
     public boolean isEnabled() {
@@ -86,5 +92,13 @@ public final class RepeatableDefinition {
 
     public boolean isAllowDuplicate() {
         return allowDuplicate;
+    }
+
+    public boolean isAllowManualAdd() {
+        return allowManualAdd;
+    }
+
+    public boolean isAllowManualRemove() {
+        return allowManualRemove;
     }
 }

@@ -127,7 +127,8 @@ public final class AnnotationFormScanner {
         RepeatableTitleGenerator generator = instantiateRepeatableTitleGenerator(repeatable.titleGenerator());
         return new RepeatableDefinition(repeatable.enabled(), repeatable.mode(), repeatable.min(), repeatable.max(),
                 repeatable.uniqueBy(), repeatable.summaryTemplate(), repeatable.itemTitleKey(),
-                repeatable.itemTitleOffset(), generator, repeatable.allowReorder(), repeatable.allowDuplicate());
+                repeatable.itemTitleOffset(), generator, repeatable.allowReorder(), repeatable.allowDuplicate(),
+                repeatable.allowManualAdd(), repeatable.allowManualRemove());
     }
 
     private RepeatableTitleGenerator instantiateRepeatableTitleGenerator(

@@ -334,8 +334,12 @@ Enables repeatable groups where users can manage collections of items with add/r
 | `titleGenerator` | Custom `com.youtopin.vaadin.formengine.RepeatableTitleGenerator` implementation used when templates are insufficient. |
 | `allowReorder` | Enables drag-and-drop ordering. |
 | `allowDuplicate` | Allows duplicating an existing item. |
+| `allowManualAdd` | Enables the built-in “add entry” control. Disable when entries are added via external logic. |
+| `allowManualRemove` | Enables the built-in “remove entry” control. Disable when deletions are orchestrated elsewhere. |
 
 Use `itemTitleKey` in combination with `itemTitleOffset` for numbered captions (for example, `Segment {0}` yields `Segment 1`, `Segment 2`, ...). When titles depend on richer logic—such as locale-specific ordinals or composite metadata—provide a custom `titleGenerator`; the engine supplies the zero-based index so implementations can apply their own math.
+
+When manual controls are disabled, drive entry counts with `FormEngine.RenderedForm#setRepeatableEntryCount(String, int)`. The daily planner list sample showcases this approach by binding the number of days input to the repeatable item count while leaving the add/remove buttons disabled for clarity.
 
 **Example – deep nesting with card dialogs**
 

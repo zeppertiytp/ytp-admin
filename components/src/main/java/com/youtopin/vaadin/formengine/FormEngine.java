@@ -273,6 +273,17 @@ public final class FormEngine {
             validationFailureListeners.add(Objects.requireNonNull(listener, "listener"));
         }
 
+        public void setRepeatableEntryCount(String groupId, int desiredCount) {
+            RepeatableGroupState state = repeatableGroups.get(groupId);
+            if (state == null) {
+                throw new IllegalArgumentException("Unknown repeatable group id " + groupId);
+            }
+            ensureRepeatableEntryCount(state, desiredCount);
+            FormEngine.this.updateAddButtonState(state);
+            FormEngine.this.updateRemoveButtons(state);
+            FormEngine.this.updateRepeatableTitles(state, fieldContext);
+        }
+
         private boolean notifyValidationFailure(ActionDefinition actionDefinition, ValidationException exception) {
             if (validationFailureListeners.isEmpty()) {
                 return false;
@@ -803,7 +814,12 @@ public final class FormEngine {
         context.applyTheme(addEntry);
         RepeatableGroupState state = repeatableGroups.computeIfAbsent(group.getId(), key ->
                 new RepeatableGroupState(group, repeatable, entriesContainer, addEntry, new ArrayList<>(), deriveParentPath(group)));
-        addEntry.addClickListener(event -> addRepeatableEntry(state, registry, context));
+        addEntry.addClickListener(event -> {
+            if (!state.getRepeatable().isAllowManualAdd()) {
+                return;
+            }
+            addRepeatableEntry(state, registry, context);
+        });
         int initial = repeatable.getMin();
         for (int i = 0; i < initial; i++) {
             addRepeatableEntry(state, registry, context);
@@ -834,6 +850,7 @@ public final class FormEngine {
         removeButton.getElement().setAttribute("data-repeatable-remove", "true");
         removeButton.getElement().setAttribute("aria-label", context.translate("form.repeatable.removeGroup"));
         context.applyTheme(removeButton);
+        removeButton.setEnabled(state.getRepeatable().isAllowManualRemove());
         updateRepeatableRemoveButtonStyles(removeButton, removeButton.isEnabled());
         com.vaadin.flow.component.orderedlayout.HorizontalLayout header = new com.vaadin.flow.component.orderedlayout.HorizontalLayout();
         header.setWidthFull();
@@ -864,6 +881,9 @@ public final class FormEngine {
         }
         RepeatableEntry entry = new RepeatableEntry(entryWrapper, entryInstances, removeButton);
         removeButton.addClickListener(event -> {
+            if (!state.getRepeatable().isAllowManualRemove()) {
+                return;
+            }
             if (state.getEntries().size() <= state.getRepeatable().getMin()) {
                 return;
             }
@@ -882,11 +902,15 @@ public final class FormEngine {
     }
 
     private void updateAddButtonState(RepeatableGroupState state) {
-        state.getAddButton().setEnabled(state.getEntries().size() < state.getRepeatable().getMax());
+        boolean manualAdd = state.getRepeatable().isAllowManualAdd();
+        boolean enabled = manualAdd && state.getEntries().size() < state.getRepeatable().getMax();
+        state.getAddButton().setEnabled(enabled);
+        state.getAddButton().getElement().setAttribute("aria-disabled", String.valueOf(!enabled));
     }
 
     private void updateRemoveButtons(RepeatableGroupState state) {
-        boolean canRemove = state.getEntries().size() > state.getRepeatable().getMin();
+        boolean manualRemove = state.getRepeatable().isAllowManualRemove();
+        boolean canRemove = manualRemove && state.getEntries().size() > state.getRepeatable().getMin();
         state.getEntries().forEach(entry -> {
             Button button = entry.removeButton();
             button.setEnabled(canRemove);
