@@ -284,7 +284,16 @@ export class LocationPicker extends LitElement {
   private handleResultSelect(result: { displayName: string; lat: number; lng: number }) {
     this.searchQuery = result.displayName;
     this.searchResults = [];
-    this.setLocation(result.lat, result.lng);
+    this.focusMapOn(result.lat, result.lng);
+  }
+
+  private focusMapOn(lat: number, lng: number) {
+    if (!this.map) {
+      return;
+    }
+
+    const targetZoom = Math.max(this.map.getZoom(), 13);
+    this.map.setView([lat, lng], targetZoom);
   }
 
   private setLocation(lat: number, lng: number) {
