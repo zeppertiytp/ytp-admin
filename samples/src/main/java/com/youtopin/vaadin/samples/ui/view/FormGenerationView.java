@@ -10,17 +10,20 @@ import com.youtopin.vaadin.formengine.FormEngine.RenderedForm;
 import com.youtopin.vaadin.formengine.annotation.UiAction;
 import com.youtopin.vaadin.formengine.definition.FieldDefinition;
 import com.youtopin.vaadin.formengine.definition.SectionDefinition;
+import com.youtopin.vaadin.formengine.definition.GroupDefinition;
 import com.youtopin.vaadin.formengine.registry.FieldInstance;
 import com.youtopin.vaadin.i18n.TranslationProvider;
 import com.youtopin.vaadin.samples.ui.formengine.definition.AccessPolicyFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.AgendaBuilderFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.DailyPlanFormDefinition;
+import com.youtopin.vaadin.samples.ui.formengine.definition.DailyPlanListFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.EmployeeOnboardingFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.ProductCatalogFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.InventoryManagementFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.model.AccessPolicyFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.AgendaBuilderFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.DailyPlanFormData;
+import com.youtopin.vaadin.samples.ui.formengine.model.DailyPlanListFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.EmployeeOnboardingFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.ProductCatalogFormData;
 import com.youtopin.vaadin.samples.application.formengine.model.InventoryManagementFormData;
@@ -152,6 +155,13 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
                         DailyPlanFormData::new
                 ),
                 new SampleDescriptor<>(
+                        "forms.sample.planlist.heading",
+                        "forms.sample.planlist.description",
+                        "forms.sample.planlist.features",
+                        DailyPlanListFormDefinition.class,
+                        DailyPlanListFormData::new
+                ),
+                new SampleDescriptor<>(
                         "forms.sample.agenda.heading",
                         "forms.sample.agenda.description",
                         "forms.sample.agenda.features",
@@ -240,6 +250,8 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
                 log.warn("Validation failed for action '{}' in form '{}'", actionDefinition.getId(), definitionClass.getSimpleName(), exception));
         if (definitionClass.equals(DailyPlanFormDefinition.class)) {
             configureDynamicPlan(rendered);
+        } else if (definitionClass.equals(DailyPlanListFormDefinition.class)) {
+            configureDynamicPlanList(rendered);
         } else if (definitionClass.equals(AgendaBuilderFormDefinition.class)) {
             configureAgendaSections(rendered);
         } else if (definitionClass.equals(InventoryManagementFormDefinition.class)) {
@@ -276,6 +288,82 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
                     updateDayVisibility(daySections, 0);
                 });
             }
+        }
+    }
+
+    private <T> void configureDynamicPlanList(RenderedForm<T> rendered) {
+        FieldDefinition dayCountDefinition = rendered.getFields().keySet().stream()
+                .filter(definition -> "schedule.dayCount".equals(definition.getPath()))
+                .findFirst()
+                .orElse(null);
+        FieldInstance dayCountInstance = dayCountDefinition == null ? null : rendered.getFields().get(dayCountDefinition);
+
+        SectionDefinition daysSectionDefinition = rendered.getDefinition().getSections().stream()
+                .filter(section -> "plan-list-days".equals(section.getId()))
+                .findFirst()
+                .orElse(null);
+        VerticalLayout sectionLayout = daysSectionDefinition == null ? null : rendered.getSections().get(daysSectionDefinition);
+        if (dayCountInstance == null || sectionLayout == null) {
+            return;
+        }
+        VerticalLayout repeatableLayout = sectionLayout.getChildren()
+                .filter(component -> component instanceof VerticalLayout)
+                .map(component -> (VerticalLayout) component)
+                .filter(layout -> layout.getElement().getClassList().contains("form-engine-repeatable-group"))
+                .findFirst()
+                .orElse(null);
+        if (repeatableLayout == null) {
+            return;
+        }
+        String containerCandidate = "";
+        if (daysSectionDefinition != null && !daysSectionDefinition.getGroups().isEmpty()) {
+            containerCandidate = daysSectionDefinition.getGroups().get(0).getId();
+        }
+        final String repeatableContainerId = containerCandidate;
+        VerticalLayout entriesContainer = repeatableLayout.getChildren()
+                .filter(component -> component instanceof VerticalLayout)
+                .map(component -> (VerticalLayout) component)
+                .filter(layout -> {
+                    String attribute = layout.getElement().getAttribute("data-repeatable-container");
+                    return attribute != null && attribute.equals(repeatableContainerId);
+                })
+                .findFirst()
+                .orElse(null);
+        Button internalAdd = repeatableLayout.getChildren()
+                .filter(component -> component instanceof Button)
+                .map(component -> (Button) component)
+                .findFirst()
+                .orElse(null);
+        if (entriesContainer == null || internalAdd == null) {
+            return;
+        }
+
+        int resolvedMin = 0;
+        int resolvedMax = Integer.MAX_VALUE;
+        if (daysSectionDefinition != null && !daysSectionDefinition.getGroups().isEmpty()) {
+            GroupDefinition repeatableGroup = daysSectionDefinition.getGroups().get(0);
+            resolvedMin = repeatableGroup.getRepeatableDefinition().getMin();
+            resolvedMax = repeatableGroup.getRepeatableDefinition().getMax();
+        }
+        final int minEntries = resolvedMin;
+        final int maxEntries = resolvedMax;
+
+        HasValue<?, ?> dayCountComponent = dayCountInstance.getValueComponent();
+        if (dayCountComponent instanceof IntegerField integerField) {
+            integerField.setMin(minEntries);
+            integerField.setMax(maxEntries);
+        }
+
+        syncRepeatableEntries(entriesContainer, internalAdd, minEntries, maxEntries, toInteger(dayCountComponent.getValue()));
+        dayCountComponent.addValueChangeListener(event ->
+                syncRepeatableEntries(entriesContainer, internalAdd, minEntries, maxEntries, toInteger(event.getValue())));
+
+        Button resetButton = rendered.getActionButtons().get("planlist-reset");
+        if (resetButton != null) {
+            resetButton.addClickListener(event -> {
+                dayCountComponent.clear();
+                syncRepeatableEntries(entriesContainer, internalAdd, minEntries, maxEntries, 0);
+            });
         }
     }
 
@@ -364,11 +452,7 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
     }
 
     private boolean removeLastRepeatableEntry(VerticalLayout entriesContainer) {
-        java.util.List<VerticalLayout> wrappers = entriesContainer.getChildren()
-                .filter(component -> component instanceof VerticalLayout)
-                .map(component -> (VerticalLayout) component)
-                .filter(layout -> layout.getElement().hasAttribute("data-repeatable-entry"))
-                .collect(Collectors.toCollection(ArrayList::new));
+        java.util.List<VerticalLayout> wrappers = collectRepeatableEntryWrappers(entriesContainer);
         if (wrappers.isEmpty()) {
             return false;
         }
@@ -383,6 +467,37 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
                     return true;
                 })
                 .orElse(false);
+    }
+
+    private void syncRepeatableEntries(VerticalLayout entriesContainer,
+                                       Button addButton,
+                                       int minEntries,
+                                       int maxEntries,
+                                       int requestedEntries) {
+        int desired = Math.max(minEntries, Math.min(requestedEntries, maxEntries));
+        java.util.List<VerticalLayout> wrappers = collectRepeatableEntryWrappers(entriesContainer);
+        while (wrappers.size() < desired && addButton.isEnabled()) {
+            addButton.click();
+            wrappers = collectRepeatableEntryWrappers(entriesContainer);
+        }
+        while (wrappers.size() > desired) {
+            if (!removeLastRepeatableEntry(entriesContainer)) {
+                break;
+            }
+            wrappers = collectRepeatableEntryWrappers(entriesContainer);
+        }
+        while (wrappers.size() < minEntries && addButton.isEnabled()) {
+            addButton.click();
+            wrappers = collectRepeatableEntryWrappers(entriesContainer);
+        }
+    }
+
+    private java.util.List<VerticalLayout> collectRepeatableEntryWrappers(VerticalLayout entriesContainer) {
+        return entriesContainer.getChildren()
+                .filter(component -> component instanceof VerticalLayout)
+                .map(component -> (VerticalLayout) component)
+                .filter(layout -> layout.getElement().hasAttribute("data-repeatable-entry"))
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     private int resolveNumericSuffix(String id) {

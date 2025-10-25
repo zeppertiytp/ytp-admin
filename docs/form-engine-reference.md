@@ -184,6 +184,7 @@ The demo application under `samples/` ships multiple annotated forms that exerci
 | Product catalog | Money converters, async validation, cascading selects |
 | Access policy designer | Multi-action workflow, repeatable conditions, subforms |
 | Dynamic day planner | State-driven sections, numeric triggers |
+| Daily planner (list) | Numeric input controls repeatable list entries, inline panel layout |
 | Agenda builder | External buttons driving repeatable groups |
 | Inventory manager | Prefilled data, repository persistence, repeatable collections |
 
