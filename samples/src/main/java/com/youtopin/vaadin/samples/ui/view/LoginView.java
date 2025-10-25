@@ -14,8 +14,6 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.Locale;
-
 /**
  * The login view presents a full screen login form to the user.
  *
@@ -63,11 +61,11 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Lo
     private LoginOverlay createLoginOverlay() {
         LoginOverlay overlay = new LoginOverlay();
         overlay.setForgotPasswordButtonVisible(false);
+        overlay.getElement().getThemeList().add("app-login");
         // Compose custom I18n for the login form using our translation service
         LoginI18n i18n = createI18n();
         overlay.setI18n(i18n);
         overlay.setOpened(true);
-        overlay.setAction("login");
         return overlay;
     }
 
@@ -86,7 +84,6 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Lo
      * @return a populated {@link LoginI18n} instance
      */
     private LoginI18n createI18n() {
-        Locale locale = UI.getCurrent().getLocale();
         // Build the i18n object manually
         LoginI18n i18n = LoginI18n.createDefault();
         i18n.setHeader(new LoginI18n.Header());

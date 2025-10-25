@@ -8,6 +8,9 @@ application.
   frontend assets under the base package `com.youtopin.vaadin`
 - `samples/` – Spring Boot demo that consumes the component library and
   demonstrates the UI patterns
+- `docs/` – architecture notes and component guides, including
+  [`form-engine-reference.md`](docs/form-engine-reference.md) for the annotation
+  driven form engine
 
 ## Prerequisites
 - Java 17 or newer on the PATH
