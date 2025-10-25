@@ -778,7 +778,7 @@ public final class FormEngine {
             return createRepeatableGroup(group, registry, context, repeatableGroups);
         }
         com.vaadin.flow.component.formlayout.FormLayout formLayout = new com.vaadin.flow.component.formlayout.FormLayout();
-        formLayout.setResponsiveSteps(new com.vaadin.flow.component.formlayout.FormLayout.ResponsiveStep("0", group.getColumns()));
+        configureResponsiveSteps(formLayout, group.getColumns());
         for (FieldDefinition fieldDefinition : group.getFields()) {
             FieldInstance instance = registry.create(fieldDefinition, context);
             instances.put(fieldDefinition, instance);
@@ -865,7 +865,7 @@ public final class FormEngine {
                 .generate(state.getEntries().size(), context, state.getGroup(), state.getRepeatable()));
         header.add(title, removeButton);
         com.vaadin.flow.component.formlayout.FormLayout formLayout = new com.vaadin.flow.component.formlayout.FormLayout();
-        formLayout.setResponsiveSteps(new com.vaadin.flow.component.formlayout.FormLayout.ResponsiveStep("0", state.getGroup().getColumns()));
+        configureResponsiveSteps(formLayout, state.getGroup().getColumns());
         Map<FieldDefinition, FieldInstance> entryInstances = new LinkedHashMap<>();
         for (FieldDefinition fieldDefinition : state.getGroup().getFields()) {
             FieldInstance instance = registry.create(fieldDefinition, context);
@@ -899,6 +899,19 @@ public final class FormEngine {
         updateAddButtonState(state);
         updateRemoveButtons(state);
         updateRepeatableTitles(state, context);
+    }
+
+    private void configureResponsiveSteps(com.vaadin.flow.component.formlayout.FormLayout formLayout, int configuredColumns) {
+        int columns = Math.max(1, configuredColumns);
+        java.util.List<com.vaadin.flow.component.formlayout.FormLayout.ResponsiveStep> steps = new java.util.ArrayList<>();
+        steps.add(new com.vaadin.flow.component.formlayout.FormLayout.ResponsiveStep("0", 1));
+        if (columns > 1) {
+            steps.add(new com.vaadin.flow.component.formlayout.FormLayout.ResponsiveStep("36em", Math.min(columns, 2)));
+            if (columns > 2) {
+                steps.add(new com.vaadin.flow.component.formlayout.FormLayout.ResponsiveStep("64em", columns));
+            }
+        }
+        formLayout.setResponsiveSteps(steps.toArray(new com.vaadin.flow.component.formlayout.FormLayout.ResponsiveStep[0]));
     }
 
     private void updateAddButtonState(RepeatableGroupState state) {
