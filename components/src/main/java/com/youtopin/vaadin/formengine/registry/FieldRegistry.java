@@ -362,6 +362,8 @@ public final class FieldRegistry {
                 Map<String, Double> coords = Map.of(
                         "lat", event.getLat(),
                         "lng", event.getLng());
+                currentValue = coords;
+                updateSelectionText();
                 setModelValue(coords, true);
                 dialog.close();
             });
