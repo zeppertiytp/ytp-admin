@@ -1,5 +1,78 @@
 # CHANGELOG
 
+## v4.6.13
+### Horizontal wizard interaction updates
+
+* **Component:** Added optional click support to `HorizontalWizard` steps,
+  including pointer and focus styling, keyboard activation, and new
+  `StepClickEvent`/`CurrentStepChangeEvent` hooks so applications can react to
+  user navigation.
+* **Component:** Propagated the state colors to each step container and circle
+  token so accent backgrounds stay applied even when theme fallbacks fail,
+  keeping the current and completed indicators legible.
+* **Design system:** Restored the missing accent color ramps (info/success/
+  warning/danger 600–700) and aligned the wizard's contrast fallback with the
+  global inverse text token so highlighted steps stay legible in light and dark
+  themes.
+* **Samples:** Updated `/wizard` to mix clickable and read-only steps, wiring a
+  real-time status caption via the new change listener so flows can trigger view
+  logic as the selection changes.
+* **Documentation:** Expanded `docs/horizontal-wizard.md` to cover the new
+  events and interaction model for reviewers.
+
+## v4.6.12
+### Horizontal wizard progress indicator
+
+* **Component:** Added the `HorizontalWizard` Flow component with configurable
+  colors for completed/current/upcoming states and per-step overrides, plus a
+  responsive CSS module that now keeps the layout in a single row with
+  horizontal scrolling and automatically scrolls the active step into view on
+  attach. Refined the active-state styling with a subtle scale, halo, and label
+  emphasis so the current step stands out clearly against completed ones while
+  padding the container to prevent the highlight from being clipped.
+* **Samples:** Published a `/wizard` showcase view demonstrating default and
+  custom color schemes, wired into the navigation menu with new translations, and
+  expanded it with an eight-step product roadmap sample to validate horizontal
+  scrolling behaviour.
+* **Documentation:** Captured usage guidance in `docs/horizontal-wizard.md` and
+  referenced the sample from the platform overview, including the new extended
+  scenario and scrolling guidance.
+
+### Scrollbar styling refresh
+
+* **Design system:** Introduced theme-level scrollbar tokens and global styles
+  that render slimmer, rounded scrollbars with color-mixed thumbs in both light
+  and dark modes, aligning overflow containers with the platform's visual
+  language.
+
+## v4.6.11
+### Draft action defaults and manual success handling cleanup
+
+* **Backend validation skips for drafts:** Actions that disable client-side validation now skip backend validation automatically unless they explicitly override it, removing the need for redundant `backendValidation: false` flags on draft-style buttons.
+* **Success message opt-in:** `FormSubmissionEvent#getSuccessMessage()` now only returns a value when the specification provides one, so hosts avoid unexpected default strings and can opt-in to messaging when desired.
+* **Docs & samples:** Updated the form generation guide and sample JSON to remove unnecessary action metadata, keeping manual handling examples focused on alignment and validation control.
+
+## v4.6.10
+### Manual submission handling and action alignment
+
+* **Left/right actions:** Added per-action `align` metadata so secondary buttons can anchor to the opposite side of the footer while primaries stay grouped on the right. The action bar now renders dedicated left/right clusters.
+* **Host-driven success handling:** Removed the built-in success/failure notifications. Successful submissions fire `FormSubmissionEvent`s with the translated success message so host views decide how to respond (toast, navigation, etc.).
+* **Docs & samples:** Documented the new alignment option and manual handling approach, and updated sample form JSON to showcase a left-aligned draft button.
+
+## v4.6.9
+### Multi-action submissions for generated forms
+
+* **Configurable actions:** Introduced `submit.actions` so generated forms can render multiple buttons (e.g. “Submit” and “Submit & Exit”), each with independent validation and theming.
+* **Action-aware validation:** Extended `FormValidationService` with an action-aware overload and added submission events plus the `submit(String)` helper for programmatic triggers.
+* **Docs & samples:** Documented the new action schema, updated the layout sample form to demonstrate draft saving, and refined the in-memory validator logging.
+
+## v4.6.8
+### FormLayout-first generated forms
+
+* **Responsive defaults:** Standardised the generated form grid around Vaadin `FormLayout`, adding automatic responsive steps that keep single-column mobile layouts while flowing to full column counts with aside labels on wider screens.
+* **Configurable breakpoints:** Added JSON support for explicit `layout.responsiveSteps` arrays and per-field `colSpan` values so complex forms can tune breakpoints and stretch fields across multiple columns without custom code.
+* **Documentation & samples:** Updated the form generation guide and the sample `user_form_with_layout.json` to illustrate responsive step overrides and column spanning.
+
 ## v4.6.7
 ### JSON-driven navigation menu with scope filtering
 
