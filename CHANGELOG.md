@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v4.6.14
+### Documentation sweep and form engine notes
+
+* **Docs:** Added a component catalogue (`docs/components/README.md`) with dedicated guides for AppNotification, AppCard, AppIcon, FilterablePaginatedGrid, GeneratedForm, JalaliDateTimePicker, and LocationPicker.
+* **Docs:** Captured repeatable workflows in `docs/how-to.md` so contributors can add components, extend the form engine, and publish new samples consistently.
+* **Samples:** Documented every showcase route and scenario in `samples/README.md` to help reviewers find component demos quickly.
+* **Form engine:** Expanded the public guidance for the runtime renderer in `docs/components/generated-form.md` and cross-referenced the annotation reference so integrators can trace the JSON pipeline end-to-end.
+* **Meta:** Refreshed `README.md` and `AGENT.md` with updated structure, build commands, and documentation entry points.
+
+
 ## v4.6.13
 ### Horizontal wizard interaction updates
 
