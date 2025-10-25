@@ -100,7 +100,7 @@
         {
           "group": "components",
           "labelKey": "menu.components.masterDetailLayout",
-          "icon": "COLUMNS",
+          "icon": "GRID",
           "navigationTarget": "components/master-detail-layout"
         },
         {
