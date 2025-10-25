@@ -71,7 +71,7 @@
     {
       "group": "components",
       "labelKey": "menu.components",
-      "icon": "LAYERS",
+      "icon": "CUBES",
       "children": [
         {
           "group": "components",
