@@ -128,6 +128,11 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
         updateHeadings();
         sampleContainer.removeAll();
         ProfileLockFormData profileLockData = new ProfileLockFormData();
+        profileLockData.setUsername("immutable.admin");
+        profileLockData.setEmail("immutable.admin@youtopin.com");
+        profileLockData.setPhone("+1 555 0100");
+        profileLockData.setLocked(false);
+        profileLockData.setContactLocked(false);
         List<SampleDescriptor<?>> descriptors = List.of(
                 new SampleDescriptor<>(
                         "forms.sample.onboarding.heading",
@@ -424,6 +429,11 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
     private void configureProfileLock(RenderedForm<ProfileLockFormData> rendered,
                                       Supplier<ProfileLockFormData> supplier) {
         ProfileLockFormData bean = supplier.get();
+        rendered.addReadOnlyOverride((definition, state) ->
+                "username".equals(definition.getPath())
+                        && state != null
+                        && state.getUsername() != null
+                        && state.getUsername().startsWith("immutable"));
         rendered.setActionBeanSupplier(() -> bean);
         rendered.addActionHandler("profile-lock-submit", context -> {
             ProfileLockFormData current = context.getBean();

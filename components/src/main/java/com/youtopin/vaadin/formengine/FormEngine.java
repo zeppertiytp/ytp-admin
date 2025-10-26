@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BiPredicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -159,6 +160,7 @@ public final class FormEngine {
         private final Map<SectionDefinition, VerticalLayout> sections;
         private java.util.function.Supplier<T> actionBeanSupplier;
         private final List<ValidationFailureListener<T>> validationFailureListeners = new CopyOnWriteArrayList<>();
+        private final List<BiPredicate<FieldDefinition, T>> readOnlyOverrides = new CopyOnWriteArrayList<>();
         private final FieldRegistry fieldRegistry;
         private final FieldFactoryContext fieldContext;
         private final OptionCatalogRegistry optionCatalogRegistry;
@@ -237,6 +239,15 @@ public final class FormEngine {
 
         public void setActionBeanSupplier(java.util.function.Supplier<T> supplier) {
             this.actionBeanSupplier = supplier;
+        }
+
+        public void addReadOnlyOverride(BiPredicate<FieldDefinition, T> override) {
+            readOnlyOverrides.add(Objects.requireNonNull(override, "override"));
+            applyReadOnlyState(currentBean);
+        }
+
+        public void refreshReadOnlyState() {
+            applyReadOnlyState(currentBean);
         }
 
         public void initializeWithBean(T bean) {
@@ -342,14 +353,15 @@ public final class FormEngine {
         }
 
         private void applyReadOnlyState(T bean) {
+            T evaluationBean = bean != null ? bean : currentBean;
             for (SectionDefinition section : definition.getSections()) {
-                boolean sectionReadOnly = evaluateStateExpression(section.getReadOnlyWhen(), bean);
+                boolean sectionReadOnly = evaluateStateExpression(section.getReadOnlyWhen(), evaluationBean);
                 for (GroupDefinition group : section.getGroups()) {
-                    boolean groupReadOnly = sectionReadOnly || evaluateStateExpression(group.getReadOnlyWhen(), bean);
+                    boolean groupReadOnly = sectionReadOnly || evaluateStateExpression(group.getReadOnlyWhen(), evaluationBean);
                     if (group.getRepeatableDefinition().isEnabled()) {
                         RepeatableGroupState state = repeatableGroups.get(group.getId());
                         if (state != null) {
-                            applyReadOnlyToRepeatableGroup(state, groupReadOnly, bean);
+                            applyReadOnlyToRepeatableGroup(state, groupReadOnly, evaluationBean);
                         }
                     } else {
                         for (FieldDefinition fieldDefinition : group.getFields()) {
@@ -358,7 +370,8 @@ public final class FormEngine {
                                 continue;
                             }
                             boolean fieldReadOnly = groupReadOnly
-                                    || evaluateStateExpression(fieldDefinition.getReadOnlyWhen(), bean);
+                                    || evaluateStateExpression(fieldDefinition.getReadOnlyWhen(), evaluationBean)
+                                    || shouldApplyOverride(fieldDefinition, evaluationBean);
                             applyReadOnlyToField(instance, fieldReadOnly);
                         }
                     }
@@ -376,7 +389,8 @@ public final class FormEngine {
                 for (Map.Entry<FieldDefinition, FieldInstance> entryField : entry.fields().entrySet()) {
                     FieldDefinition definition = entryField.getKey();
                     boolean fieldReadOnly = groupReadOnly
-                            || evaluateStateExpression(definition.getReadOnlyWhen(), bean);
+                            || evaluateStateExpression(definition.getReadOnlyWhen(), bean)
+                            || shouldApplyOverride(definition, bean);
                     applyReadOnlyToField(entryField.getValue(), fieldReadOnly);
                 }
                 if (groupReadOnly) {
@@ -411,6 +425,18 @@ public final class FormEngine {
                 updateReadOnlyDecoration(component, readOnly);
             }
             updateReadOnlyDecoration(instance.getComponent(), readOnly);
+        }
+
+        private boolean shouldApplyOverride(FieldDefinition definition, T bean) {
+            if (readOnlyOverrides.isEmpty()) {
+                return false;
+            }
+            for (BiPredicate<FieldDefinition, T> override : readOnlyOverrides) {
+                if (override.test(definition, bean)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private boolean evaluateStateExpression(String expression, T bean) {

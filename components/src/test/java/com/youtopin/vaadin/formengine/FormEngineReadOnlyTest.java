@@ -61,6 +61,41 @@ class FormEngineReadOnlyTest {
         assertThat(lastName.isReadOnly()).isTrue();
     }
 
+    @Test
+    void supportsDynamicReadOnlyOverrides() {
+        FormEngine engine = new FormEngine(new OptionCatalogRegistry());
+        RenderedForm<LockableBean> rendered = engine.render(ReadOnlyFormDefinition.class,
+                new StubI18NProvider(), Locale.ENGLISH, false);
+
+        rendered.getFields().forEach((definition, instance) ->
+                rendered.getOrchestrator().bindField(instance, definition));
+
+        LockableBean bean = new LockableBean();
+        bean.setStatus("ACTIVE");
+        bean.setBillingLocked(false);
+        bean.setLastNameLocked(false);
+
+        rendered.initializeWithBean(bean);
+
+        TextField firstName = (TextField) findField(rendered, "firstName").getValueComponent();
+        assertThat(firstName.isReadOnly()).isFalse();
+
+        rendered.addReadOnlyOverride((definition, state) ->
+                "firstName".equals(definition.getPath())
+                        && state != null
+                        && "ACTIVE".equals(state.getStatus()));
+
+        assertThat(firstName.isReadOnly()).isTrue();
+
+        bean.setStatus("INACTIVE");
+        rendered.initializeWithBean(bean);
+        assertThat(firstName.isReadOnly()).isFalse();
+
+        bean.setStatus("ACTIVE");
+        rendered.refreshReadOnlyState();
+        assertThat(firstName.isReadOnly()).isTrue();
+    }
+
     private FieldInstance findField(RenderedForm<?> rendered, String path) {
         return rendered.getFields().entrySet().stream()
                 .filter(entry -> path.equals(entry.getKey().getPath()))

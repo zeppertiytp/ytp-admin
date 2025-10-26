@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## v4.6.16
+### Dynamic read-only overrides and locking sample defaults
+
+* **Form engine:** Added `RenderedForm#addReadOnlyOverride` and `refreshReadOnlyState()` so hosts can mark individual fields as
+  read-only using the current bean alongside metadata-driven locking.
+* **Samples:** Seeded the profile locking demo with immutable administrator data and applied a dynamic override so forms render
+  with read-only content immediately while still allowing other sections to be edited.
+* **Tests:** Extended the form engine read-only suite to cover the programmatic override flow and state refresh behaviour.
+
 ## v4.6.15
 ### Read-only metadata and locking sample
 
