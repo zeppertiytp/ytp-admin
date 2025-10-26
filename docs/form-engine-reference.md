@@ -112,6 +112,7 @@ Groups one or more `@UiGroup` blocks into a logical section with its own visibil
 | `descriptionKey` | Helper text key displayed beneath the header. Useful for contextual guidance. |
 | `groups` | Ordered array of classes annotated with `@UiGroup`. |
 | `visibleWhen` | Expression evaluated by the state engine to toggle section visibility. |
+| `readOnlyWhen` | Expression that keeps the section visible but renders all children as read-only when truthy. |
 | `securityGuard` | Identifier of a security guard defined elsewhere. When denied, the section is hidden or disabled based on guard rules. |
 | `order` | Sort order relative to other sections. Lower values render earlier. |
 
@@ -139,6 +140,7 @@ Defines a layout container inside a section. Groups control the column count, ne
 | `columns` | Number of columns used in the responsive grid when rendering child fields. |
 | `repeatable` | `@UiRepeatable` configuration enabling list-style editing (grid, cards, inline panels). |
 | `subform` | `@UiSubform` configuration applied when the group contains SUBFORM components. |
+| `readOnlyWhen` | Expression that turns every field (and repeatable controls) inside the group read-only while keeping the layout visible. |
 
 #### Responsive layout behaviour
 
@@ -179,6 +181,82 @@ class AttachmentGroup {
 
 Users can add up to five attachment entries, each edited in a dialog card and summarised by the template.
 
+#### Read-only metadata cascade
+
+Sections, groups, and fields share the `readOnlyWhen` attribute. The engine evaluates the expression against the bound bean,
+keeps the content visible, and disables the relevant components (including repeatable add/remove controls) whenever it
+resolves to `true`.
+
+```java
+@UiForm(
+        id = "profile-lock",
+        bean = ProfileLockFormData.class,
+        sections = {ProfileSection.class, ContactSection.class}
+)
+final class ProfileLockFormDefinition {
+
+    @UiSection(id = "profile-lock-profile",
+            titleKey = "forms.locking.section.profile",
+            groups = ProfileGroup.class,
+            readOnlyWhen = "locked")
+    static class ProfileSection {
+    }
+
+    @UiSection(id = "profile-lock-contact",
+            titleKey = "forms.locking.section.contact",
+            groups = ContactGroup.class)
+    static class ContactSection {
+    }
+
+    @UiGroup(id = "profile-lock-contact-group", columns = 2,
+            readOnlyWhen = "contactLocked")
+    static class ContactGroup {
+
+        @UiField(path = "phone", component = UiField.ComponentType.PHONE,
+                labelKey = "forms.locking.contact.phone")
+        void phone() {
+        }
+
+        @UiField(path = "contactLocked", component = UiField.ComponentType.SWITCH,
+                labelKey = "forms.locking.contact.contactLocked")
+        void contactLocked() {
+        }
+    }
+}
+```
+
+The **Profile Lock** showcase (`samples/src/main/java/com/youtopin/vaadin/samples/ui/formengine/definition/ProfileLockFormDefinition.java`)
+renders this definition end to end. Toggling the `locked` flag keeps the section on screen while marking every child field as
+read-only. The contact section remains editable until `contactLocked` becomes `true`, at which point the group’s inputs and any
+repeatable controls inside it freeze.
+
+For repeatable groups, `readOnlyWhen` disables add/remove buttons while leaving existing entries visible. Field-level
+expressions still apply to every entry, so you can mix locked and editable rows by precomputing the guard state on the bean and
+reapplying it after persistence:
+
+```java
+RenderedForm<OrderDraft> rendered = formEngine.render(OrderDraftForm.class, provider, locale, rtl);
+rendered.initializeWithBean(draft);
+
+List<Map<FieldDefinition, FieldInstance>> entries = rendered.getRepeatableGroups().get("order-lines");
+for (int index = 0; index < draft.getLines().size(); index++) {
+    OrderLine line = draft.getLines().get(index);
+    if (!line.isLocked()) {
+        continue;
+    }
+    Map<FieldDefinition, FieldInstance> entry = entries.get(index);
+    entry.forEach((definition, instance) -> {
+        if (!"orderLines.locked".equals(definition.getPath())) {
+            HasValue<?, ?> component = (HasValue<?, ?>) instance.getValueComponent();
+            component.setReadOnly(true);
+        }
+    });
+}
+```
+
+The loop above freezes only the entries flagged as locked by the backend while leaving new rows editable. Invoke
+`RenderedForm#refreshReadOnlyState()` after updating bean flags in memory to re-run the metadata-driven expressions.
+
 ### Prefilling and repository-backed forms
 
 The `FormEngine.RenderedForm#initializeWithBean` helper reads the values of every bound field and repeatable entry from a given
@@ -198,6 +276,34 @@ rendered.addActionHandler("inventory-save", context -> inventoryRepository.save(
 
 When combined with an action handler that persists submissions back into an in-memory or remote repository, this pattern
 delivers a full edit experience without additional boilerplate.
+
+### Runtime read-only overrides
+
+Metadata covers most locking scenarios, but hosts can still mark individual fields as read-only at runtime. Use
+`RenderedForm#addReadOnlyOverride(BiPredicate<FieldDefinition, T>)` to register a predicate that inspects the current bean and
+the field definition. The override runs alongside the annotation metadata, letting you honour application-specific policies
+without duplicating form definitions.
+
+```java
+rendered.addReadOnlyOverride((definition, state) ->
+        "username".equals(definition.getPath())
+                && state != null
+                && state.getUsername() != null
+                && state.getUsername().startsWith("immutable"));
+
+rendered.setActionBeanSupplier(() -> supplier.get());
+rendered.addActionHandler("profile-lock-submit", context -> {
+    ProfileLockFormData current = context.getBean();
+    current.setLocked(true);
+    current.setContactLocked(true);
+    rendered.initializeWithBean(current);
+});
+```
+
+Call `RenderedForm#refreshReadOnlyState()` whenever you adjust bean flags locally (for example, after toggling a lock switch in
+the UI) to apply the overrides without reloading the entire bean. The profile locking sample view under
+`samples/src/main/java/com/youtopin/vaadin/samples/ui/view/FormGenerationView.java` demonstrates this approach by freezing the
+username field for pre-seeded administrator accounts while leaving other profiles editable.
 
 ### Sample coverage map
 
@@ -233,6 +339,7 @@ objects) improves readability and tooling support.
 | `requiredMessageKey` | Message key used when the `requiredWhen` expression evaluates to true. |
 | `visibleWhen` | Expression controlling visibility. |
 | `enabledWhen` | Expression controlling enablement (e.g. disable when workflow locked). |
+| `readOnlyWhen` | Expression that marks the field read-only without hiding it. Useful for immutable audit data. |
 | `defaultValue` | Expression evaluated on new bean creation to prefill values. |
 | `options` | `@UiOptions` configuration for select-style components. |
 | `validations` | Array of `@UiValidation` rules for custom logic or async checks. |
