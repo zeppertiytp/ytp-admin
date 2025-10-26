@@ -36,6 +36,7 @@ public class HorizontalWizard extends Composite<Div> implements HasSize {
     private final List<StepElement> stepElements = new ArrayList<>();
     private final List<ConnectorElement> connectors = new ArrayList<>();
     private final Map<String, Integer> indexById = new LinkedHashMap<>();
+    private final LinkedHashSet<String> externallyCompletedSteps = new LinkedHashSet<>();
     private Registration pendingAttachScroll;
 
     private String completedColor = "var(--color-primary-600)";
@@ -76,6 +77,7 @@ public class HorizontalWizard extends Composite<Div> implements HasSize {
         this.steps.clear();
         this.steps.addAll(sanitized);
         rebuildElements();
+        externallyCompletedSteps.retainAll(indexById.keySet());
 
         if (previousId != null && indexById.containsKey(previousId)) {
             setCurrentStepIndex(indexById.get(previousId));
@@ -92,6 +94,27 @@ public class HorizontalWizard extends Composite<Div> implements HasSize {
      */
     public void setSteps(WizardStep... steps) {
         setSteps(Arrays.asList(steps));
+    }
+
+    /**
+     * Replaces the externally completed steps with the provided identifiers. Any
+     * identifiers that are not part of the current wizard configuration are
+     * ignored.
+     *
+     * @param completedStepIds identifiers of the steps that should be rendered
+     *                         using the completed state regardless of the
+     *                         current position in the wizard
+     */
+    public void setCompletedSteps(Collection<String> completedStepIds) {
+        externallyCompletedSteps.clear();
+        if (completedStepIds != null) {
+            for (String stepId : completedStepIds) {
+                if (stepId != null && indexById.containsKey(stepId)) {
+                    externallyCompletedSteps.add(stepId);
+                }
+            }
+        }
+        refreshStates();
     }
 
     /**
@@ -270,14 +293,20 @@ public class HorizontalWizard extends Composite<Div> implements HasSize {
     }
 
     private StepState stateForIndex(int index) {
-        if (currentIndex < 0) {
+        if (index < 0 || index >= steps.size()) {
             return StepState.UPCOMING;
         }
-        if (index < currentIndex) {
-            return StepState.COMPLETED;
+        if (currentIndex >= 0) {
+            if (index == currentIndex) {
+                return StepState.CURRENT;
+            }
+            if (index < currentIndex) {
+                return StepState.COMPLETED;
+            }
         }
-        if (index == currentIndex) {
-            return StepState.CURRENT;
+        String stepId = steps.get(index).getId();
+        if (externallyCompletedSteps.contains(stepId)) {
+            return StepState.COMPLETED;
         }
         return StepState.UPCOMING;
     }

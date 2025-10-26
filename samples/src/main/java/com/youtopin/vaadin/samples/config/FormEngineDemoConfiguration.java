@@ -104,6 +104,16 @@ public class FormEngineDemoConfiguration {
                 "hossein", "forms.options.reviewers.hossein",
                 "sara", "forms.options.reviewers.sara"
         )));
+        registry.register("catalog.work-model", messageCatalog(Map.of(
+                "remote", "wizardform.options.workModel.remote",
+                "hybrid", "wizardform.options.workModel.hybrid",
+                "onsite", "wizardform.options.workModel.onsite"
+        )));
+        registry.register("catalog.launch-risk", messageCatalog(Map.of(
+                "low", "wizardform.options.risk.low",
+                "medium", "wizardform.options.risk.medium",
+                "high", "wizardform.options.risk.high"
+        )));
         registry.register("catalog.condition-operators", messageCatalog(Map.of(
                 "equals", "forms.options.conditionOperator.equals",
                 "contains", "forms.options.conditionOperator.contains",
