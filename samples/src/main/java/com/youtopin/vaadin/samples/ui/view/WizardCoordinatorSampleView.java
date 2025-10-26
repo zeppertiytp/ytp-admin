@@ -19,6 +19,7 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.HasSize;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
@@ -163,10 +164,11 @@ public class WizardCoordinatorSampleView extends AppPageLayout implements Locale
     private void configureRolloutForm(RenderedForm<WorkspaceRollout> form) {
         Button backButton = form.getActionButtons().get("workspace-rollout-back");
         if (backButton != null) {
+            backButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
             backButton.addClickListener(event -> coordinator.previousStep(STEP_ROLLOUT)
                     .ifPresent(coordinator::setCurrentStepId));
         }
-        form.addActionHandler("workspace-rollout-finish", context -> {
+        form.addActionHandler("workspace-rollout-finish", actionContext -> {
             coordinator.markStepCompleted(STEP_ROLLOUT);
             Notification notification = Notification.show(getTranslation("wizardcoord.finish.success", context.getWorkspaceId()));
             notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -355,7 +357,7 @@ public class WizardCoordinatorSampleView extends AppPageLayout implements Locale
             bean = WorkspaceRollout.class,
             sections = RolloutSection.class,
             actions = {
-                    @UiAction(id = "workspace-rollout-back", labelKey = "wizardcoord.action.back", placement = UiAction.Placement.FOOTER, order = 0, themeNames = {"tertiary"}),
+                    @UiAction(id = "workspace-rollout-back", labelKey = "wizardcoord.action.back", placement = UiAction.Placement.FOOTER, order = 0),
                     @UiAction(id = "workspace-rollout-finish", labelKey = "wizardcoord.action.finish", placement = UiAction.Placement.FOOTER, order = 1)
             }
     )
