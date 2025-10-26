@@ -65,6 +65,12 @@
           "labelKey": "menu.formengine.wizard",
           "icon": "CLIPBOARD_CHECK",
           "navigationTarget": "forms/wizard-flow"
+        },
+        {
+          "group": "forms",
+          "labelKey": "menu.formengine.wizardCoordinator",
+          "icon": "CLIPBOARD_CHECK",
+          "navigationTarget": "forms/wizard-coordinator"
         }
       ]
     },
