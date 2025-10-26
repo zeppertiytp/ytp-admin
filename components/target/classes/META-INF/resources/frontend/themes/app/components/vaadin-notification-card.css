@@ -1,0 +1,37 @@
+:host([theme~="app-notification"]) {
+  --app-notification-accent: var(--color-info-500);
+  --app-notification-close-size: 32px;
+  box-shadow: var(--shadow-sm);
+  margin: var(--space-4);
+  max-width: 420px;
+  width: min(420px, calc(100vw - 2 * var(--space-4)));
+  border-radius: var(--radius-xl);
+  background: var(--surface-card);
+  color: var(--text-secondary);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 14%, transparent);
+  padding: 0;
+}
+
+:host([theme~="app-notification"]) [part="content"] {
+  padding: 0;
+}
+
+:host([theme~="app-notification"][theme~="app-notification--info"]) {
+  border-inline-start: 4px solid var(--color-info-500);
+  --app-notification-accent: var(--color-info-500);
+}
+
+:host([theme~="app-notification"][theme~="app-notification--success"]) {
+  border-inline-start: 4px solid var(--color-success-500);
+  --app-notification-accent: var(--color-success-500);
+}
+
+:host([theme~="app-notification"][theme~="app-notification--warning"]) {
+  border-inline-start: 4px solid var(--color-warning-500);
+  --app-notification-accent: var(--color-warning-500);
+}
+
+:host([theme~="app-notification"][theme~="app-notification--error"]) {
+  border-inline-start: 4px solid var(--color-danger-500);
+  --app-notification-accent: var(--color-danger-500);
+}

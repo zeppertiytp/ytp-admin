@@ -1,0 +1,132 @@
+{
+  "items": [
+    {
+      "group": "general",
+      "labelKey": "menu.dashboard",
+      "icon": "DASHBOARD",
+      "navigationTarget": ""
+    },
+    {
+      "group": "general",
+      "labelKey": "menu.persons",
+      "icon": "USERS",
+      "children": [
+        {
+          "group": "general",
+          "labelKey": "menu.persons.list",
+          "icon": "LIST",
+          "navigationTarget": "persons"
+        },
+        {
+          "group": "general",
+          "labelKey": "menu.persons.add",
+          "icon": "PLUS"
+        }
+      ]
+    },
+    {
+      "group": "examples",
+      "labelKey": "menu.examples",
+      "icon": "TABLE",
+      "children": [
+        {
+          "group": "examples",
+          "labelKey": "menu.fullgrid",
+          "icon": "LIST",
+          "navigationTarget": "full-grid"
+        },
+        {
+          "group": "examples",
+          "labelKey": "menu.compactgrid",
+          "icon": "LIST",
+          "navigationTarget": "compact-grid"
+        },
+        {
+          "group": "examples",
+          "labelKey": "menu.multigrids",
+          "icon": "LIST",
+          "navigationTarget": "multi-grids"
+        }
+      ]
+    },
+    {
+      "group": "forms",
+      "labelKey": "menu.forms",
+      "icon": "CLIPBOARD_TEXT",
+      "children": [
+        {
+          "group": "forms",
+          "labelKey": "menu.formengine.samples",
+          "icon": "CLIPBOARD_TEXT",
+          "navigationTarget": "forms"
+        },
+        {
+          "group": "forms",
+          "labelKey": "menu.formengine.wizard",
+          "icon": "CLIPBOARD_CHECK",
+          "navigationTarget": "forms/wizard-flow"
+        }
+      ]
+    },
+    {
+      "group": "other",
+      "labelKey": "menu.designSystem",
+      "icon": "PALETTE",
+      "navigationTarget": "design-system"
+    },
+    {
+      "group": "components",
+      "labelKey": "menu.components",
+      "icon": "CUBES",
+      "children": [
+        {
+          "group": "components",
+          "labelKey": "menu.components.accordion",
+          "icon": "MENU",
+          "navigationTarget": "components/accordion"
+        },
+        {
+          "group": "components",
+          "labelKey": "menu.components.appLayout",
+          "icon": "LAYOUT",
+          "navigationTarget": "components/app-layout"
+        },
+        {
+          "group": "components",
+          "labelKey": "menu.components.card",
+          "icon": "CREDIT_CARD",
+          "navigationTarget": "components/card"
+        },
+        {
+          "group": "components",
+          "labelKey": "menu.components.confirmDialog",
+          "icon": "QUESTION_CIRCLE",
+          "navigationTarget": "components/confirm-dialog"
+        },
+        {
+          "group": "components",
+          "labelKey": "menu.components.masterDetailLayout",
+          "icon": "GRID",
+          "navigationTarget": "components/master-detail-layout"
+        },
+        {
+          "group": "components",
+          "labelKey": "menu.components.progressBar",
+          "icon": "TRENDING_UP",
+          "navigationTarget": "components/progress-bar"
+        }
+      ]
+    },
+    {
+      "group": "other",
+      "labelKey": "menu.wizard",
+      "icon": "LIST",
+      "navigationTarget": "wizard"
+    },
+    {
+      "group": "other",
+      "labelKey": "menu.placeholder",
+      "icon": "CLIPBOARD_TEXT"
+    }
+  ]
+}

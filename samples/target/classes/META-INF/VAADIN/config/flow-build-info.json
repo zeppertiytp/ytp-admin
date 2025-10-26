@@ -1,0 +1,18 @@
+{
+  "productionMode": false,
+  "eagerServerLoad": false,
+  "npmFolder": "/opt/projects/codex/ytp-admin/samples",
+  "node.version": "v22.13.1",
+  "node.download.root": "https://nodejs.org/dist/",
+  "frontendFolder": "/opt/projects/codex/ytp-admin/samples/./frontend",
+  "connect.javaSourceFolder": "/opt/projects/codex/ytp-admin/samples/src/main/java",
+  "javaResourceFolder": "/opt/projects/codex/ytp-admin/samples/src/main/resources",
+  "connect.applicationProperties": "/opt/projects/codex/ytp-admin/samples/src/main/resources/application.properties",
+  "connect.openApiFile": "/opt/projects/codex/ytp-admin/samples/target/generated-resources/openapi.json",
+  "project.frontend.generated": "/opt/projects/codex/ytp-admin/samples/./frontend/generated",
+  "pnpm.enable": false,
+  "bun.enable": false,
+  "require.home.node": false,
+  "build.folder": "target",
+  "react.enable": true
+}
