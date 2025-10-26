@@ -48,6 +48,10 @@ public class LocationPicker extends Component implements LocaleChangeObserver {
         return addListener(LocationSelectedEvent.class, l);
     }
 
+    public void invalidateSize() {
+        getElement().callJsFunction("invalidateSize");
+    }
+
     public static class LocationSelectedEvent extends ComponentEvent<LocationPicker> {
         private final double lat, lng;
         public LocationSelectedEvent(LocationPicker src, double lat, double lng) {

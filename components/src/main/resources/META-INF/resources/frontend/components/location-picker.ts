@@ -326,4 +326,8 @@ export class LocationPicker extends LitElement {
       this.$server.setLocation(lat, lng);
     }
   }
+
+  public invalidateSize() {
+    this.map?.invalidateSize();
+  }
 }

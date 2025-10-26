@@ -368,6 +368,12 @@ public final class FieldRegistry {
                 dialog.close();
             });
             dialog.add(picker);
+            dialog.addOpenedChangeListener(event -> {
+                if (event.isOpened()) {
+                    picker.getUI().ifPresent(ui ->
+                            ui.beforeClientResponse(picker, ctx -> picker.invalidateSize()));
+                }
+            });
             openButton.addClickListener(event -> dialog.open());
             openButton.getElement().setAttribute("aria-haspopup", "dialog");
             openButton.getElement().getThemeList().add("primary");
