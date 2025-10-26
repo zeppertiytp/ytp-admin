@@ -69,10 +69,11 @@ public final class AnnotationFormScanner {
                 List<FieldDefinition> fields = scanFields(groupClass, uiForm.bean(), fieldPaths);
                 RepeatableDefinition repeatable = toRepeatable(group.repeatable());
                 SubformDefinition subform = toSubform(group.subform());
-                groups.add(new GroupDefinition(group.id(), group.titleKey(), group.columns(), repeatable, subform, fields));
+                groups.add(new GroupDefinition(group.id(), group.titleKey(), group.columns(), repeatable, subform,
+                        group.readOnlyWhen(), fields));
             }
             sections.add(new SectionDefinition(section.id(), section.titleKey(), section.descriptionKey(),
-                    section.visibleWhen(), section.securityGuard(), section.order(), groups));
+                    section.visibleWhen(), section.readOnlyWhen(), section.securityGuard(), section.order(), groups));
         }
         List<ActionDefinition> actions = Arrays.stream(uiForm.actions())
                 .map(action -> new ActionDefinition(action.id(), action.labelKey(), action.descriptionKey(),
@@ -119,8 +120,8 @@ public final class AnnotationFormScanner {
         SecurityDefinition securityDefinition = toSecurity(uiField.security());
         return new FieldDefinition(uiField.path(), uiField.component(), uiField.labelKey(), uiField.helperKey(),
                 uiField.placeholderKey(), uiField.requiredWhen(), uiField.requiredMessageKey(), uiField.visibleWhen(),
-                uiField.enabledWhen(), uiField.defaultValue(), optionsDefinition, validations, crossFieldValidations,
-                securityDefinition, uiField.order(), uiField.colSpan(), uiField.rowSpan());
+                uiField.enabledWhen(), uiField.readOnlyWhen(), uiField.defaultValue(), optionsDefinition, validations,
+                crossFieldValidations, securityDefinition, uiField.order(), uiField.colSpan(), uiField.rowSpan());
     }
 
     private RepeatableDefinition toRepeatable(UiRepeatable repeatable) {

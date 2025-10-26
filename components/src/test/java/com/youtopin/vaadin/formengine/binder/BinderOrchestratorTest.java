@@ -17,6 +17,7 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.ValidationException;
 import com.youtopin.vaadin.formengine.annotation.UiField;
 import com.youtopin.vaadin.formengine.annotation.UiOptions;
+import com.youtopin.vaadin.formengine.definition.CrossFieldValidationDefinition;
 import com.youtopin.vaadin.formengine.definition.FieldDefinition;
 import com.youtopin.vaadin.formengine.definition.OptionsDefinition;
 import com.youtopin.vaadin.formengine.definition.SecurityDefinition;
@@ -30,9 +31,25 @@ class BinderOrchestratorTest {
     void convertsNumberField() throws ValidationException {
         BinderOrchestrator<TestBean> orchestrator = new BinderOrchestrator<>(TestBean.class, key -> key);
         NumberField field = new NumberField();
-        FieldDefinition definition = new FieldDefinition("amount", UiField.ComponentType.NUMBER, "amount", "", "", "",
-                "", "", "", "", new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false,
-                        "", true), List.of(), List.of(), new SecurityDefinition("", "", List.of(), false), 0, 1, 1);
+        FieldDefinition definition = new FieldDefinition(
+                "amount",
+                UiField.ComponentType.NUMBER,
+                "amount",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false, "", true),
+                List.<ValidationDefinition>of(),
+                List.<CrossFieldValidationDefinition>of(),
+                new SecurityDefinition("", "", List.of(), false),
+                0,
+                1,
+                1);
         orchestrator.bindField(new FieldInstance(field, field, List.of()), definition);
         TestBean bean = new TestBean();
         field.setValue(42.0d);
@@ -45,9 +62,25 @@ class BinderOrchestratorTest {
         BinderOrchestrator<TestBean> orchestrator = new BinderOrchestrator<>(TestBean.class, key -> key);
         MultiSelectComboBox<OptionItem> comboBox = new MultiSelectComboBox<>();
         comboBox.setItems(new OptionItem("A", "A"), new OptionItem("B", "B"));
-        FieldDefinition definition = new FieldDefinition("tags", UiField.ComponentType.MULTI_SELECT, "tags", "", "", "",
-                "", "", "", "", new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false,
-                        "", true), List.of(), List.of(), new SecurityDefinition("", "", List.of(), false), 0, 1, 1);
+        FieldDefinition definition = new FieldDefinition(
+                "tags",
+                UiField.ComponentType.MULTI_SELECT,
+                "tags",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false, "", true),
+                List.<ValidationDefinition>of(),
+                List.<CrossFieldValidationDefinition>of(),
+                new SecurityDefinition("", "", List.of(), false),
+                0,
+                1,
+                1);
         orchestrator.bindField(new FieldInstance(comboBox, comboBox, List.of()), definition);
         comboBox.setValue(Set.of(new OptionItem("A", "A"), new OptionItem("B", "B")));
         TestBean bean = new TestBean();
@@ -59,10 +92,25 @@ class BinderOrchestratorTest {
     void marksFieldInvalidWhenRequired() {
         BinderOrchestrator<TestBean> orchestrator = new BinderOrchestrator<>(TestBean.class, key -> key);
         TextField field = new TextField();
-        FieldDefinition definition = new FieldDefinition("amount", UiField.ComponentType.TEXT, "amount", "", "", "true",
-                "required", "", "", "",
+        FieldDefinition definition = new FieldDefinition(
+                "amount",
+                UiField.ComponentType.TEXT,
+                "amount",
+                "",
+                "",
+                "true",
+                "required",
+                "",
+                "",
+                "",
+                "",
                 new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false, "", true),
-                List.of(), List.of(), new SecurityDefinition("", "", List.of(), false), 0, 1, 1);
+                List.<ValidationDefinition>of(),
+                List.<CrossFieldValidationDefinition>of(),
+                new SecurityDefinition("", "", List.of(), false),
+                0,
+                1,
+                1);
         orchestrator.bindField(new FieldInstance(field, field, List.of()), definition);
 
         ValidationException exception = assertThrows(ValidationException.class, () -> orchestrator.writeBean(new TestBean()));
@@ -78,9 +126,25 @@ class BinderOrchestratorTest {
         NumberField field = new NumberField();
         field.setValue(-5d);
         ValidationDefinition rule = new ValidationDefinition("positive", "value > 0", List.of(), "");
-        FieldDefinition definition = new FieldDefinition("amount", UiField.ComponentType.NUMBER, "amount", "", "", "",
-                "", "", "", "", new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "",
-                        false, "", true), List.of(rule), List.of(), new SecurityDefinition("", "", List.of(), false), 0, 1, 1);
+        FieldDefinition definition = new FieldDefinition(
+                "amount",
+                UiField.ComponentType.NUMBER,
+                "amount",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false, "", true),
+                List.of(rule),
+                List.<CrossFieldValidationDefinition>of(),
+                new SecurityDefinition("", "", List.of(), false),
+                0,
+                1,
+                1);
         orchestrator.bindField(new FieldInstance(field, field, List.of()), definition);
 
         ValidationException exception = assertThrows(ValidationException.class, () -> orchestrator.writeBean(new TestBean()));
@@ -94,10 +158,25 @@ class BinderOrchestratorTest {
     void supportsCustomValidationHandler() {
         BinderOrchestrator<TestBean> orchestrator = new BinderOrchestrator<>(TestBean.class, key -> key);
         TextField field = new TextField();
-        FieldDefinition definition = new FieldDefinition("amount", UiField.ComponentType.TEXT, "amount", "", "", "true",
-                "required", "", "", "",
+        FieldDefinition definition = new FieldDefinition(
+                "amount",
+                UiField.ComponentType.TEXT,
+                "amount",
+                "",
+                "",
+                "true",
+                "required",
+                "",
+                "",
+                "",
+                "",
                 new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false, "", true),
-                List.of(), List.of(), new SecurityDefinition("", "", List.of(), false), 0, 1, 1);
+                List.<ValidationDefinition>of(),
+                List.<CrossFieldValidationDefinition>of(),
+                new SecurityDefinition("", "", List.of(), false),
+                0,
+                1,
+                1);
         FieldInstance instance = new FieldInstance(field, field, List.of());
         AtomicBoolean cleared = new AtomicBoolean();
         AtomicReference<String> appliedMessage = new AtomicReference<>();
@@ -127,9 +206,25 @@ class BinderOrchestratorTest {
     void skipsPrimitiveSetterWhenValueNull() throws ValidationException {
         BinderOrchestrator<PrimitiveBean> orchestrator = new BinderOrchestrator<>(PrimitiveBean.class, key -> key);
         IntegerField field = new IntegerField();
-        FieldDefinition definition = new FieldDefinition("count", UiField.ComponentType.INTEGER, "count", "", "", "", "",
-                "", "", "", new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false,
-                "", true), List.of(), List.of(), new SecurityDefinition("", "", List.of(), false), 0, 1, 1);
+        FieldDefinition definition = new FieldDefinition(
+                "count",
+                UiField.ComponentType.INTEGER,
+                "count",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false, "", true),
+                List.<ValidationDefinition>of(),
+                List.<CrossFieldValidationDefinition>of(),
+                new SecurityDefinition("", "", List.of(), false),
+                0,
+                1,
+                1);
         orchestrator.bindField(new FieldInstance(field, field, List.of()), definition);
 
         PrimitiveBean bean = new PrimitiveBean();
@@ -143,9 +238,25 @@ class BinderOrchestratorTest {
         BinderOrchestrator<EnumBean> orchestrator = new BinderOrchestrator<>(EnumBean.class, key -> key);
         TextField field = new TextField();
         field.setValue("ACTIVE");
-        FieldDefinition definition = new FieldDefinition("status", UiField.ComponentType.TEXT, "status", "", "", "", "",
-                "", "", "", new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false,
-                "", true), List.of(), List.of(), new SecurityDefinition("", "", List.of(), false), 0, 1, 1);
+        FieldDefinition definition = new FieldDefinition(
+                "status",
+                UiField.ComponentType.TEXT,
+                "status",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false, "", true),
+                List.<ValidationDefinition>of(),
+                List.<CrossFieldValidationDefinition>of(),
+                new SecurityDefinition("", "", List.of(), false),
+                0,
+                1,
+                1);
         orchestrator.bindField(new FieldInstance(field, field, List.of()), definition);
 
         EnumBean bean = new EnumBean();

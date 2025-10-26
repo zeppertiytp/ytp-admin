@@ -19,6 +19,7 @@ public final class FieldDefinition {
     private final String requiredMessageKey;
     private final String visibleWhen;
     private final String enabledWhen;
+    private final String readOnlyWhen;
     private final String defaultValue;
     private final OptionsDefinition optionsDefinition;
     private final List<ValidationDefinition> validations;
@@ -37,6 +38,7 @@ public final class FieldDefinition {
                            String requiredMessageKey,
                            String visibleWhen,
                            String enabledWhen,
+                           String readOnlyWhen,
                            String defaultValue,
                            OptionsDefinition optionsDefinition,
                            List<ValidationDefinition> validations,
@@ -54,6 +56,7 @@ public final class FieldDefinition {
         this.requiredMessageKey = requiredMessageKey == null ? "" : requiredMessageKey;
         this.visibleWhen = visibleWhen == null ? "" : visibleWhen;
         this.enabledWhen = enabledWhen == null ? "" : enabledWhen;
+        this.readOnlyWhen = readOnlyWhen == null ? "" : readOnlyWhen;
         this.defaultValue = defaultValue == null ? "" : defaultValue;
         this.optionsDefinition = optionsDefinition;
         this.validations = List.copyOf(validations);
@@ -98,6 +101,10 @@ public final class FieldDefinition {
 
     public String getEnabledWhen() {
         return enabledWhen;
+    }
+
+    public String getReadOnlyWhen() {
+        return readOnlyWhen;
     }
 
     public String getDefaultValue() {

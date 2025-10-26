@@ -12,10 +12,12 @@ import org.junit.jupiter.api.Test;
 import com.vaadin.flow.component.textfield.BigDecimalField;
 import com.youtopin.vaadin.formengine.annotation.UiField;
 import com.youtopin.vaadin.formengine.annotation.UiOptions;
+import com.youtopin.vaadin.formengine.definition.CrossFieldValidationDefinition;
 import com.youtopin.vaadin.formengine.definition.FieldDefinition;
 import com.youtopin.vaadin.formengine.definition.FormDefinition;
 import com.youtopin.vaadin.formengine.definition.OptionsDefinition;
 import com.youtopin.vaadin.formengine.definition.SecurityDefinition;
+import com.youtopin.vaadin.formengine.definition.ValidationDefinition;
 import com.youtopin.vaadin.formengine.options.OptionCatalogRegistry;
 
 /**
@@ -55,8 +57,25 @@ class FieldRegistryTest {
     private static FieldDefinition moneyFieldDefinition() {
         OptionsDefinition options = new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false, "", false);
         SecurityDefinition security = new SecurityDefinition("", "", List.of(), true);
-        return new FieldDefinition("pricing.price", UiField.ComponentType.MONEY, "label", "", "", "", "", "", "", "",
-                options, List.of(), List.of(), security, 0, 1, 1);
+        return new FieldDefinition(
+                "pricing.price",
+                UiField.ComponentType.MONEY,
+                "label",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                options,
+                List.<ValidationDefinition>of(),
+                List.<CrossFieldValidationDefinition>of(),
+                security,
+                0,
+                1,
+                1);
     }
 }
 

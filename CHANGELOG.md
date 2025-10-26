@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v4.6.15
+### Read-only metadata and locking sample
+
+* **Form engine:** Introduced `readOnlyWhen` metadata for sections, groups, and fields and wired a state evaluator that disables
+  repeatable controls while keeping layouts visible.
+* **Generated form:** Parsed `readOnly` / `readOnlyWhen` flags, mirroring conditional logic with new watchers and accessibility
+  attributes so JSON-driven forms respect immutable content.
+* **Tests:** Added regression coverage for annotation and JSON pipelines to ensure locked data renders as read-only.
+* **Samples:** Published a profile locking demo that flips fields to read-only after submit, showing the new metadata in action.
+
 ## v4.6.14
 ### Documentation sweep and form engine notes
 

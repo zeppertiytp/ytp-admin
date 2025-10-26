@@ -61,6 +61,11 @@ public @interface UiField {
     String enabledWhen() default "";
 
     /**
+     * @return Expression determining when the field should become read-only. Empty value keeps it editable.
+     */
+    String readOnlyWhen() default "";
+
+    /**
      * @return Default value expression evaluated when creating new bean instances.
      */
     String defaultValue() default "";

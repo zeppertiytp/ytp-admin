@@ -38,4 +38,9 @@ public @interface UiGroup {
      * @return Subform configuration applied when {@link UiField#component()} is {@link UiField.ComponentType#SUBFORM}.
      */
     UiSubform subform() default @UiSubform;
+
+    /**
+     * @return Expression determining when the group should render its children as read-only.
+     */
+    String readOnlyWhen() default "";
 }
