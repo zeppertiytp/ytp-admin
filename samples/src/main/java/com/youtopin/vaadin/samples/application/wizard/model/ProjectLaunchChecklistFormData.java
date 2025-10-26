@@ -1,4 +1,4 @@
-package com.youtopin.vaadin.samples.ui.formengine.model;
+package com.youtopin.vaadin.samples.application.wizard.model;
 
 import java.io.Serial;
 import java.io.Serializable;

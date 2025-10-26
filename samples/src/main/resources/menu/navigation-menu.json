@@ -71,6 +71,12 @@
           "labelKey": "menu.formengine.wizardCoordinator",
           "icon": "CLIPBOARD_CHECK",
           "navigationTarget": "forms/wizard-coordinator"
+        },
+        {
+          "group": "forms",
+          "labelKey": "menu.formengine.tourWizard",
+          "icon": "CLIPBOARD_TEXT",
+          "navigationTarget": "forms/outbound-tour"
         }
       ]
     },

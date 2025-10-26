@@ -18,6 +18,7 @@ Visit `http://localhost:8080`. The default login is **admin / admin**.
 | `/forms` | `com.youtopin.vaadin.samples.ui.view.FormGenerationView` | Renders two `GeneratedForm` instances sourced from JSON specs, including Jalali pickers and the map location field. |
 | `/forms/wizard-flow` | `com.youtopin.vaadin.samples.ui.view.WizardFormFlowView` | Session-backed project launch wizard powered by `WizardFormFlowCoordinator`. |
 | `/forms/wizard-coordinator` | `com.youtopin.vaadin.samples.ui.view.WizardCoordinatorSampleView` | Workspace provisioning flow that generates an ID in the first step and summarises stored context. |
+| `/forms/outbound-tour` | `com.youtopin.vaadin.samples.ui.view.OutboundTourWizardView` | Multi-step outbound tour wizard with draft persistence, option search, and repeatable itinerary sections. |
 | `/wizard` | `com.youtopin.vaadin.samples.ui.view.WizardView` | Demonstrates `HorizontalWizard` interactions, clickable steps, and custom colouring. |
 | `/persons` | `com.youtopin.vaadin.samples.ui.view.PersonTableView` | Full CRUD-style table built on `FilterablePaginatedGrid` with saved views and exports. |
 | `/full-grid` | `com.youtopin.vaadin.samples.ui.view.FullGridView` | Full-height grid configuration verifying expand-to-fill layouts. |

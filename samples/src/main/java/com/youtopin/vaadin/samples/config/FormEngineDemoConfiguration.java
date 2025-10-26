@@ -1,9 +1,12 @@
 package com.youtopin.vaadin.samples.config;
 
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.youtopin.vaadin.formengine.FormEngine;
@@ -13,6 +16,7 @@ import com.youtopin.vaadin.formengine.options.OptionItem;
 import com.youtopin.vaadin.formengine.options.OptionPage;
 import com.youtopin.vaadin.formengine.options.SearchQuery;
 import com.youtopin.vaadin.i18n.TranslationProvider;
+import com.youtopin.vaadin.samples.application.tour.TourReferenceDataService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -30,7 +34,7 @@ public class FormEngineDemoConfiguration {
     }
 
     @Bean
-    public OptionCatalogRegistry optionCatalogRegistry() {
+    public OptionCatalogRegistry optionCatalogRegistry(TourReferenceDataService tourReferenceDataService) {
         OptionCatalogRegistry registry = new OptionCatalogRegistry();
         registry.register("catalog.departments", messageCatalog(Map.of(
                 "engineering", "forms.options.department.engineering",
@@ -119,6 +123,25 @@ public class FormEngineDemoConfiguration {
                 "contains", "forms.options.conditionOperator.contains",
                 "startsWith", "forms.options.conditionOperator.startsWith"
         )));
+        registry.register("tour.operators", searchCatalog(tourReferenceDataService::searchOperators));
+        registry.register("tour.leaders", searchCatalog(tourReferenceDataService::searchTourLeaders));
+        registry.register("tour.classes", searchCatalog(tourReferenceDataService::searchTourClasses));
+        registry.register("tour.tags", searchCatalog(tourReferenceDataService::searchTags));
+        registry.register("tour.provinces", searchCatalog(tourReferenceDataService::searchProvinces));
+        registry.register("tour.provinceCities", searchCatalog(tourReferenceDataService::searchAllProvinceCities));
+        registry.register("tour.continents", searchCatalog(tourReferenceDataService::searchContinents));
+        registry.register("tour.countries", searchCatalog(tourReferenceDataService::searchAllCountries));
+        registry.register("tour.worldCities", searchCatalog(tourReferenceDataService::searchAllWorldCities));
+        registry.register("tour.excludedServices", searchCatalog(tourReferenceDataService::searchExcludedServices));
+        registry.register("tour.requiredDocuments", searchCatalog(tourReferenceDataService::searchRequiredDocuments));
+        registry.register("tour.requiredEquipment", searchCatalog(tourReferenceDataService::searchRequiredEquipment));
+        registry.register("tour.difficulty", searchCatalog(tourReferenceDataService::searchDifficultyLevels));
+        registry.register("tour.accommodationTypes", searchCatalog(tourReferenceDataService::searchAccommodationTypes));
+        registry.register("tour.defaultAccommodations", searchCatalog(tourReferenceDataService::searchDefaultAccommodations));
+        registry.register("tour.hotelQualities", searchCatalog(tourReferenceDataService::searchHotelQualities));
+        registry.register("tour.cateringServices", searchCatalog(tourReferenceDataService::searchCateringServices));
+        registry.register("tour.amenityServices", searchCatalog(tourReferenceDataService::searchAmenityServices));
+        registry.register("tour.roomTypes", searchCatalog(tourReferenceDataService::searchRoomTypes));
         return registry;
     }
 
@@ -129,6 +152,31 @@ public class FormEngineDemoConfiguration {
 
     private OptionCatalog messageCatalog(Map<String, String> entries) {
         return new MessageOptionCatalog(translationProvider, new LinkedHashMap<>(entries));
+    }
+
+    private OptionCatalog searchCatalog(Function<String, List<OptionItem>> searchFunction) {
+        return new OptionCatalog() {
+            @Override
+            public OptionPage fetch(SearchQuery query) {
+                List<OptionItem> allItems = searchFunction.apply(query.getSearch());
+                int fromIndex = Math.min(query.getPage() * query.getPageSize(), allItems.size());
+                int toIndex = Math.min(fromIndex + query.getPageSize(), allItems.size());
+                return OptionPage.of(allItems.subList(fromIndex, toIndex), allItems.size());
+            }
+
+            @Override
+            public List<OptionItem> byIds(Collection<String> ids) {
+                if (ids == null || ids.isEmpty()) {
+                    return List.of();
+                }
+                List<OptionItem> allItems = searchFunction.apply("");
+                return ids.stream()
+                        .filter(Objects::nonNull)
+                        .flatMap(id -> allItems.stream().filter(item -> item.getId().equals(id)))
+                        .distinct()
+                        .toList();
+            }
+        };
     }
 
     private static final class MessageOptionCatalog implements OptionCatalog {
