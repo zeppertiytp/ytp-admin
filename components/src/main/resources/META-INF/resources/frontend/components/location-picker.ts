@@ -21,6 +21,7 @@ export class LocationPicker extends LitElement {
   private map?: L.Map;
   private marker?: L.Marker;
   private resizeObserver?: ResizeObserver;
+  private visibilityObserver?: IntersectionObserver;
   private searchController?: AbortController;
 
   @property({ type: String })
@@ -64,30 +65,23 @@ export class LocationPicker extends LitElement {
 
   createRenderRoot() { return this; }
 
-  firstUpdated() {
-    const mapDiv = this.querySelector('#map') as HTMLElement | null;
-    if (!mapDiv) {
-      return;
+  connectedCallback(): void {
+    super.connectedCallback();
+    this.ensureVisibilityObserver();
+    this.updateComplete.then(() => {
+      if (!this.map) {
+        const created = this.ensureMap();
+        if (created) {
+          requestAnimationFrame(() => this.map?.invalidateSize());
+        }
+      }
+    });
+  }
+
+  firstUpdated(): void {
+    if (this.ensureMap()) {
+      requestAnimationFrame(() => this.map?.invalidateSize());
     }
-
-    this.map = L.map(mapDiv).setView([35.6892, 51.3890], 11);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 19
-    }).addTo(this.map);
-
-    this.map.on('click', (ev: L.LeafletMouseEvent) => {
-      this.setLocation(ev.latlng.lat, ev.latlng.lng);
-    });
-
-    this.resizeObserver = new ResizeObserver(() => {
-      this.map?.invalidateSize();
-    });
-    this.resizeObserver.observe(this);
-
-    setTimeout(() => {
-      this.map?.invalidateSize();
-    }, 0);
   }
 
   render() {
@@ -213,6 +207,10 @@ export class LocationPicker extends LitElement {
       this.resizeObserver.disconnect();
       this.resizeObserver = undefined;
     }
+    if (this.visibilityObserver) {
+      this.visibilityObserver.disconnect();
+      this.visibilityObserver = undefined;
+    }
     if (this.searchController) {
       this.searchController.abort();
       this.searchController = undefined;
@@ -328,6 +326,56 @@ export class LocationPicker extends LitElement {
   }
 
   public invalidateSize() {
-    this.map?.invalidateSize();
+    if (this.ensureMap()) {
+      requestAnimationFrame(() => this.map?.invalidateSize());
+    }
+  }
+
+  private ensureMap(): boolean {
+    if (this.map) {
+      return true;
+    }
+
+    const mapDiv = this.querySelector('#map') as HTMLElement | null;
+    if (!mapDiv) {
+      return false;
+    }
+
+    this.map = L.map(mapDiv).setView([35.6892, 51.3890], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(this.map);
+
+    this.map.on('click', (ev: L.LeafletMouseEvent) => {
+      this.setLocation(ev.latlng.lat, ev.latlng.lng);
+    });
+
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+    this.resizeObserver = new ResizeObserver(() => {
+      this.map?.invalidateSize();
+    });
+    this.resizeObserver.observe(mapDiv);
+
+    return true;
+  }
+
+  private ensureVisibilityObserver() {
+    if (this.visibilityObserver) {
+      return;
+    }
+
+    this.visibilityObserver = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          if (this.ensureMap()) {
+            requestAnimationFrame(() => this.map?.invalidateSize());
+          }
+        }
+      }
+    }, { threshold: 0.1 });
+    this.visibilityObserver.observe(this);
   }
 }
