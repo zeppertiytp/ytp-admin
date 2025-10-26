@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v4.6.17
+## v4.6.18
 ### Wizard form coordinator and persistent sample flows
 
 * **Form engine:** Introduced `WizardFormFlowCoordinator` to connect `HorizontalWizard` with Form Engine
@@ -13,6 +13,13 @@
   how-to index with the new guide.
 * **Tests:** Added unit and integration coverage verifying coordinator context propagation, wizard
   selection, and form submission behaviour.
+# v4.6.17
+### Repeatable duplication controls and sample
+
+* **Form engine:** Added an optional duplicate dialog for repeatable groups so editors can select an existing entry and append a cloned copy to the end of the list while preserving numbering.
+* **Form engine:** Expanded regression coverage to verify the duplication flow copies field values and respects repeatable limits.
+* **Docs:** Clarified the `allowDuplicate` option to highlight the new control and dialog workflow.
+* **Samples:** Published a landing page template form showcasing the duplicate button with localized translations and helper text.
 
 ## v4.6.16
 ### Dynamic read-only overrides and locking sample defaults
@@ -22,6 +29,8 @@
 * **Samples:** Seeded the profile locking demo with immutable administrator data and applied a dynamic override so forms render
   with read-only content immediately while still allowing other sections to be edited.
 * **Tests:** Extended the form engine read-only suite to cover the programmatic override flow and state refresh behaviour.
+* **Docs:** Expanded `docs/form-engine-reference.md` with `readOnlyWhen` guidance, mixed-state repeatable examples, and a
+  runtime override walkthrough that links back to the profile locking sample.
 
 ## v4.6.15
 ### Read-only metadata and locking sample
