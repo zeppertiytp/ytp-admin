@@ -250,7 +250,8 @@ public final class FormEngine {
         @Deprecated
         public void addReadOnlyOverride(BiPredicate<FieldDefinition, T> override) {
             Objects.requireNonNull(override, "override");
-            addReadOnlyOverride((definition, context) -> override.test(definition, context.getBean()));
+            addReadOnlyOverride((ReadOnlyOverride<T>) (definition, context) ->
+                    override.test(definition, context.getBean()));
         }
 
         public void refreshReadOnlyState() {
@@ -504,7 +505,7 @@ public final class FormEngine {
                 if (current instanceof Map<?, ?> map) {
                     current = map.get(segment);
                 } else {
-                    current = FormEngine.this.readPropertyValue(current, segment);
+                    current = RenderedForm.this.readPropertyValue(current, segment);
                 }
             }
             return current;

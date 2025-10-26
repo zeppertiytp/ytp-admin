@@ -429,11 +429,13 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
     private void configureProfileLock(RenderedForm<ProfileLockFormData> rendered,
                                       Supplier<ProfileLockFormData> supplier) {
         ProfileLockFormData bean = supplier.get();
-        rendered.addReadOnlyOverride((definition, state) ->
+        RenderedForm.ReadOnlyOverride<ProfileLockFormData> usernameLock = (definition, context) ->
                 "username".equals(definition.getPath())
-                        && state != null
-                        && state.getUsername() != null
-                        && state.getUsername().startsWith("immutable"));
+                        && context != null
+                        && context.getBean() != null
+                        && context.getBean().getUsername() != null
+                        && context.getBean().getUsername().startsWith("immutable");
+        rendered.addReadOnlyOverride(usernameLock);
         rendered.setActionBeanSupplier(() -> bean);
         rendered.addActionHandler("profile-lock-submit", context -> {
             ProfileLockFormData current = context.getBean();

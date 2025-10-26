@@ -80,10 +80,12 @@ class FormEngineReadOnlyTest {
         TextField firstName = (TextField) findField(rendered, "firstName").getValueComponent();
         assertThat(firstName.isReadOnly()).isFalse();
 
-        rendered.addReadOnlyOverride((definition, state) ->
+        RenderedForm.ReadOnlyOverride<LockableBean> firstNameLock = (definition, context) ->
                 "firstName".equals(definition.getPath())
-                        && state != null
-                        && "ACTIVE".equals(state.getStatus()));
+                        && context != null
+                        && context.getBean() != null
+                        && "ACTIVE".equals(context.getBean().getStatus());
+        rendered.addReadOnlyOverride(firstNameLock);
 
         assertThat(firstName.isReadOnly()).isTrue();
 

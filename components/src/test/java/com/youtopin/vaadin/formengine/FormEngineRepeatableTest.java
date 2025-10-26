@@ -227,12 +227,14 @@ class FormEngineRepeatableTest {
         assertThat(firstNotes.isReadOnly()).isFalse();
         assertThat(secondNotes.isReadOnly()).isFalse();
 
-        rendered.addReadOnlyOverride((definition, context) ->
+        RenderedForm.ReadOnlyOverride<RepeatableBean> repeatableOverride = (definition, context) ->
                 "plan.segments.notes".equals(definition.getPath())
+                        && context != null
                         && context.getRepeatableEntry()
                         .map(entry -> entry.getIndex() == 1
                                 && "Editable".equals(entry.getValues().get("title")))
-                        .orElse(false));
+                        .orElse(false);
+        rendered.addReadOnlyOverride(repeatableOverride);
 
         assertThat(firstNotes.isReadOnly()).isFalse();
         assertThat(secondNotes.isReadOnly()).isTrue();
