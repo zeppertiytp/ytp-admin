@@ -20,6 +20,7 @@ import com.youtopin.vaadin.samples.ui.formengine.definition.DailyPlanListFormDef
 import com.youtopin.vaadin.samples.ui.formengine.definition.EmployeeOnboardingFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.ProductCatalogFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.InventoryManagementFormDefinition;
+import com.youtopin.vaadin.samples.ui.formengine.definition.RepeatableDuplicationFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.ProfileLockFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.model.AccessPolicyFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.AgendaBuilderFormData;
@@ -27,6 +28,7 @@ import com.youtopin.vaadin.samples.ui.formengine.model.DailyPlanFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.DailyPlanListFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.EmployeeOnboardingFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.ProductCatalogFormData;
+import com.youtopin.vaadin.samples.ui.formengine.model.RepeatableDuplicationFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.ProfileLockFormData;
 import com.youtopin.vaadin.samples.application.formengine.model.InventoryManagementFormData;
 import com.youtopin.vaadin.samples.application.formengine.InventoryPlanService;
@@ -168,6 +170,13 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
                         "forms.sample.planlist.features",
                         DailyPlanListFormDefinition.class,
                         DailyPlanListFormData::new
+                ),
+                new SampleDescriptor<>(
+                        "forms.sample.duplicate.heading",
+                        "forms.sample.duplicate.description",
+                        "forms.sample.duplicate.features",
+                        RepeatableDuplicationFormDefinition.class,
+                        RepeatableDuplicationFormData::new
                 ),
                 new SampleDescriptor<>(
                         "forms.sample.agenda.heading",

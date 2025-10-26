@@ -1,5 +1,13 @@
 # CHANGELOG
 
+# v4.6.17
+### Repeatable duplication controls and sample
+
+* **Form engine:** Added an optional duplicate dialog for repeatable groups so editors can select an existing entry and append a cloned copy to the end of the list while preserving numbering.
+* **Form engine:** Expanded regression coverage to verify the duplication flow copies field values and respects repeatable limits.
+* **Docs:** Clarified the `allowDuplicate` option to highlight the new control and dialog workflow.
+* **Samples:** Published a landing page template form showcasing the duplicate button with localized translations and helper text.
+
 ## v4.6.16
 ### Dynamic read-only overrides and locking sample defaults
 

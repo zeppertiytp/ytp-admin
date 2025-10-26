@@ -358,7 +358,7 @@ Enables repeatable groups where users can manage collections of items with add/r
 | `itemTitleOffset` | Offset added to the zero-based index before substitution. Defaults to `1` for human-friendly numbering. |
 | `titleGenerator` | Custom `com.youtopin.vaadin.formengine.RepeatableTitleGenerator` implementation used when templates are insufficient. |
 | `allowReorder` | Enables drag-and-drop ordering. |
-| `allowDuplicate` | Allows duplicating an existing item. |
+| `allowDuplicate` | Enables the "Duplicate group" button so editors can pick an existing entry from a dialog and append a copy to the end of the list. |
 | `allowManualAdd` | Enables the built-in “add entry” control. Disable when entries are added via external logic. |
 | `allowManualRemove` | Enables the built-in “remove entry” control. Disable when deletions are orchestrated elsewhere. |
 
