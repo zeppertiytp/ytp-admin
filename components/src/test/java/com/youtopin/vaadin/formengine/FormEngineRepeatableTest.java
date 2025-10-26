@@ -13,9 +13,10 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
-import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.HasText;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.i18n.I18NProvider;
@@ -154,6 +155,53 @@ class FormEngineRepeatableTest {
         removeButtons.forEach(button -> assertThat(button.isEnabled()).isFalse());
     }
 
+    @Test
+    void duplicateRepeatableEntryCopiesFieldValues() {
+        FormEngine engine = new FormEngine(new OptionCatalogRegistry());
+        RenderedForm<RepeatableBean> rendered = engine.render(
+                TestRepeatableForm.class,
+                new StubI18NProvider(),
+                Locale.ENGLISH,
+                false);
+
+        rendered.getFields().forEach((definition, instance) ->
+                rendered.getOrchestrator().bindField(instance, definition));
+
+        Map<String, List<Map<FieldDefinition, FieldInstance>>> repeatables = rendered.getRepeatableGroups();
+        Map<FieldDefinition, FieldInstance> entry = repeatables.get("test-repeatable-group").get(0);
+        entry.entrySet().stream()
+                .filter(e -> "plan.segments.title".equals(e.getKey().getPath()))
+                .findFirst()
+                .ifPresent(e -> ((TextField) e.getValue().getValueComponent()).setValue("Kick-off"));
+        entry.entrySet().stream()
+                .filter(e -> "plan.segments.notes".equals(e.getKey().getPath()))
+                .findFirst()
+                .ifPresent(e -> ((TextArea) e.getValue().getValueComponent()).setValue("Introductions"));
+
+        Button duplicateButton = findRepeatableDuplicateButton(rendered, "test-repeatable-group");
+        duplicateButton.click();
+
+        ComboBox<?> selector = findRepeatableDuplicateSelector(rendered, "test-repeatable-group");
+        Object firstItem = selector.getListDataView().getItems().findFirst().orElse(null);
+        @SuppressWarnings("unchecked")
+        ComboBox<Object> rawSelector = (ComboBox<Object>) selector;
+        rawSelector.setValue(firstItem);
+
+        rendered.duplicateRepeatableEntry("test-repeatable-group", 0);
+
+        Map<String, List<Map<FieldDefinition, FieldInstance>>> duplicated = rendered.getRepeatableGroups();
+        assertThat(duplicated.get("test-repeatable-group")).hasSize(2);
+        Map<FieldDefinition, FieldInstance> newEntry = duplicated.get("test-repeatable-group").get(1);
+        newEntry.entrySet().stream()
+                .filter(e -> "plan.segments.title".equals(e.getKey().getPath()))
+                .findFirst()
+                .ifPresent(e -> assertThat(((TextField) e.getValue().getValueComponent()).getValue()).isEqualTo("Kick-off"));
+        newEntry.entrySet().stream()
+                .filter(e -> "plan.segments.notes".equals(e.getKey().getPath()))
+                .findFirst()
+                .ifPresent(e -> assertThat(((TextArea) e.getValue().getValueComponent()).getValue()).isEqualTo("Introductions"));
+    }
+
     private List<String> repeatableTitles(RenderedForm<?> rendered) {
         return flatten(rendered.getLayout())
                 .filter(component -> "true".equals(component.getElement().getAttribute("data-repeatable-title")))
@@ -167,6 +215,24 @@ class FormEngineRepeatableTest {
                 .filter(component -> component instanceof Button)
                 .map(component -> (Button) component)
                 .filter(button -> groupId.equals(button.getElement().getAttribute("data-repeatable-add")))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private Button findRepeatableDuplicateButton(RenderedForm<?> rendered, String groupId) {
+        return flatten(rendered.getLayout())
+                .filter(component -> component instanceof Button)
+                .map(component -> (Button) component)
+                .filter(button -> groupId.equals(button.getElement().getAttribute("data-repeatable-duplicate")))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private ComboBox<?> findRepeatableDuplicateSelector(RenderedForm<?> rendered, String groupId) {
+        return flatten(rendered.getLayout())
+                .filter(component -> component instanceof ComboBox<?> )
+                .map(component -> (ComboBox<?>) component)
+                .filter(combo -> groupId.equals(combo.getElement().getAttribute("data-repeatable-duplicate-selector")))
                 .findFirst()
                 .orElseThrow();
     }
@@ -209,8 +275,7 @@ class FormEngineRepeatableTest {
     @UiGroup(id = "test-repeatable-group", columns = 1,
             repeatable = @UiRepeatable(enabled = true, min = 1, max = 4,
                     mode = UiRepeatable.RepeatableMode.INLINE_PANEL,
-                    uniqueBy = "title", itemTitleKey = "test.repeatable.itemTitle",
-                    allowDuplicate = false))
+                    uniqueBy = "title", itemTitleKey = "test.repeatable.itemTitle"))
     public static class TestRepeatableGroup {
 
         @UiField(path = "plan.segments.title", component = UiField.ComponentType.TEXT, labelKey = "segmentTitle")

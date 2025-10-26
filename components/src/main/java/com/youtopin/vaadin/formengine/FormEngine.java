@@ -307,6 +307,30 @@ public final class FormEngine {
             applyReadOnlyState(currentBean);
         }
 
+        public void duplicateRepeatableEntry(String groupId, int sourceIndex) {
+            RepeatableGroupState state = repeatableGroups.get(groupId);
+            if (state == null) {
+                throw new IllegalArgumentException("Unknown repeatable group id " + groupId);
+            }
+            if (!state.getRepeatable().isAllowDuplicate()) {
+                return;
+            }
+            if (sourceIndex < 0 || sourceIndex >= state.getEntries().size()) {
+                return;
+            }
+            RepeatableEntry source = state.getEntries().get(sourceIndex);
+            if (source == null) {
+                return;
+            }
+            RepeatableEntry duplicated = FormEngine.this.addRepeatableEntry(state, fieldRegistry, fieldContext);
+            if (duplicated == null) {
+                return;
+            }
+            copyRepeatableValues(source, duplicated);
+            FormEngine.this.updateDuplicateButtonState(state);
+            FormEngine.this.refreshDuplicateDialogOptions(state, fieldContext);
+        }
+
         private boolean notifyValidationFailure(ActionDefinition actionDefinition, ValidationException exception) {
             if (validationFailureListeners.isEmpty()) {
                 return false;
@@ -1087,14 +1111,104 @@ public final class FormEngine {
         addEntry.getElement().setAttribute("aria-label", context.translate("form.repeatable.addGroup"));
         addEntry.getElement().setAttribute("data-repeatable-add", group.getId());
         context.applyTheme(addEntry);
+        Button duplicateEntry = null;
+        com.vaadin.flow.component.dialog.Dialog duplicateDialog = null;
+        com.vaadin.flow.component.combobox.ComboBox<RepeatableEntry> duplicateSelector = null;
+        Button confirmDuplicate = null;
+        Button cancelDuplicate = null;
+        if (repeatable.isAllowDuplicate()) {
+            duplicateEntry = new Button(context.translate("form.repeatable.duplicateGroup"));
+            duplicateEntry.getElement().setAttribute("aria-label", context.translate("form.repeatable.duplicateGroup"));
+            duplicateEntry.getElement().setAttribute("data-repeatable-duplicate", group.getId());
+            context.applyTheme(duplicateEntry);
+            duplicateDialog = new com.vaadin.flow.component.dialog.Dialog();
+            final com.vaadin.flow.component.dialog.Dialog dialog = duplicateDialog;
+            context.applyTheme(dialog);
+            dialog.setModal(true);
+            dialog.setDraggable(false);
+            dialog.setResizable(false);
+            dialog.setHeaderTitle(context.translate("form.repeatable.duplicateGroup"));
+            duplicateSelector = new com.vaadin.flow.component.combobox.ComboBox<>();
+            final com.vaadin.flow.component.combobox.ComboBox<RepeatableEntry> selector = duplicateSelector;
+            selector.setWidthFull();
+            selector.setPlaceholder(context.translate("form.repeatable.chooseDuplicate"));
+            selector.setClearButtonVisible(false);
+            selector.getElement().setAttribute("data-repeatable-duplicate-selector", group.getId());
+            selector.getElement().setAttribute("aria-label", context.translate("form.repeatable.chooseDuplicate"));
+            selector.addValueChangeListener(event -> {
+                if (event.isFromClient()) {
+                    selector.setInvalid(false);
+                }
+            });
+            confirmDuplicate = new Button(context.translate("form.repeatable.confirmDuplicate"));
+            final Button confirmButton = confirmDuplicate;
+            confirmButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+            confirmButton.getElement().setAttribute("data-repeatable-duplicate-confirm", group.getId());
+            confirmButton.getElement().setAttribute("aria-label", context.translate("form.repeatable.confirmDuplicate"));
+            context.applyTheme(confirmButton);
+            cancelDuplicate = new Button(context.translate("form.repeatable.cancelDuplicate"));
+            final Button cancelButton = cancelDuplicate;
+            cancelButton.getElement().setAttribute("data-repeatable-duplicate-cancel", group.getId());
+            cancelButton.getElement().setAttribute("aria-label", context.translate("form.repeatable.cancelDuplicate"));
+            context.applyTheme(cancelButton);
+            cancelButton.addClickListener(event -> dialog.close());
+            com.vaadin.flow.component.orderedlayout.VerticalLayout dialogLayout = new com.vaadin.flow.component.orderedlayout.VerticalLayout(selector);
+            dialogLayout.setPadding(false);
+            dialogLayout.setSpacing(false);
+            dialogLayout.addClassName("stack-m");
+            dialog.add(dialogLayout);
+            com.vaadin.flow.component.orderedlayout.HorizontalLayout footer = new com.vaadin.flow.component.orderedlayout.HorizontalLayout(cancelButton, confirmButton);
+            footer.setJustifyContentMode(com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode.END);
+            footer.setWidthFull();
+            dialog.getFooter().add(footer);
+        }
+        Button duplicateButtonRef = duplicateEntry;
+        com.vaadin.flow.component.dialog.Dialog duplicateDialogRef = duplicateDialog;
+        com.vaadin.flow.component.combobox.ComboBox<RepeatableEntry> duplicateSelectorRef = duplicateSelector;
+        Button confirmDuplicateRef = confirmDuplicate;
+        Button cancelDuplicateRef = cancelDuplicate;
         RepeatableGroupState state = repeatableGroups.computeIfAbsent(group.getId(), key ->
-                new RepeatableGroupState(group, repeatable, entriesContainer, addEntry, new ArrayList<>(), deriveParentPath(group)));
+                new RepeatableGroupState(group, repeatable, entriesContainer, addEntry, duplicateButtonRef, duplicateDialogRef,
+                        duplicateSelectorRef, confirmDuplicateRef, cancelDuplicateRef, new ArrayList<>(), deriveParentPath(group)));
         addEntry.addClickListener(event -> {
             if (!state.getRepeatable().isAllowManualAdd()) {
                 return;
             }
             addRepeatableEntry(state, registry, context);
         });
+        if (state.getDuplicateButton() != null && state.getDuplicateDialog() != null
+                && state.getDuplicateSelector() != null && state.getConfirmDuplicateButton() != null) {
+            final RepeatableGroupState currentState = state;
+            final FieldRegistry registryRef = registry;
+            final FieldFactoryContext contextRef = context;
+            currentState.getDuplicateSelector().setItemLabelGenerator(entry ->
+                    generateRepeatableTitle(currentState, entry, contextRef));
+            currentState.getDuplicateSelector().addValueChangeListener(event ->
+                    currentState.getConfirmDuplicateButton().setEnabled(event.getValue() != null));
+            currentState.getConfirmDuplicateButton().addClickListener(event -> {
+                RepeatableEntry selected = currentState.getDuplicateSelector().getValue();
+                if (selected == null) {
+                    currentState.getDuplicateSelector().setInvalid(true);
+                    currentState.getDuplicateSelector().setErrorMessage(contextRef.translate("form.repeatable.selectDuplicateError"));
+                    return;
+                }
+                RepeatableEntry newEntry = addRepeatableEntry(currentState, registryRef, contextRef);
+                if (newEntry != null) {
+                    copyRepeatableValues(selected, newEntry);
+                    updateDuplicateButtonState(currentState);
+                    refreshDuplicateDialogOptions(currentState, contextRef);
+                    currentState.getDuplicateDialog().close();
+                }
+            });
+            currentState.getDuplicateButton().addClickListener(event -> {
+                refreshDuplicateDialogOptions(currentState, contextRef);
+                currentState.getDuplicateSelector().setValue(null);
+                currentState.getConfirmDuplicateButton().setEnabled(false);
+                if (currentState.getDuplicateDialog().getUI().isPresent()) {
+                    currentState.getDuplicateDialog().open();
+                }
+            });
+        }
         int initial = repeatable.getMin();
         for (int i = 0; i < initial; i++) {
             addRepeatableEntry(state, registry, context);
@@ -1102,16 +1216,30 @@ public final class FormEngine {
         updateAddButtonState(state);
         updateRemoveButtons(state);
         updateRepeatableTitles(state, context);
-        wrapper.add(addEntry);
+        updateDuplicateButtonState(state);
+        refreshDuplicateDialogOptions(state, context);
+        com.vaadin.flow.component.orderedlayout.HorizontalLayout controls = new com.vaadin.flow.component.orderedlayout.HorizontalLayout();
+        controls.setSpacing(true);
+        controls.setPadding(false);
+        controls.getStyle().set("margin-top", "var(--lumo-space-s)");
+        controls.add(addEntry);
+        if (state.getDuplicateButton() != null) {
+            controls.add(state.getDuplicateButton());
+        }
+        wrapper.add(controls);
+        if (state.getDuplicateDialog() != null) {
+            wrapper.add(state.getDuplicateDialog());
+        }
         return wrapper;
     }
 
-    private void addRepeatableEntry(RepeatableGroupState state,
-                                    FieldRegistry registry,
-                                    FieldFactoryContext context) {
+    private RepeatableEntry addRepeatableEntry(RepeatableGroupState state,
+                                               FieldRegistry registry,
+                                               FieldFactoryContext context) {
         if (state.getEntries().size() >= state.getRepeatable().getMax()) {
             updateAddButtonState(state);
-            return;
+            updateDuplicateButtonState(state);
+            return null;
         }
         com.vaadin.flow.component.orderedlayout.VerticalLayout entryWrapper = new com.vaadin.flow.component.orderedlayout.VerticalLayout();
         entryWrapper.setPadding(false);
@@ -1167,6 +1295,8 @@ public final class FormEngine {
             updateAddButtonState(state);
             updateRemoveButtons(state);
             updateRepeatableTitles(state, context);
+            updateDuplicateButtonState(state);
+            refreshDuplicateDialogOptions(state, context);
         });
         entryWrapper.add(header, formLayout);
         state.getContainer().add(entryWrapper);
@@ -1174,6 +1304,9 @@ public final class FormEngine {
         updateAddButtonState(state);
         updateRemoveButtons(state);
         updateRepeatableTitles(state, context);
+        updateDuplicateButtonState(state);
+        refreshDuplicateDialogOptions(state, context);
+        return entry;
     }
 
     private void configureResponsiveSteps(com.vaadin.flow.component.formlayout.FormLayout formLayout, int configuredColumns) {
@@ -1223,6 +1356,91 @@ public final class FormEngine {
                             .map(hasTextComponent -> (com.vaadin.flow.component.HasText) hasTextComponent)
                             .forEach(hasText -> hasText.setText(title)));
         });
+    }
+
+    private String generateRepeatableTitle(RepeatableGroupState state,
+                                           RepeatableEntry entry,
+                                           FieldFactoryContext context) {
+        if (entry == null) {
+            return "";
+        }
+        int index = state.getEntries().indexOf(entry);
+        if (index < 0) {
+            return "";
+        }
+        return state.getRepeatable().getTitleGenerator()
+                .generate(index, context, state.getGroup(), state.getRepeatable());
+    }
+
+    private void updateDuplicateButtonState(RepeatableGroupState state) {
+        if (state.getDuplicateButton() == null) {
+            return;
+        }
+        boolean enabled = state.getRepeatable().isAllowDuplicate()
+                && !state.getEntries().isEmpty()
+                && state.getEntries().size() < state.getRepeatable().getMax();
+        state.getDuplicateButton().setEnabled(enabled);
+        state.getDuplicateButton().getElement().setAttribute("aria-disabled", String.valueOf(!enabled));
+    }
+
+    private void refreshDuplicateDialogOptions(RepeatableGroupState state, FieldFactoryContext context) {
+        if (state.getDuplicateSelector() == null) {
+            return;
+        }
+        List<RepeatableEntry> entries = new ArrayList<>(state.getEntries());
+        state.getDuplicateSelector().setItems(entries);
+        state.getDuplicateSelector().setItemLabelGenerator(entry -> generateRepeatableTitle(state, entry, context));
+        state.getDuplicateSelector().setInvalid(false);
+        state.getDuplicateSelector().setErrorMessage("");
+        if (state.getConfirmDuplicateButton() != null) {
+            state.getConfirmDuplicateButton().setEnabled(false);
+        }
+    }
+
+    private void copyRepeatableValues(RepeatableEntry source, RepeatableEntry target) {
+        if (source == null || target == null) {
+            return;
+        }
+        source.fields().forEach((definition, instance) -> {
+            FieldInstance targetInstance = target.fields().get(definition);
+            if (targetInstance == null) {
+                return;
+            }
+            Object value = ((HasValue<?, ?>) instance.getValueComponent()).getValue();
+            Object duplicate = duplicateValue(value);
+            @SuppressWarnings({"rawtypes", "unchecked"})
+            HasValue targetValueComponent = (HasValue) targetInstance.getValueComponent();
+            targetValueComponent.setValue(duplicate);
+        });
+    }
+
+    private Object duplicateValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof List<?> list) {
+            return new ArrayList<>(list);
+        }
+        if (value instanceof Set<?> set) {
+            return new LinkedHashSet<>(set);
+        }
+        if (value instanceof Collection<?> collection) {
+            return new ArrayList<>(collection);
+        }
+        if (value instanceof Map<?, ?> map) {
+            return new LinkedHashMap<>(map);
+        }
+        if (value instanceof String || value instanceof Number || value instanceof Boolean || value instanceof Enum<?>) {
+            return value;
+        }
+        if (value instanceof Cloneable cloneable) {
+            try {
+                return value.getClass().getMethod("clone").invoke(cloneable);
+            } catch (ReflectiveOperationException ex) {
+                return value;
+            }
+        }
+        return value;
     }
 
     private String deriveParentPath(GroupDefinition group) {
@@ -1276,6 +1494,11 @@ public final class FormEngine {
         private final RepeatableDefinition repeatable;
         private final com.vaadin.flow.component.orderedlayout.VerticalLayout container;
         private final Button addButton;
+        private final Button duplicateButton;
+        private final com.vaadin.flow.component.dialog.Dialog duplicateDialog;
+        private final com.vaadin.flow.component.combobox.ComboBox<RepeatableEntry> duplicateSelector;
+        private final Button confirmDuplicateButton;
+        private final Button cancelDuplicateButton;
         private final List<RepeatableEntry> entries;
         private final String parentPath;
 
@@ -1283,12 +1506,22 @@ public final class FormEngine {
                                      RepeatableDefinition repeatable,
                                      com.vaadin.flow.component.orderedlayout.VerticalLayout container,
                                      Button addButton,
+                                     Button duplicateButton,
+                                     com.vaadin.flow.component.dialog.Dialog duplicateDialog,
+                                     com.vaadin.flow.component.combobox.ComboBox<RepeatableEntry> duplicateSelector,
+                                     Button confirmDuplicateButton,
+                                     Button cancelDuplicateButton,
                                      List<RepeatableEntry> entries,
                                      String parentPath) {
             this.group = group;
             this.repeatable = repeatable;
             this.container = container;
             this.addButton = addButton;
+            this.duplicateButton = duplicateButton;
+            this.duplicateDialog = duplicateDialog;
+            this.duplicateSelector = duplicateSelector;
+            this.confirmDuplicateButton = confirmDuplicateButton;
+            this.cancelDuplicateButton = cancelDuplicateButton;
             this.entries = entries;
             this.parentPath = parentPath == null ? "" : parentPath;
         }
@@ -1307,6 +1540,26 @@ public final class FormEngine {
 
         private Button getAddButton() {
             return addButton;
+        }
+
+        private Button getDuplicateButton() {
+            return duplicateButton;
+        }
+
+        private com.vaadin.flow.component.dialog.Dialog getDuplicateDialog() {
+            return duplicateDialog;
+        }
+
+        private com.vaadin.flow.component.combobox.ComboBox<RepeatableEntry> getDuplicateSelector() {
+            return duplicateSelector;
+        }
+
+        private Button getConfirmDuplicateButton() {
+            return confirmDuplicateButton;
+        }
+
+        private Button getCancelDuplicateButton() {
+            return cancelDuplicateButton;
         }
 
         private List<RepeatableEntry> getEntries() {
