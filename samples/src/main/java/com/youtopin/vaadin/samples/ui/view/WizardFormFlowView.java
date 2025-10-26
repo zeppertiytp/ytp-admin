@@ -6,6 +6,7 @@ import com.youtopin.vaadin.formengine.FormEngine;
 import com.youtopin.vaadin.formengine.FormEngine.RenderedForm;
 import com.youtopin.vaadin.formengine.definition.FieldDefinition;
 import com.youtopin.vaadin.formengine.registry.FieldInstance;
+import com.youtopin.vaadin.formengine.wizard.WizardFormFlowCoordinator;
 import com.youtopin.vaadin.i18n.TranslationProvider;
 import com.youtopin.vaadin.samples.application.wizard.ProjectLaunchWizardService;
 import com.youtopin.vaadin.samples.application.wizard.ProjectLaunchWizardState;
@@ -32,13 +33,11 @@ import com.vaadin.flow.i18n.LocaleChangeObserver;
 import com.vaadin.flow.router.Route;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
-import java.util.function.Supplier;
-import java.util.stream.IntStream;
+import java.util.UUID;
+import java.util.function.Function;
 
 /**
  * Demonstrates how the horizontal wizard component can orchestrate multiple form engine steps
@@ -53,6 +52,8 @@ public class WizardFormFlowView extends AppPageLayout implements LocaleChangeObs
     private final ProjectLaunchWizardState wizardState;
 
     private final HorizontalWizard wizard = new HorizontalWizard();
+    private final WizardFormFlowCoordinator<ProjectLaunchWizardState> coordinator;
+
     private final List<String> stepOrder = List.of(
             ProjectLaunchWizardState.STEP_BASICS,
             ProjectLaunchWizardState.STEP_TEAM,
@@ -73,15 +74,14 @@ public class WizardFormFlowView extends AppPageLayout implements LocaleChangeObs
             ProjectLaunchWizardState.STEP_TEAM, "wizardform.step.team.description",
             ProjectLaunchWizardState.STEP_CHECKLIST, "wizardform.step.launch.description"
     );
-    private final Map<String, RenderedForm<?>> forms = new LinkedHashMap<>();
 
     private final H1 pageTitle;
     private final Paragraph pageSubtitle = new Paragraph();
     private final H2 stepHeading = new H2();
     private final Paragraph stepDescription = new Paragraph();
+    private final Paragraph projectIdBadge = new Paragraph();
     private final VerticalLayout formCard;
     private Component activeFormLayout;
-    private boolean updatingWizardSteps;
 
     @Autowired
     public WizardFormFlowView(FormEngine formEngine,
@@ -92,10 +92,11 @@ public class WizardFormFlowView extends AppPageLayout implements LocaleChangeObs
         this.wizardService = wizardService;
         this.wizardState = wizardService.load();
 
+        wizard.setWidthFull();
+        coordinator = new WizardFormFlowCoordinator<>(wizard, stepOrder, wizardState);
+
         pageTitle = createPageTitle("");
         pageSubtitle.addClassName("page-subtitle");
-
-        wizard.setWidthFull();
 
         VerticalLayout wizardCard = createCard(pageSubtitle, wizard);
         wizardCard.addClassName("stack-lg");
@@ -103,35 +104,38 @@ public class WizardFormFlowView extends AppPageLayout implements LocaleChangeObs
 
         stepHeading.addClassNames("text-primary", "mt-0");
         stepDescription.addClassName("text-secondary");
+        projectIdBadge.addClassNames("text-secondary", "font-monospace");
 
-        formCard = createCard(stepHeading, stepDescription);
+        formCard = createCard(stepHeading, stepDescription, projectIdBadge);
         formCard.addClassName("stack-lg");
         add(formCard);
 
-        wizard.addCurrentStepChangeListener(event -> {
-            if (updatingWizardSteps) {
-                return;
-            }
-            String stepId = event.getCurrentStep().getId();
-            String activeStepId = refreshWizardSteps(stepId);
-            wizardState.setCurrentStepId(activeStepId);
-            wizardService.store(wizardState);
-            showStep(activeStepId);
-        });
-        wizard.addStepClickListener(event -> {
-            String stepId = event.getStep().getId();
-            if (isStepAccessible(stepId)) {
-                wizard.setCurrentStepId(stepId);
-            }
-        });
-
         rebuildForms();
+        configureCallbacks();
+        coordinator.setCompletedSteps(wizardState.getCompletedSteps());
+
+        String initialStep = wizardState.getCurrentStepId();
+        if (initialStep == null || !stepOrder.contains(initialStep)) {
+            initialStep = coordinator.determineInitialStep();
+        }
+        coordinator.setCurrentStepId(initialStep);
+
         updateTexts();
-        String initialStep = determineInitialStep();
-        String activeStepId = refreshWizardSteps(initialStep);
-        wizardState.setCurrentStepId(activeStepId);
-        wizardService.store(wizardState);
-        showStep(activeStepId);
+        coordinator.configureWizard(this::buildWizardStep);
+        showStep(initialStep);
+    }
+
+    private void configureCallbacks() {
+        coordinator.onStepSelection((stepId, state) -> {
+            state.setCurrentStepId(stepId);
+            wizardService.store(state);
+            showStep(stepId);
+        });
+        coordinator.onStepCompletion((stepId, state) -> wizardService.store(state));
+    }
+
+    private WizardStep buildWizardStep(String stepId) {
+        return WizardStep.of(stepId, getTranslation(stepLabelKeys.get(stepId)));
     }
 
     private void rebuildForms() {
@@ -139,156 +143,97 @@ public class WizardFormFlowView extends AppPageLayout implements LocaleChangeObs
             formCard.remove(activeFormLayout);
             activeFormLayout = null;
         }
-        forms.clear();
+        coordinator.clearForms();
 
         RenderedForm<ProjectLaunchBasicsFormData> basicsForm = renderForm(
                 ProjectLaunchBasicsFormDefinition.class,
-                wizardState::getBasics
+                ProjectLaunchWizardState::getBasics
         );
+        coordinator.registerStepForm(ProjectLaunchWizardState.STEP_BASICS,
+                basicsForm, ProjectLaunchWizardState::getBasics);
         configureBasicsForm(basicsForm);
-        forms.put(ProjectLaunchWizardState.STEP_BASICS, basicsForm);
 
         RenderedForm<ProjectLaunchTeamFormData> teamForm = renderForm(
                 ProjectLaunchTeamFormDefinition.class,
-                wizardState::getTeam
+                ProjectLaunchWizardState::getTeam
         );
+        coordinator.registerStepForm(ProjectLaunchWizardState.STEP_TEAM,
+                teamForm, ProjectLaunchWizardState::getTeam);
         configureTeamForm(teamForm);
-        forms.put(ProjectLaunchWizardState.STEP_TEAM, teamForm);
 
         RenderedForm<ProjectLaunchChecklistFormData> checklistForm = renderForm(
                 ProjectLaunchChecklistFormDefinition.class,
-                wizardState::getChecklist
+                ProjectLaunchWizardState::getChecklist
         );
+        coordinator.registerStepForm(ProjectLaunchWizardState.STEP_CHECKLIST,
+                checklistForm, ProjectLaunchWizardState::getChecklist);
         configureChecklistForm(checklistForm);
-        forms.put(ProjectLaunchWizardState.STEP_CHECKLIST, checklistForm);
     }
 
-    private List<WizardStep> buildWizardSteps(int resumeIndex) {
-        return IntStream.range(0, stepOrder.size())
-                .mapToObj(index -> {
-                    String stepId = stepOrder.get(index);
-                    WizardStep step = WizardStep.of(stepId, getTranslation(stepLabelKeys.get(stepId)));
-                    return step.withClickable(index <= resumeIndex);
-                })
-                .toList();
-    }
-
-    private <T> RenderedForm<T> renderForm(Class<?> definitionClass, Supplier<T> beanSupplier) {
+    private <T> RenderedForm<T> renderForm(Class<?> definitionClass,
+                                           Function<ProjectLaunchWizardState, T> beanResolver) {
         Locale locale = getLocale();
         boolean rtl = isRtl(locale);
         RenderedForm<T> rendered = formEngine.render(definitionClass, translationProvider, locale, rtl);
         rendered.getFields().forEach((FieldDefinition definition, FieldInstance instance) ->
                 rendered.getOrchestrator().bindField(instance, definition));
-        T bean = beanSupplier.get();
+        T bean = beanResolver.apply(wizardState);
         rendered.initializeWithBean(bean);
-        rendered.setActionBeanSupplier(beanSupplier);
         return rendered;
     }
 
     private void configureBasicsForm(RenderedForm<ProjectLaunchBasicsFormData> form) {
         form.addActionHandler("project-basics-next", context -> {
-            wizardState.markStepCompleted(ProjectLaunchWizardState.STEP_BASICS);
-            wizardService.store(wizardState);
-            navigateTo(nextStep(ProjectLaunchWizardState.STEP_BASICS)
-                    .orElse(ProjectLaunchWizardState.STEP_BASICS));
+            ensureProjectId();
+            coordinator.markStepCompleted(ProjectLaunchWizardState.STEP_BASICS);
+            coordinator.nextStep(ProjectLaunchWizardState.STEP_BASICS)
+                    .ifPresent(coordinator::setCurrentStepId);
         });
     }
 
     private void configureTeamForm(RenderedForm<ProjectLaunchTeamFormData> form) {
         Button backButton = form.getActionButtons().get("project-team-back");
         if (backButton != null) {
-            backButton.addClickListener(event -> navigateTo(previousStep(ProjectLaunchWizardState.STEP_TEAM)
-                    .orElse(ProjectLaunchWizardState.STEP_BASICS)));
+            backButton.addClickListener(event -> coordinator.previousStep(ProjectLaunchWizardState.STEP_TEAM)
+                    .ifPresent(coordinator::setCurrentStepId));
         }
         form.addActionHandler("project-team-next", context -> {
-            wizardState.markStepCompleted(ProjectLaunchWizardState.STEP_TEAM);
-            wizardService.store(wizardState);
-            navigateTo(nextStep(ProjectLaunchWizardState.STEP_TEAM)
-                    .orElse(ProjectLaunchWizardState.STEP_TEAM));
+            coordinator.markStepCompleted(ProjectLaunchWizardState.STEP_TEAM);
+            coordinator.nextStep(ProjectLaunchWizardState.STEP_TEAM)
+                    .ifPresent(coordinator::setCurrentStepId);
         });
     }
 
     private void configureChecklistForm(RenderedForm<ProjectLaunchChecklistFormData> form) {
         Button backButton = form.getActionButtons().get("project-launch-back");
         if (backButton != null) {
-            backButton.addClickListener(event -> navigateTo(previousStep(ProjectLaunchWizardState.STEP_CHECKLIST)
-                    .orElse(ProjectLaunchWizardState.STEP_TEAM)));
+            backButton.addClickListener(event -> coordinator.previousStep(ProjectLaunchWizardState.STEP_CHECKLIST)
+                    .ifPresent(coordinator::setCurrentStepId));
         }
         form.addActionHandler("project-launch-finish", context -> {
-            wizardState.markStepCompleted(ProjectLaunchWizardState.STEP_CHECKLIST);
-            String currentStep = wizard.getCurrentStepId().orElse(ProjectLaunchWizardState.STEP_CHECKLIST);
-            String activeStep = refreshWizardSteps(currentStep);
-            wizardState.setCurrentStepId(activeStep);
-            wizardService.store(wizardState);
-            showStep(activeStep);
-            Notification notification = Notification.show(getTranslation("wizardform.finish.success"));
+            coordinator.markStepCompleted(ProjectLaunchWizardState.STEP_CHECKLIST);
+            String projectId = wizardState.getProjectId();
+            String message = projectId == null || projectId.isBlank()
+                    ? getTranslation("wizardform.finish.success.noid")
+                    : getTranslation("wizardform.finish.success", projectId);
+            Notification notification = Notification.show(message);
             notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         });
     }
 
-    private void navigateTo(String stepId) {
-        if (stepId != null && stepOrder.contains(stepId)) {
-            wizard.setCurrentStepId(stepId);
+    private void ensureProjectId() {
+        if (wizardState.getProjectId() == null || wizardState.getProjectId().isBlank()) {
+            String generated = "PRJ-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
+            wizardState.setProjectId(generated);
         }
-    }
-
-    private Optional<String> nextStep(String current) {
-        int index = stepOrder.indexOf(current);
-        if (index >= 0 && index < stepOrder.size() - 1) {
-            return Optional.of(stepOrder.get(index + 1));
-        }
-        return Optional.empty();
-    }
-
-    private Optional<String> previousStep(String current) {
-        int index = stepOrder.indexOf(current);
-        if (index > 0) {
-            return Optional.of(stepOrder.get(index - 1));
-        }
-        return Optional.empty();
-    }
-
-    private boolean isStepAccessible(String stepId) {
-        int requestedIndex = stepOrder.indexOf(stepId);
-        if (requestedIndex < 0) {
-            return false;
-        }
-        int resumeIndex = computeResumeIndex();
-        return requestedIndex <= resumeIndex;
-    }
-
-    private int computeResumeIndex() {
-        for (int i = 0; i < stepOrder.size(); i++) {
-            String stepId = stepOrder.get(i);
-            if (!wizardState.isStepCompleted(stepId)) {
-                return i;
-            }
-        }
-        return stepOrder.size() - 1;
-    }
-
-    private String determineInitialStep() {
-        for (String stepId : stepOrder) {
-            if (!wizardState.isStepCompleted(stepId)) {
-                wizardState.setCurrentStepId(stepId);
-                wizardService.store(wizardState);
-                return stepId;
-            }
-        }
-        String stored = wizardState.getCurrentStepId();
-        if (stored != null && stepOrder.contains(stored)) {
-            return stored;
-        }
-        String last = stepOrder.get(stepOrder.size() - 1);
-        wizardState.setCurrentStepId(last);
-        wizardService.store(wizardState);
-        return last;
+        updateProjectIdBadge();
     }
 
     private void showStep(String stepId) {
-        RenderedForm<?> form = forms.get(stepId);
+        RenderedForm<?> form = coordinator.getForms().get(stepId);
         stepHeading.setText(getTranslation(stepTitleKeys.get(stepId)));
         stepDescription.setText(getTranslation(stepDescriptionKeys.get(stepId)));
+        updateProjectIdBadge();
         if (activeFormLayout != null) {
             formCard.remove(activeFormLayout);
             activeFormLayout = null;
@@ -314,20 +259,12 @@ public class WizardFormFlowView extends AppPageLayout implements LocaleChangeObs
         }
     }
 
-    private String refreshWizardSteps(String desiredCurrentStep) {
-        updatingWizardSteps = true;
-        try {
-            int resumeIndex = computeResumeIndex();
-            wizard.setSteps(buildWizardSteps(resumeIndex));
-            wizard.setCompletedSteps(wizardState.getCompletedSteps());
-            String targetStep = desiredCurrentStep;
-            if (targetStep == null || !stepOrder.contains(targetStep)) {
-                targetStep = stepOrder.get(Math.min(resumeIndex, stepOrder.size() - 1));
-            }
-            wizard.setCurrentStepId(targetStep);
-            return targetStep;
-        } finally {
-            updatingWizardSteps = false;
+    private void updateProjectIdBadge() {
+        String projectId = wizardState.getProjectId();
+        if (projectId == null || projectId.isBlank()) {
+            projectIdBadge.setText(getTranslation("wizardform.projectId.pending"));
+        } else {
+            projectIdBadge.setText(getTranslation("wizardform.projectId.assigned", projectId));
         }
     }
 
@@ -335,18 +272,8 @@ public class WizardFormFlowView extends AppPageLayout implements LocaleChangeObs
     public void localeChange(LocaleChangeEvent event) {
         rebuildForms();
         updateTexts();
-        String currentStep = wizard.getCurrentStepId()
-                .orElseGet(() -> {
-                    String stored = wizardState.getCurrentStepId();
-                    if (stored != null && stepOrder.contains(stored)) {
-                        return stored;
-                    }
-                    return determineInitialStep();
-                });
-        String activeStep = refreshWizardSteps(currentStep);
-        wizardState.setCurrentStepId(activeStep);
-        wizardService.store(wizardState);
-        showStep(activeStep);
+        coordinator.refreshWizard();
+        showStep(coordinator.getCurrentStepId());
     }
 
     private boolean isRtl(Locale locale) {

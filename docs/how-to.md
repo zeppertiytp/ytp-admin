@@ -31,3 +31,11 @@ Practical workflows for extending the Vaadin admin platform.
    components in `docs/components/`.
 5. Update `README.md` if the workflow introduces new tooling or scripts.
 
+## Coordinate wizard-backed multi-step forms
+1. Follow the dedicated guide in [`docs/how-to-wizard-form-flow-coordinator.md`](how-to-wizard-form-flow-coordinator.md)
+   to connect `HorizontalWizard` with Form Engine forms.
+2. Use `WizardFormFlowCoordinator` callbacks to persist shared context such as a generated
+   entity ID before navigating to the next step.
+3. Reference the `/forms/wizard-coordinator` sample for a complete example that issues an ID in
+   the first step and reuses it later in the flow.
+

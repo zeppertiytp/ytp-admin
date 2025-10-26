@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v4.6.17
+### Wizard form coordinator and persistent sample flows
+
+* **Form engine:** Introduced `WizardFormFlowCoordinator` to connect `HorizontalWizard` with Form Engine
+  forms, centralising step registration, completion tracking, and persistence callbacks so hosts can
+  reuse multi-step orchestration without bespoke listeners.
+* **Samples:** Updated the project launch wizard to generate and surface a project ID via the coordinator
+  and published a new `/forms/wizard-coordinator` sample that demonstrates issuing a workspace ID in the
+  first step and reusing it in later steps.
+* **Docs:** Added a coordinator how-to with code snippets covering ID persistence and refreshed the
+  how-to index with the new guide.
+* **Tests:** Added unit and integration coverage verifying coordinator context propagation, wizard
+  selection, and form submission behaviour.
+
 ## v4.6.16
 ### Dynamic read-only overrides and locking sample defaults
 

@@ -29,6 +29,7 @@ public class ProjectLaunchWizardState implements Serializable {
     private final LinkedHashSet<String> completedSteps = new LinkedHashSet<>();
 
     private String currentStepId = STEP_BASICS;
+    private String projectId = "";
 
     public ProjectLaunchBasicsFormData getBasics() {
         return basics;
@@ -66,9 +67,22 @@ public class ProjectLaunchWizardState implements Serializable {
         }
     }
 
+    public String getProjectId() {
+        return projectId;
+    }
+
+    public void setProjectId(String projectId) {
+        if (projectId == null) {
+            this.projectId = "";
+        } else {
+            this.projectId = projectId.trim();
+        }
+    }
+
     public void reset() {
         completedSteps.clear();
         currentStepId = STEP_BASICS;
+        projectId = "";
     }
 
     @Override
