@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
@@ -160,7 +161,7 @@ public final class FormEngine {
         private final Map<SectionDefinition, VerticalLayout> sections;
         private java.util.function.Supplier<T> actionBeanSupplier;
         private final List<ValidationFailureListener<T>> validationFailureListeners = new CopyOnWriteArrayList<>();
-        private final List<BiPredicate<FieldDefinition, T>> readOnlyOverrides = new CopyOnWriteArrayList<>();
+        private final List<ReadOnlyOverride<T>> readOnlyOverrides = new CopyOnWriteArrayList<>();
         private final FieldRegistry fieldRegistry;
         private final FieldFactoryContext fieldContext;
         private final OptionCatalogRegistry optionCatalogRegistry;
@@ -241,9 +242,16 @@ public final class FormEngine {
             this.actionBeanSupplier = supplier;
         }
 
-        public void addReadOnlyOverride(BiPredicate<FieldDefinition, T> override) {
+        public void addReadOnlyOverride(ReadOnlyOverride<T> override) {
             readOnlyOverrides.add(Objects.requireNonNull(override, "override"));
             applyReadOnlyState(currentBean);
+        }
+
+        @Deprecated
+        public void addReadOnlyOverride(BiPredicate<FieldDefinition, T> override) {
+            Objects.requireNonNull(override, "override");
+            addReadOnlyOverride((ReadOnlyOverride<T>) (definition, context) ->
+                    override.test(definition, context.getBean()));
         }
 
         public void refreshReadOnlyState() {
@@ -378,14 +386,15 @@ public final class FormEngine {
 
         private void applyReadOnlyState(T bean) {
             T evaluationBean = bean != null ? bean : currentBean;
+            StateEvaluationContext beanContext = new BeanEvaluationContext(evaluationBean);
             for (SectionDefinition section : definition.getSections()) {
-                boolean sectionReadOnly = evaluateStateExpression(section.getReadOnlyWhen(), evaluationBean);
+                boolean sectionReadOnly = evaluateStateExpression(section.getReadOnlyWhen(), beanContext);
                 for (GroupDefinition group : section.getGroups()) {
-                    boolean groupReadOnly = sectionReadOnly || evaluateStateExpression(group.getReadOnlyWhen(), evaluationBean);
+                    boolean groupReadOnly = sectionReadOnly || evaluateStateExpression(group.getReadOnlyWhen(), beanContext);
                     if (group.getRepeatableDefinition().isEnabled()) {
                         RepeatableGroupState state = repeatableGroups.get(group.getId());
                         if (state != null) {
-                            applyReadOnlyToRepeatableGroup(state, groupReadOnly, evaluationBean);
+                            applyReadOnlyToRepeatableGroup(state, groupReadOnly, evaluationBean, beanContext);
                         }
                     } else {
                         for (FieldDefinition fieldDefinition : group.getFields()) {
@@ -394,8 +403,8 @@ public final class FormEngine {
                                 continue;
                             }
                             boolean fieldReadOnly = groupReadOnly
-                                    || evaluateStateExpression(fieldDefinition.getReadOnlyWhen(), evaluationBean)
-                                    || shouldApplyOverride(fieldDefinition, evaluationBean);
+                                    || evaluateStateExpression(fieldDefinition.getReadOnlyWhen(), beanContext)
+                                    || shouldApplyOverride(fieldDefinition, ReadOnlyOverrideContext.forBean(evaluationBean));
                             applyReadOnlyToField(instance, fieldReadOnly);
                         }
                     }
@@ -403,18 +412,27 @@ public final class FormEngine {
             }
         }
 
-        private void applyReadOnlyToRepeatableGroup(RepeatableGroupState state, boolean groupReadOnly, T bean) {
+        private void applyReadOnlyToRepeatableGroup(RepeatableGroupState state,
+                                                    boolean groupReadOnly,
+                                                    T bean,
+                                                    StateEvaluationContext beanContext) {
             if (groupReadOnly) {
                 disableRepeatableControlsForReadOnly(state);
             } else {
                 FormEngine.this.updateAddButtonState(state);
             }
-            for (RepeatableEntry entry : state.getEntries()) {
+            List<RepeatableEntry> entries = state.getEntries();
+            for (int index = 0; index < entries.size(); index++) {
+                RepeatableEntry entry = entries.get(index);
+                RepeatableEntryEvaluationContext entryContext =
+                        new RepeatableEntryEvaluationContext(state, entry, index, beanContext, bean);
+                ReadOnlyOverrideContext<T> overrideContext = ReadOnlyOverrideContext.forRepeatableEntry(
+                        bean, entryContext.toOverrideContext());
                 for (Map.Entry<FieldDefinition, FieldInstance> entryField : entry.fields().entrySet()) {
                     FieldDefinition definition = entryField.getKey();
                     boolean fieldReadOnly = groupReadOnly
-                            || evaluateStateExpression(definition.getReadOnlyWhen(), bean)
-                            || shouldApplyOverride(definition, bean);
+                            || evaluateStateExpression(definition.getReadOnlyWhen(), entryContext)
+                            || shouldApplyOverride(definition, overrideContext);
                     applyReadOnlyToField(entryField.getValue(), fieldReadOnly);
                 }
                 if (groupReadOnly) {
@@ -451,20 +469,20 @@ public final class FormEngine {
             updateReadOnlyDecoration(instance.getComponent(), readOnly);
         }
 
-        private boolean shouldApplyOverride(FieldDefinition definition, T bean) {
+        private boolean shouldApplyOverride(FieldDefinition definition, ReadOnlyOverrideContext<T> context) {
             if (readOnlyOverrides.isEmpty()) {
                 return false;
             }
-            for (BiPredicate<FieldDefinition, T> override : readOnlyOverrides) {
-                if (override.test(definition, bean)) {
+            for (ReadOnlyOverride<T> override : readOnlyOverrides) {
+                if (override.test(definition, context)) {
                     return true;
                 }
             }
             return false;
         }
 
-        private boolean evaluateStateExpression(String expression, T bean) {
-            if (expression == null || expression.isBlank() || bean == null) {
+        private boolean evaluateStateExpression(String expression, StateEvaluationContext context) {
+            if (expression == null || expression.isBlank() || context == null) {
                 return false;
             }
             String trimmed = expression.trim();
@@ -479,15 +497,15 @@ public final class FormEngine {
                 String leftOperand = matcher.group(1).trim();
                 String operator = matcher.group(2);
                 String rightOperand = matcher.group(3);
-                Object leftValue = safeReadProperty(leftOperand, bean);
+                Object leftValue = context.read(leftOperand);
                 Object rightValue = parseLiteral(rightOperand);
                 return compareValues(leftValue, operator, rightValue);
             }
-            Object value = safeReadProperty(trimmed, bean);
+            Object value = context.read(trimmed);
             return coerceToBoolean(value);
         }
 
-        private Object safeReadProperty(String path, T bean) {
+        private Object safeReadFromBean(String path, T bean) {
             if (bean == null || path == null || path.isBlank()) {
                 return null;
             }
@@ -495,6 +513,265 @@ public final class FormEngine {
                 return orchestrator.readProperty(path, bean);
             } catch (RuntimeException ex) {
                 return null;
+            }
+        }
+
+        private Object readEntryProperty(Object target, String propertyPath) {
+            if (target == null || propertyPath == null || propertyPath.isBlank()) {
+                return null;
+            }
+            String[] segments = propertyPath.split("\\.");
+            Object current = target;
+            for (String segment : segments) {
+                if (current == null) {
+                    return null;
+                }
+                if (current instanceof Map<?, ?> map) {
+                    current = map.get(segment);
+                } else {
+                    current = RenderedForm.this.readPropertyValue(current, segment);
+                }
+            }
+            return current;
+        }
+
+        private String extractPropertyName(String path) {
+            if (path == null || path.isBlank()) {
+                return "";
+            }
+            int lastDot = path.lastIndexOf('.');
+            return lastDot >= 0 ? path.substring(lastDot + 1) : path;
+        }
+
+        private interface StateEvaluationContext {
+            Object read(String path);
+        }
+
+        private final class BeanEvaluationContext implements StateEvaluationContext {
+            private final T bean;
+
+            private BeanEvaluationContext(T bean) {
+                this.bean = bean;
+            }
+
+            @Override
+            public Object read(String path) {
+                return safeReadFromBean(path, bean);
+            }
+        }
+
+        private final class RepeatableEntryEvaluationContext implements StateEvaluationContext {
+            private final RepeatableGroupState groupState;
+            private final int index;
+            private final StateEvaluationContext beanContext;
+            private final Map<String, Object> values;
+            private final Set<String> entryKeys;
+            private final Object backingValue;
+            private final ReadOnlyOverrideContext.RepeatableEntryOverrideContext overrideContext;
+
+            private RepeatableEntryEvaluationContext(RepeatableGroupState groupState,
+                                                     RepeatableEntry entry,
+                                                     int index,
+                                                     StateEvaluationContext beanContext,
+                                                     T bean) {
+                this.groupState = groupState;
+                this.index = index;
+                this.beanContext = beanContext;
+                EntrySnapshot snapshot = captureEntrySnapshot(entry);
+                this.values = Collections.unmodifiableMap(snapshot.values());
+                this.entryKeys = Collections.unmodifiableSet(snapshot.keys());
+                this.backingValue = resolveBackingValue(groupState, bean, index);
+                this.overrideContext = new ReadOnlyOverrideContext.RepeatableEntryOverrideContext(
+                        groupState.getGroup().getId(), index, this.values, this.backingValue);
+            }
+
+            @Override
+            public Object read(String path) {
+                if (path == null || path.isBlank()) {
+                    return null;
+                }
+                String trimmed = path.trim();
+                if (entryKeys.contains(path)) {
+                    return values.get(path);
+                }
+                if (entryKeys.contains(trimmed)) {
+                    return values.get(trimmed);
+                }
+                String parentPath = groupState.getParentPath();
+                if (!parentPath.isBlank()) {
+                    if (trimmed.equals(parentPath)) {
+                        return backingValue;
+                    }
+                    if (trimmed.startsWith(parentPath + ".")) {
+                        String relative = trimmed.substring(parentPath.length() + 1);
+                        if (entryKeys.contains(relative)) {
+                            return values.get(relative);
+                        }
+                        return readEntryProperty(backingValue, relative);
+                    }
+                }
+                int lastDot = trimmed.lastIndexOf('.');
+                if (lastDot >= 0) {
+                    String tail = trimmed.substring(lastDot + 1);
+                    if (entryKeys.contains(tail)) {
+                        return values.get(tail);
+                    }
+                }
+                Object candidate = readEntryProperty(backingValue, trimmed);
+                if (candidate != null) {
+                    return candidate;
+                }
+                return beanContext.read(path);
+            }
+
+            private EntrySnapshot captureEntrySnapshot(RepeatableEntry entry) {
+                Map<String, Object> snapshotValues = new LinkedHashMap<>();
+                Set<String> keys = new LinkedHashSet<>();
+                String parentPath = groupState.getParentPath();
+                for (Map.Entry<FieldDefinition, FieldInstance> fieldEntry : entry.fields().entrySet()) {
+                    FieldDefinition definition = fieldEntry.getKey();
+                    FieldInstance instance = fieldEntry.getValue();
+                    HasValue<?, ?> component = instance.getValueComponent();
+                    if (component == null) {
+                        continue;
+                    }
+                    Object raw = component.getValue();
+                    Object converted = orchestrator.convertRawValue(definition, raw);
+                    String path = definition.getPath();
+                    if (path == null || path.isBlank()) {
+                        continue;
+                    }
+                    snapshotValues.put(path, converted);
+                    keys.add(path);
+                    String property = extractPropertyName(path);
+                    if (!property.isBlank()) {
+                        snapshotValues.putIfAbsent(property, converted);
+                        keys.add(property);
+                    }
+                    if (!parentPath.isBlank() && path.startsWith(parentPath + ".")) {
+                        String relative = path.substring(parentPath.length() + 1);
+                        if (!relative.isBlank()) {
+                            snapshotValues.putIfAbsent(relative, converted);
+                            keys.add(relative);
+                        }
+                    }
+                }
+                return new EntrySnapshot(snapshotValues, keys);
+            }
+
+            private Object resolveBackingValue(RepeatableGroupState state, T bean, int index) {
+                if (bean == null || state.getParentPath().isBlank()) {
+                    return null;
+                }
+                Object container = safeReadFromBean(state.getParentPath(), bean);
+                if (container instanceof List<?> list) {
+                    return index >= 0 && index < list.size() ? list.get(index) : null;
+                }
+                if (container instanceof Collection<?> collection) {
+                    if (index < 0 || index >= collection.size()) {
+                        return null;
+                    }
+                    int counter = 0;
+                    for (Object element : collection) {
+                        if (counter == index) {
+                            return element;
+                        }
+                        counter++;
+                    }
+                    return null;
+                }
+                if (container != null && container.getClass().isArray()) {
+                    Object[] array = (Object[]) container;
+                    return index >= 0 && index < array.length ? array[index] : null;
+                }
+                return null;
+            }
+
+            private ReadOnlyOverrideContext.RepeatableEntryOverrideContext toOverrideContext() {
+                return overrideContext;
+            }
+
+            private final class EntrySnapshot {
+                private final Map<String, Object> values;
+                private final Set<String> keys;
+
+                private EntrySnapshot(Map<String, Object> values, Set<String> keys) {
+                    this.values = values;
+                    this.keys = keys;
+                }
+
+                private Map<String, Object> values() {
+                    return values;
+                }
+
+                private Set<String> keys() {
+                    return keys;
+                }
+            }
+        }
+
+        @FunctionalInterface
+        public interface ReadOnlyOverride<T> {
+            boolean test(FieldDefinition definition, ReadOnlyOverrideContext<T> context);
+        }
+
+        public static final class ReadOnlyOverrideContext<T> {
+            private final T bean;
+            private final RepeatableEntryOverrideContext repeatableEntry;
+
+            private ReadOnlyOverrideContext(T bean, RepeatableEntryOverrideContext repeatableEntry) {
+                this.bean = bean;
+                this.repeatableEntry = repeatableEntry;
+            }
+
+            public T getBean() {
+                return bean;
+            }
+
+            public Optional<RepeatableEntryOverrideContext> getRepeatableEntry() {
+                return Optional.ofNullable(repeatableEntry);
+            }
+
+            private static <T> ReadOnlyOverrideContext<T> forBean(T bean) {
+                return new ReadOnlyOverrideContext<>(bean, null);
+            }
+
+            private static <T> ReadOnlyOverrideContext<T> forRepeatableEntry(T bean,
+                                                                             RepeatableEntryOverrideContext repeatable) {
+                return new ReadOnlyOverrideContext<>(bean, repeatable);
+            }
+
+            public static final class RepeatableEntryOverrideContext {
+                private final String groupId;
+                private final int index;
+                private final Map<String, Object> values;
+                private final Object backingValue;
+
+                private RepeatableEntryOverrideContext(String groupId,
+                                                       int index,
+                                                       Map<String, Object> values,
+                                                       Object backingValue) {
+                    this.groupId = groupId;
+                    this.index = index;
+                    this.values = Collections.unmodifiableMap(new LinkedHashMap<>(values));
+                    this.backingValue = backingValue;
+                }
+
+                public String getGroupId() {
+                    return groupId;
+                }
+
+                public int getIndex() {
+                    return index;
+                }
+
+                public Map<String, Object> getValues() {
+                    return values;
+                }
+
+                public Object getBackingValue() {
+                    return backingValue;
+                }
             }
         }
 
