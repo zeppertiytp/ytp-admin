@@ -48,6 +48,11 @@
           "label": "Lock contacts"
         },
         {
+          "name": "lockPrimaryContact",
+          "type": "switch",
+          "label": "Lock primary contact"
+        },
+        {
           "name": "contacts",
           "type": "group",
           "minItems": 1,
@@ -57,6 +62,18 @@
               { "field": "lockContacts", "op": "EQ", "value": true }
             ]
           },
+          "items": [
+            {
+              "readOnly": true
+            },
+            {
+              "readOnlyWhen": {
+                "all": [
+                  { "field": "lockPrimaryContact", "op": "EQ", "value": true }
+                ]
+              }
+            }
+          ],
           "fields": [
             {
               "name": "contactName",
