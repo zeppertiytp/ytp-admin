@@ -13,6 +13,7 @@ public final class GroupDefinition {
     private final int columns;
     private final RepeatableDefinition repeatableDefinition;
     private final SubformDefinition subformDefinition;
+    private final String readOnlyWhen;
     private final List<FieldDefinition> fields;
 
     public GroupDefinition(String id,
@@ -20,12 +21,14 @@ public final class GroupDefinition {
                            int columns,
                            RepeatableDefinition repeatableDefinition,
                            SubformDefinition subformDefinition,
+                           String readOnlyWhen,
                            List<FieldDefinition> fields) {
         this.id = Objects.requireNonNull(id, "id");
         this.titleKey = titleKey == null ? "" : titleKey;
         this.columns = columns;
         this.repeatableDefinition = repeatableDefinition;
         this.subformDefinition = subformDefinition;
+        this.readOnlyWhen = readOnlyWhen == null ? "" : readOnlyWhen;
         this.fields = List.copyOf(fields);
     }
 
@@ -47,6 +50,10 @@ public final class GroupDefinition {
 
     public SubformDefinition getSubformDefinition() {
         return subformDefinition;
+    }
+
+    public String getReadOnlyWhen() {
+        return readOnlyWhen;
     }
 
     public List<FieldDefinition> getFields() {

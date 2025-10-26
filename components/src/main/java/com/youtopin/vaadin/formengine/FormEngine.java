@@ -25,8 +25,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BiPredicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.HasEnabled;
+import com.vaadin.flow.component.HasValue;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -55,6 +60,8 @@ public final class FormEngine {
 
     private final AnnotationFormScanner scanner = new AnnotationFormScanner();
     private final OptionCatalogRegistry optionCatalogRegistry;
+
+    private static final Pattern SIMPLE_COMPARISON = Pattern.compile("^\\s*(.+?)\\s*(==|!=)\\s*(.+)\\s*$");
 
     public FormEngine(OptionCatalogRegistry optionCatalogRegistry) {
         this.optionCatalogRegistry = Objects.requireNonNull(optionCatalogRegistry, "optionCatalogRegistry");
@@ -153,10 +160,12 @@ public final class FormEngine {
         private final Map<SectionDefinition, VerticalLayout> sections;
         private java.util.function.Supplier<T> actionBeanSupplier;
         private final List<ValidationFailureListener<T>> validationFailureListeners = new CopyOnWriteArrayList<>();
+        private final List<BiPredicate<FieldDefinition, T>> readOnlyOverrides = new CopyOnWriteArrayList<>();
         private final FieldRegistry fieldRegistry;
         private final FieldFactoryContext fieldContext;
         private final OptionCatalogRegistry optionCatalogRegistry;
         private final Locale locale;
+        private T currentBean;
 
         private RenderedForm(FormDefinition definition,
                              BinderOrchestrator<T> orchestrator,
@@ -187,6 +196,7 @@ public final class FormEngine {
             this.fieldContext = fieldContext;
             this.optionCatalogRegistry = optionCatalogRegistry;
             this.locale = locale;
+            this.currentBean = null;
         }
 
         public FormDefinition getDefinition() {
@@ -231,8 +241,19 @@ public final class FormEngine {
             this.actionBeanSupplier = supplier;
         }
 
+        public void addReadOnlyOverride(BiPredicate<FieldDefinition, T> override) {
+            readOnlyOverrides.add(Objects.requireNonNull(override, "override"));
+            applyReadOnlyState(currentBean);
+        }
+
+        public void refreshReadOnlyState() {
+            applyReadOnlyState(currentBean);
+        }
+
         public void initializeWithBean(T bean) {
+            this.currentBean = bean;
             if (bean == null) {
+                applyReadOnlyState(null);
                 return;
             }
             fields.forEach((definition, instance) -> {
@@ -240,6 +261,7 @@ public final class FormEngine {
                 applyComponentValue(instance, definition, propertyValue);
             });
             repeatableGroups.values().forEach(state -> populateRepeatableState(state, bean));
+            applyReadOnlyState(bean);
         }
 
         public void addActionHandler(String actionId, ActionHandler<T> handler) {
@@ -282,6 +304,7 @@ public final class FormEngine {
             FormEngine.this.updateAddButtonState(state);
             FormEngine.this.updateRemoveButtons(state);
             FormEngine.this.updateRepeatableTitles(state, fieldContext);
+            applyReadOnlyState(currentBean);
         }
 
         private boolean notifyValidationFailure(ActionDefinition actionDefinition, ValidationException exception) {
@@ -326,6 +349,258 @@ public final class FormEngine {
             while (state.getEntries().size() > target) {
                 RepeatableEntry removed = state.getEntries().remove(state.getEntries().size() - 1);
                 state.getContainer().remove(removed.wrapper());
+            }
+        }
+
+        private void applyReadOnlyState(T bean) {
+            T evaluationBean = bean != null ? bean : currentBean;
+            for (SectionDefinition section : definition.getSections()) {
+                boolean sectionReadOnly = evaluateStateExpression(section.getReadOnlyWhen(), evaluationBean);
+                for (GroupDefinition group : section.getGroups()) {
+                    boolean groupReadOnly = sectionReadOnly || evaluateStateExpression(group.getReadOnlyWhen(), evaluationBean);
+                    if (group.getRepeatableDefinition().isEnabled()) {
+                        RepeatableGroupState state = repeatableGroups.get(group.getId());
+                        if (state != null) {
+                            applyReadOnlyToRepeatableGroup(state, groupReadOnly, evaluationBean);
+                        }
+                    } else {
+                        for (FieldDefinition fieldDefinition : group.getFields()) {
+                            FieldInstance instance = fields.get(fieldDefinition);
+                            if (instance == null) {
+                                continue;
+                            }
+                            boolean fieldReadOnly = groupReadOnly
+                                    || evaluateStateExpression(fieldDefinition.getReadOnlyWhen(), evaluationBean)
+                                    || shouldApplyOverride(fieldDefinition, evaluationBean);
+                            applyReadOnlyToField(instance, fieldReadOnly);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void applyReadOnlyToRepeatableGroup(RepeatableGroupState state, boolean groupReadOnly, T bean) {
+            if (groupReadOnly) {
+                disableRepeatableControlsForReadOnly(state);
+            } else {
+                FormEngine.this.updateAddButtonState(state);
+            }
+            for (RepeatableEntry entry : state.getEntries()) {
+                for (Map.Entry<FieldDefinition, FieldInstance> entryField : entry.fields().entrySet()) {
+                    FieldDefinition definition = entryField.getKey();
+                    boolean fieldReadOnly = groupReadOnly
+                            || evaluateStateExpression(definition.getReadOnlyWhen(), bean)
+                            || shouldApplyOverride(definition, bean);
+                    applyReadOnlyToField(entryField.getValue(), fieldReadOnly);
+                }
+                if (groupReadOnly) {
+                    entry.removeButton().setEnabled(false);
+                    FormEngine.this.updateRepeatableRemoveButtonStyles(entry.removeButton(), false);
+                }
+            }
+            if (!groupReadOnly) {
+                FormEngine.this.updateRemoveButtons(state);
+            }
+        }
+
+        private void disableRepeatableControlsForReadOnly(RepeatableGroupState state) {
+            state.getAddButton().setEnabled(false);
+            state.getAddButton().getElement().setAttribute("aria-disabled", "true");
+            state.getEntries().forEach(entry -> {
+                entry.removeButton().setEnabled(false);
+                FormEngine.this.updateRepeatableRemoveButtonStyles(entry.removeButton(), false);
+            });
+        }
+
+        private void applyReadOnlyToField(FieldInstance instance, boolean readOnly) {
+            HasValue<?, ?> valueComponent = instance.getValueComponent();
+            boolean readOnlyApplied = applyReadOnly(valueComponent, readOnly);
+            if (!readOnlyApplied) {
+                if (valueComponent instanceof Component component) {
+                    setEnabledFallback(component, !readOnly);
+                }
+                setEnabledFallback(instance.getComponent(), !readOnly);
+            }
+            if (valueComponent instanceof Component component) {
+                updateReadOnlyDecoration(component, readOnly);
+            }
+            updateReadOnlyDecoration(instance.getComponent(), readOnly);
+        }
+
+        private boolean shouldApplyOverride(FieldDefinition definition, T bean) {
+            if (readOnlyOverrides.isEmpty()) {
+                return false;
+            }
+            for (BiPredicate<FieldDefinition, T> override : readOnlyOverrides) {
+                if (override.test(definition, bean)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private boolean evaluateStateExpression(String expression, T bean) {
+            if (expression == null || expression.isBlank() || bean == null) {
+                return false;
+            }
+            String trimmed = expression.trim();
+            if ("true".equalsIgnoreCase(trimmed)) {
+                return true;
+            }
+            if ("false".equalsIgnoreCase(trimmed)) {
+                return false;
+            }
+            Matcher matcher = SIMPLE_COMPARISON.matcher(trimmed);
+            if (matcher.matches()) {
+                String leftOperand = matcher.group(1).trim();
+                String operator = matcher.group(2);
+                String rightOperand = matcher.group(3);
+                Object leftValue = safeReadProperty(leftOperand, bean);
+                Object rightValue = parseLiteral(rightOperand);
+                return compareValues(leftValue, operator, rightValue);
+            }
+            Object value = safeReadProperty(trimmed, bean);
+            return coerceToBoolean(value);
+        }
+
+        private Object safeReadProperty(String path, T bean) {
+            if (bean == null || path == null || path.isBlank()) {
+                return null;
+            }
+            try {
+                return orchestrator.readProperty(path, bean);
+            } catch (RuntimeException ex) {
+                return null;
+            }
+        }
+
+        private Object parseLiteral(String token) {
+            if (token == null) {
+                return null;
+            }
+            String trimmed = token.trim();
+            if ((trimmed.startsWith("\"") && trimmed.endsWith("\""))
+                    || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+                trimmed = trimmed.substring(1, Math.max(1, trimmed.length() - 1));
+            }
+            if (trimmed.isEmpty()) {
+                return "";
+            }
+            if ("null".equalsIgnoreCase(trimmed)) {
+                return null;
+            }
+            if ("true".equalsIgnoreCase(trimmed)) {
+                return Boolean.TRUE;
+            }
+            if ("false".equalsIgnoreCase(trimmed)) {
+                return Boolean.FALSE;
+            }
+            try {
+                if (trimmed.contains(".")) {
+                    return Double.parseDouble(trimmed);
+                }
+                return Long.parseLong(trimmed);
+            } catch (NumberFormatException ex) {
+                return trimmed;
+            }
+        }
+
+        private Object normalizeComparisonOperand(Object value) {
+            if (value == null) {
+                return null;
+            }
+            if (value instanceof Enum<?> enumValue) {
+                return enumValue.name();
+            }
+            if (value instanceof Number number) {
+                return Double.valueOf(number.doubleValue());
+            }
+            if (value instanceof Boolean bool) {
+                return bool;
+            }
+            return value instanceof String ? value : String.valueOf(value);
+        }
+
+        private boolean compareValues(Object left, String operator, Object right) {
+            if ("==".equals(operator)) {
+                if (left == null || right == null) {
+                    return left == null && right == null;
+                }
+                Object lhs = normalizeComparisonOperand(left);
+                Object rhs = normalizeComparisonOperand(right);
+                if (lhs instanceof Double ld && rhs instanceof Double rd) {
+                    return Double.compare(ld, rd) == 0;
+                }
+                return Objects.equals(lhs, rhs);
+            }
+            if ("!=".equals(operator)) {
+                return !compareValues(left, "==", right);
+            }
+            return false;
+        }
+
+        private boolean coerceToBoolean(Object value) {
+            if (value == null) {
+                return false;
+            }
+            if (value instanceof Boolean bool) {
+                return bool;
+            }
+            if (value instanceof Number number) {
+                return Math.abs(number.doubleValue()) > 0.0000001d;
+            }
+            if (value instanceof String str) {
+                String trimmed = str.trim();
+                if (trimmed.isEmpty()) {
+                    return false;
+                }
+                return !("false".equalsIgnoreCase(trimmed) || "0".equals(trimmed));
+            }
+            return true;
+        }
+
+        private boolean applyReadOnly(HasValue<?, ?> component, boolean readOnly) {
+            if (component == null) {
+                return false;
+            }
+            try {
+                component.setReadOnly(readOnly);
+                return true;
+            } catch (UnsupportedOperationException ex) {
+                return false;
+            }
+        }
+
+        private void setEnabledFallback(Component component, boolean enabled) {
+            if (component == null) {
+                return;
+            }
+            if (component instanceof HasEnabled) {
+                ((HasEnabled) component).setEnabled(enabled);
+            } else if (!enabled) {
+                component.getElement().setProperty("disabled", true);
+            } else {
+                component.getElement().removeProperty("disabled");
+            }
+            if (enabled) {
+                component.getElement().removeAttribute("aria-disabled");
+                component.getElement().getThemeList().remove("ytp-disabled");
+            } else {
+                component.getElement().setAttribute("aria-disabled", "true");
+                component.getElement().getThemeList().add("ytp-disabled");
+            }
+        }
+
+        private void updateReadOnlyDecoration(Component component, boolean readOnly) {
+            if (component == null) {
+                return;
+            }
+            if (readOnly) {
+                component.getElement().setAttribute("aria-readonly", "true");
+                component.getElement().getThemeList().add("ytp-readonly");
+            } else {
+                component.getElement().removeAttribute("aria-readonly");
+                component.getElement().getThemeList().remove("ytp-readonly");
             }
         }
 

@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.HasComponents;
+import com.vaadin.flow.component.HasEnabled;
+import com.vaadin.flow.component.HasValue;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -40,6 +42,7 @@ import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -85,6 +88,8 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
     private final Map<String, Component> fieldComponents = new HashMap<>();
     private final Map<String, Object> fieldValues = new HashMap<>();
     private final Map<String, List<Runnable>> visibilityWatchers = new HashMap<>();
+    private final Map<String, List<Runnable>> readOnlyWatchers = new HashMap<>();
+    private final Map<String, Consumer<Boolean>> readOnlyHandlers = new HashMap<>();
     private final List<Runnable> localeUpdaters = new ArrayList<>();
     private final Map<String, ActionDefinition> actionsById = new LinkedHashMap<>();
     private final List<SubmissionListener> submissionListeners = new ArrayList<>();
@@ -136,6 +141,8 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         fieldComponents.clear();
         fieldValues.clear();
         visibilityWatchers.clear();
+        readOnlyWatchers.clear();
+        readOnlyHandlers.clear();
         actionsById.clear();
         setSpacing(false);
         setPadding(false);
@@ -253,13 +260,25 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         applyLayoutProperties((Component) fieldContainer, layoutConfig);
 
         ArrayNode fields = (ArrayNode) section.get("fields");
+        List<String> sectionFieldNames = new ArrayList<>();
         if (fields != null) {
             fields.forEach(field -> {
                 Component comp = createField(field);
                 if (comp != null) {
                     addComponentToContainer(fieldContainer, comp, field);
+                    if (field.has("name")) {
+                        sectionFieldNames.add(field.get("name").asText());
+                    }
                 }
             });
+        }
+        if (section.has("readOnly")) {
+            boolean ro = section.get("readOnly").asBoolean(false);
+            sectionFieldNames.forEach(name -> setFieldReadOnly(name, ro));
+        }
+        if (section.has("readOnlyWhen")) {
+            JsonNode condition = section.get("readOnlyWhen");
+            sectionFieldNames.forEach(name -> setupReadOnlyWatcher(name, condition));
         }
         sectionLayout.add((Component) fieldContainer);
         add(sectionLayout);
@@ -748,7 +767,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                     clearError(picker);
                 }
             }
-            runVisibilityWatchers(name);
+            notifyStateWatchers(name);
         });
         return picker;
     }
@@ -818,7 +837,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                 tf.addValueChangeListener(ev -> {
                     fieldValues.put(name, ev.getValue());
                     validateField(tf, name, required, field);
-                    runVisibilityWatchers(name);
+                    notifyStateWatchers(name);
                 });
                 comp = tf;
             }
@@ -833,7 +852,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                 ef.addValueChangeListener(ev -> {
                     fieldValues.put(name, ev.getValue());
                     validateField(ef, name, required, field);
-                    runVisibilityWatchers(name);
+                    notifyStateWatchers(name);
                 });
                 comp = ef;
             }
@@ -848,7 +867,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                 tf.addValueChangeListener(ev -> {
                     fieldValues.put(name, ev.getValue());
                     validateField(tf, name, required, field);
-                    runVisibilityWatchers(name);
+                    notifyStateWatchers(name);
                 });
                 comp = tf;
             }
@@ -863,7 +882,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                 nf.addValueChangeListener(ev -> {
                     fieldValues.put(name, ev.getValue());
                     validateField(nf, name, required, field);
-                    runVisibilityWatchers(name);
+                    notifyStateWatchers(name);
                 });
                 comp = nf;
             }
@@ -888,7 +907,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                 cb.addValueChangeListener(ev -> {
                     fieldValues.put(name, ev.getValue());
                     validateField(cb, name, required, field);
-                    runVisibilityWatchers(name);
+                    notifyStateWatchers(name);
                 });
                 comp = cb;
             }
@@ -898,7 +917,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                 cb.addValueChangeListener(ev -> {
                     fieldValues.put(name, ev.getValue());
                     validateField(cb, name, required, field);
-                    runVisibilityWatchers(name);
+                    notifyStateWatchers(name);
                 });
                 comp = cb;
             }
@@ -917,7 +936,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                             clearError(dp);
                         }
                     }
-                    runVisibilityWatchers(name);
+                    notifyStateWatchers(name);
                 });
                 comp = dp;
             }
@@ -948,14 +967,14 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                     }
                     info.setVisible(true);
                     fieldValues.put(name, ev.getFileName());
-                    runVisibilityWatchers(name);
+                    notifyStateWatchers(name);
                 });
 
                 onFileRemove(upload, removed -> {
                     info.setText("");
                     info.setVisible(false);
                     fieldValues.put(name, null);
-                    runVisibilityWatchers(name);
+                    notifyStateWatchers(name);
                 });
 
                 VerticalLayout wrapper = new VerticalLayout(upload, info);
@@ -996,14 +1015,14 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                     files.add(ev.getFileName());
                     fieldValues.put(name, new ArrayList<>(files));
                     updateNames.run();
-                    runVisibilityWatchers(name);
+                    notifyStateWatchers(name);
                 });
 
                 onFileRemove(upload, removed -> {
                     files.remove(removed);
                     fieldValues.put(name, new ArrayList<>(files));
                     updateNames.run();
-                    runVisibilityWatchers(name);
+                    notifyStateWatchers(name);
                 });
 
                 VerticalLayout wrapper = new VerticalLayout(upload, namesInfo);
@@ -1044,14 +1063,14 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                     }
                     preview.setVisible(true);
                     fieldValues.put(name, ev.getFileName());
-                    runVisibilityWatchers(name);
+                    notifyStateWatchers(name);
                 });
 
                 onFileRemove(upload, removed -> {
                     preview.setSrc("");
                     preview.setVisible(false);
                     fieldValues.put(name, null);
-                    runVisibilityWatchers(name);
+                    notifyStateWatchers(name);
                 });
 
                 VerticalLayout wrapper = new VerticalLayout(upload, preview);
@@ -1095,7 +1114,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                         previewContainer.add(img);
                         previewContainer.setVisible(true);
                         fieldValues.put(name, new ArrayList<>(images));
-                        runVisibilityWatchers(name);
+                        notifyStateWatchers(name);
                     } catch (Exception ex) {
                         // ignore failures when reading preview data
                     }
@@ -1111,7 +1130,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                         previewContainer.setVisible(false);
                     }
                     fieldValues.put(name, new ArrayList<>(images));
-                    runVisibilityWatchers(name);
+                    notifyStateWatchers(name);
                 });
 
                 VerticalLayout wrapper = new VerticalLayout(upload, previewContainer);
@@ -1139,7 +1158,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                     String textPos = ev.getLat() + ", " + ev.getLng();
                     selected.setText(getTranslation("form.selectedLocation") + ": " + textPos);
                     fieldValues.put(name, Map.of("lat", ev.getLat(), "lng", ev.getLng()));
-                    runVisibilityWatchers(name);
+                    notifyStateWatchers(name);
                     dialog.close();
                 });
                 dialog.add(picker);
@@ -1256,7 +1275,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                             groupContainer.remove(row);
                             items.remove(itemValues);
                             fieldValues.put(name, new ArrayList<>(items));
-                            runVisibilityWatchers(name);
+                            notifyStateWatchers(name);
                             refreshGroupButtons.run();
                         }
                     });
@@ -1264,7 +1283,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                     groupContainer.add(row);
                     items.add(itemValues);
                     fieldValues.put(name, new ArrayList<>(items));
-                    runVisibilityWatchers(name);
+                    notifyStateWatchers(name);
                     refreshGroupButtons.run();
                 };
 
@@ -1277,6 +1296,60 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                 for (int i = 0; i < initial; i++) {
                     addRow.accept(null);
                 }
+                readOnlyHandlers.put(name, readOnly -> {
+                    if (readOnly) {
+                        addBtn.setEnabled(false);
+                        addBtn.getElement().setAttribute("aria-disabled", "true");
+                    } else {
+                        boolean canAdd = items.size() < maxItems;
+                        addBtn.setEnabled(canAdd);
+                        addBtn.getElement().setAttribute("aria-disabled", String.valueOf(!canAdd));
+                    }
+                    groupContainer.getChildren().forEach(child -> {
+                        if (!(child instanceof HorizontalLayout)) {
+                            return;
+                        }
+                        HorizontalLayout row = (HorizontalLayout) child;
+                        row.getChildren().forEach(component -> {
+                            if (component instanceof Button) {
+                                Button button = (Button) component;
+                                if (button.getElement().getThemeList().contains("error")) {
+                                    boolean canRemove = !readOnly && items.size() > minItems;
+                                    button.setEnabled(canRemove);
+                                    if (readOnly) {
+                                        button.getElement().setAttribute("aria-disabled", "true");
+                                    } else {
+                                        button.getElement().setAttribute("aria-disabled", String.valueOf(!canRemove));
+                                    }
+                                }
+                                return;
+                            }
+                            if (component instanceof HasValue<?, ?>) {
+                                HasValue<?, ?> hv = (HasValue<?, ?>) component;
+                                Component valueComponent = (Component) component;
+                                try {
+                                    hv.setReadOnly(readOnly);
+                                } catch (Exception ignored) {
+                                }
+                                if (readOnly) {
+                                    valueComponent.getElement().setAttribute("aria-readonly", "true");
+                                } else {
+                                    valueComponent.getElement().removeAttribute("aria-readonly");
+                                }
+                                return;
+                            }
+                            if (component instanceof HasEnabled) {
+                                HasEnabled hasEnabled = (HasEnabled) component;
+                                hasEnabled.setEnabled(!readOnly);
+                                if (readOnly) {
+                                    component.getElement().setAttribute("aria-disabled", "true");
+                                } else {
+                                    component.getElement().removeAttribute("aria-disabled");
+                                }
+                            }
+                        });
+                    });
+                });
                 comp = wrapper;
 
                 localeUpdaters.add(() -> {
@@ -1328,7 +1401,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                             clearError(radio);
                         }
                     }
-                    runVisibilityWatchers(name);
+                    notifyStateWatchers(name);
                 });
                 comp = radio;
             }
@@ -1341,6 +1414,12 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         fieldValues.putIfAbsent(name, null);
         if (field.has("visibleWhen")) {
             setupVisibilityWatcher(name, field.get("visibleWhen"));
+        }
+        if (field.has("readOnly")) {
+            setFieldReadOnly(name, field.get("readOnly").asBoolean(false));
+        }
+        if (field.has("readOnlyWhen")) {
+            setupReadOnlyWatcher(name, field.get("readOnlyWhen"));
         }
         localeUpdaters.add(() -> updateComponentLabel(comp, field));
         return comp;
@@ -1498,71 +1577,196 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
      * @param condition the JSON node describing the visibility condition
      */
     private void setupVisibilityWatcher(String fieldName, JsonNode condition) {
-        // Determine the condition type (all or any)
-        boolean requireAll = condition.has("all");
-        ArrayNode condArray = requireAll ? (ArrayNode) condition.get("all") : (ArrayNode) condition.get("any");
-        if (condArray == null) {
+        if (condition == null || condition.isNull()) {
             return;
         }
-        // Build a predicate evaluating the condition
-        Supplier<Boolean> predicate = () -> {
-            boolean result = requireAll;
-            for (JsonNode cond : condArray) {
-                String depField = cond.get("field").asText();
-                String op = cond.get("op").asText("EQ");
-                JsonNode valNode = cond.get("value");
-                Object expected = null;
-                if (valNode != null && !valNode.isNull()) {
-                    if (valNode.isBoolean()) expected = valNode.asBoolean();
-                    else if (valNode.isNumber()) expected = valNode.numberValue();
-                    else expected = valNode.asText();
-                }
-                Object actual = fieldValues.get(depField);
-                boolean match = false;
-                if ("EQ".equals(op)) {
-                    match = (expected == null && actual == null) || (expected != null && expected.equals(actual));
-                }
-                // Extend here for more operators as needed
-                if (requireAll) {
-                    if (!match) {
-                        result = false;
-                        break;
-                    }
-                } else {
-                    if (match) {
-                        result = true;
-                        break;
-                    }
-                }
-            }
-            return result;
-        };
-        // Define the update action for the field
+        boolean requireAll;
+        ArrayNode condArray;
+        if (condition.has("all") || condition.has("any")) {
+            requireAll = condition.has("all");
+            condArray = requireAll ? (ArrayNode) condition.get("all") : (ArrayNode) condition.get("any");
+        } else {
+            requireAll = true;
+            condArray = mapper.createArrayNode();
+            condArray.add(condition);
+        }
+        if (condArray == null || condArray.isEmpty()) {
+            return;
+        }
+        Supplier<Boolean> predicate = buildWatcherPredicate(condArray, requireAll);
         Runnable update = () -> {
             Component comp = fieldComponents.get(fieldName);
             if (comp != null) {
                 comp.setVisible(predicate.get());
             }
         };
-        // Register watchers for each dependent field
-        for (JsonNode cond : condArray) {
-            String depField = cond.get("field").asText();
-            visibilityWatchers.computeIfAbsent(depField, k -> new ArrayList<>()).add(update);
-        }
-        // Initialise the visibility
+        registerWatcher(visibilityWatchers, condArray, update);
         update.run();
     }
 
-    /**
-     * Run all registered visibility watchers for the given field. This should
-     * be invoked whenever a controlling field value changes.
-     *
-     * @param fieldName the name of the controlling field
-     */
     private void runVisibilityWatchers(String fieldName) {
         List<Runnable> watchers = visibilityWatchers.get(fieldName);
         if (watchers != null) {
             watchers.forEach(Runnable::run);
+        }
+    }
+
+    private void runReadOnlyWatchers(String fieldName) {
+        List<Runnable> watchers = readOnlyWatchers.get(fieldName);
+        if (watchers != null) {
+            watchers.forEach(Runnable::run);
+        }
+    }
+
+    private void notifyStateWatchers(String fieldName) {
+        runVisibilityWatchers(fieldName);
+        runReadOnlyWatchers(fieldName);
+    }
+
+    private void setupReadOnlyWatcher(String fieldName, JsonNode condition) {
+        if (condition == null || condition.isNull()) {
+            return;
+        }
+        if (condition.isBoolean()) {
+            setFieldReadOnly(fieldName, condition.asBoolean(false));
+            return;
+        }
+        boolean requireAll;
+        ArrayNode condArray;
+        if (condition.has("all") || condition.has("any")) {
+            requireAll = condition.has("all");
+            condArray = requireAll ? (ArrayNode) condition.get("all") : (ArrayNode) condition.get("any");
+        } else {
+            requireAll = true;
+            condArray = mapper.createArrayNode();
+            condArray.add(condition);
+        }
+        if (condArray == null || condArray.isEmpty()) {
+            return;
+        }
+        Supplier<Boolean> predicate = buildWatcherPredicate(condArray, requireAll);
+        Runnable update = () -> setFieldReadOnly(fieldName, predicate.get());
+        registerWatcher(readOnlyWatchers, condArray, update);
+        update.run();
+    }
+
+    private Supplier<Boolean> buildWatcherPredicate(ArrayNode condArray, boolean requireAll) {
+        return () -> {
+            boolean defaultValue = requireAll;
+            for (JsonNode cond : condArray) {
+                boolean match = evaluateWatcherCondition(cond);
+                if (requireAll) {
+                    if (!match) {
+                        return false;
+                    }
+                } else if (match) {
+                    return true;
+                }
+            }
+            return defaultValue;
+        };
+    }
+
+    private void registerWatcher(Map<String, List<Runnable>> watchers, ArrayNode condArray, Runnable update) {
+        for (JsonNode cond : condArray) {
+            if (cond == null || !cond.has("field")) {
+                continue;
+            }
+            String depField = cond.get("field").asText();
+            if (hasText(depField)) {
+                watchers.computeIfAbsent(depField, key -> new ArrayList<>()).add(update);
+            }
+        }
+    }
+
+    private boolean evaluateWatcherCondition(JsonNode cond) {
+        if (cond == null || !cond.has("field")) {
+            return false;
+        }
+        String depField = cond.get("field").asText();
+        String operator = cond.has("op") ? cond.get("op").asText("EQ") : "EQ";
+        Object actual = fieldValues.get(depField);
+        JsonNode valueNode = cond.get("value");
+        Object expected = null;
+        if (valueNode != null && !valueNode.isNull()) {
+            if (valueNode.isBoolean()) {
+                expected = valueNode.asBoolean();
+            } else if (valueNode.isNumber()) {
+                expected = valueNode.numberValue();
+            } else {
+                expected = valueNode.asText();
+            }
+        }
+        return switch (operator == null ? "EQ" : operator.trim().toUpperCase(Locale.ROOT)) {
+            case "NEQ" -> !Objects.equals(normalizeValue(actual), normalizeValue(expected));
+            case "EMPTY" -> isEmptyFieldValue(actual);
+            case "FILLED" -> !isEmptyFieldValue(actual);
+            case "TRUE" -> Boolean.TRUE.equals(normalizeValue(actual));
+            case "FALSE" -> Boolean.FALSE.equals(normalizeValue(actual));
+            default -> Objects.equals(normalizeValue(actual), normalizeValue(expected));
+        };
+    }
+
+    private Object normalizeValue(Object value) {
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        return value;
+    }
+
+    private boolean isEmptyFieldValue(Object value) {
+        if (value == null) {
+            return true;
+        }
+        if (value instanceof String str) {
+            return str.isBlank();
+        }
+        if (value instanceof Collection<?> collection) {
+            return collection.isEmpty();
+        }
+        return false;
+    }
+
+    private void setFieldReadOnly(String fieldName, boolean readOnly) {
+        Consumer<Boolean> handler = readOnlyHandlers.get(fieldName);
+        if (handler != null) {
+            handler.accept(readOnly);
+        }
+        Component component = fieldComponents.get(fieldName);
+        if (component == null) {
+            return;
+        }
+        boolean fallback = handler == null;
+        if (handler == null && component instanceof HasValue<?, ?>) {
+            HasValue<?, ?> hasValue = (HasValue<?, ?>) component;
+            try {
+                hasValue.setReadOnly(readOnly);
+                fallback = false;
+            } catch (Exception ignored) {
+                fallback = true;
+            }
+        }
+        if (fallback) {
+            if (component instanceof HasEnabled) {
+                HasEnabled hasEnabled = (HasEnabled) component;
+                hasEnabled.setEnabled(!readOnly);
+            } else if (readOnly) {
+                component.getElement().setProperty("disabled", true);
+            } else {
+                component.getElement().removeProperty("disabled");
+            }
+            if (readOnly) {
+                component.getElement().setAttribute("aria-disabled", "true");
+            } else {
+                component.getElement().removeAttribute("aria-disabled");
+            }
+        }
+        if (readOnly) {
+            component.getElement().setAttribute("aria-readonly", "true");
+            component.getElement().getThemeList().add("ytp-readonly");
+        } else {
+            component.getElement().removeAttribute("aria-readonly");
+            component.getElement().getThemeList().remove("ytp-readonly");
         }
     }
 
@@ -1647,7 +1851,13 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
     private String getTranslation(String key) {
         UI ui = UI.getCurrent();
         if (ui != null) {
-            return ui.getTranslation(key);
+            String translation = ui.getTranslation(key);
+            if (translation != null && !translation.isBlank()) {
+                if (("!{" + key + "}!").equals(translation)) {
+                    return key;
+                }
+                return translation;
+            }
         }
         return key;
     }

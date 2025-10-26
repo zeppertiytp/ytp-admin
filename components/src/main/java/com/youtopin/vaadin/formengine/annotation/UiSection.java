@@ -40,6 +40,11 @@ public @interface UiSection {
     String visibleWhen() default "";
 
     /**
+     * @return Expression determining when the section content should be rendered read-only.
+     */
+    String readOnlyWhen() default "";
+
+    /**
      * @return Optional identifier of the security guard declared via {@link UiSecurity}.
      */
     String securityGuard() default "";

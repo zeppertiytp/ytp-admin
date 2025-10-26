@@ -12,6 +12,7 @@ public final class SectionDefinition {
     private final String titleKey;
     private final String descriptionKey;
     private final String visibleWhen;
+    private final String readOnlyWhen;
     private final String securityGuard;
     private final int order;
     private final List<GroupDefinition> groups;
@@ -20,6 +21,7 @@ public final class SectionDefinition {
                              String titleKey,
                              String descriptionKey,
                              String visibleWhen,
+                             String readOnlyWhen,
                              String securityGuard,
                              int order,
                              List<GroupDefinition> groups) {
@@ -27,6 +29,7 @@ public final class SectionDefinition {
         this.titleKey = titleKey == null ? "" : titleKey;
         this.descriptionKey = descriptionKey == null ? "" : descriptionKey;
         this.visibleWhen = visibleWhen == null ? "" : visibleWhen;
+        this.readOnlyWhen = readOnlyWhen == null ? "" : readOnlyWhen;
         this.securityGuard = securityGuard == null ? "" : securityGuard;
         this.order = order;
         this.groups = List.copyOf(groups);
@@ -46,6 +49,10 @@ public final class SectionDefinition {
 
     public String getVisibleWhen() {
         return visibleWhen;
+    }
+
+    public String getReadOnlyWhen() {
+        return readOnlyWhen;
     }
 
     public String getSecurityGuard() {

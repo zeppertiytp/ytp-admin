@@ -20,12 +20,14 @@ import com.youtopin.vaadin.samples.ui.formengine.definition.DailyPlanListFormDef
 import com.youtopin.vaadin.samples.ui.formengine.definition.EmployeeOnboardingFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.ProductCatalogFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.InventoryManagementFormDefinition;
+import com.youtopin.vaadin.samples.ui.formengine.definition.ProfileLockFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.model.AccessPolicyFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.AgendaBuilderFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.DailyPlanFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.DailyPlanListFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.EmployeeOnboardingFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.ProductCatalogFormData;
+import com.youtopin.vaadin.samples.ui.formengine.model.ProfileLockFormData;
 import com.youtopin.vaadin.samples.application.formengine.model.InventoryManagementFormData;
 import com.youtopin.vaadin.samples.application.formengine.InventoryPlanService;
 import com.youtopin.vaadin.samples.ui.layout.AppPageLayout;
@@ -125,6 +127,12 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
     private void renderSamples() {
         updateHeadings();
         sampleContainer.removeAll();
+        ProfileLockFormData profileLockData = new ProfileLockFormData();
+        profileLockData.setUsername("immutable.admin");
+        profileLockData.setEmail("immutable.admin@youtopin.com");
+        profileLockData.setPhone("+1 555 0100");
+        profileLockData.setLocked(false);
+        profileLockData.setContactLocked(false);
         List<SampleDescriptor<?>> descriptors = List.of(
                 new SampleDescriptor<>(
                         "forms.sample.onboarding.heading",
@@ -167,6 +175,13 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
                         "forms.sample.agenda.features",
                         AgendaBuilderFormDefinition.class,
                         AgendaBuilderFormData::new
+                ),
+                new SampleDescriptor<>(
+                        "forms.sample.locking.heading",
+                        "forms.sample.locking.description",
+                        "forms.sample.locking.features",
+                        ProfileLockFormDefinition.class,
+                        () -> profileLockData
                 ),
                 new SampleDescriptor<>(
                         "forms.sample.inventory.heading",
@@ -254,6 +269,12 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
             configureDynamicPlanList(rendered);
         } else if (definitionClass.equals(AgendaBuilderFormDefinition.class)) {
             configureAgendaSections(rendered);
+        } else if (definitionClass.equals(ProfileLockFormDefinition.class)) {
+            @SuppressWarnings({"unchecked", "rawtypes"})
+            Supplier<ProfileLockFormData> supplier = (Supplier) beanSupplier;
+            @SuppressWarnings("unchecked")
+            RenderedForm<ProfileLockFormData> profileForm = (RenderedForm<ProfileLockFormData>) rendered;
+            configureProfileLock(profileForm, supplier);
         } else if (definitionClass.equals(InventoryManagementFormDefinition.class)) {
             @SuppressWarnings("unchecked")
             RenderedForm<InventoryManagementFormData> inventoryForm = (RenderedForm<InventoryManagementFormData>) rendered;
@@ -403,6 +424,23 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
             });
         }
         syncAgendaButtons(addButton, removeButton, internalAdd, entriesContainer);
+    }
+
+    private void configureProfileLock(RenderedForm<ProfileLockFormData> rendered,
+                                      Supplier<ProfileLockFormData> supplier) {
+        ProfileLockFormData bean = supplier.get();
+        rendered.addReadOnlyOverride((definition, state) ->
+                "username".equals(definition.getPath())
+                        && state != null
+                        && state.getUsername() != null
+                        && state.getUsername().startsWith("immutable"));
+        rendered.setActionBeanSupplier(() -> bean);
+        rendered.addActionHandler("profile-lock-submit", context -> {
+            ProfileLockFormData current = context.getBean();
+            current.setLocked(true);
+            current.setContactLocked(true);
+            rendered.initializeWithBean(current);
+        });
     }
 
     private void syncAgendaButtons(Button addButton, Button removeButton, Button internalAdd, VerticalLayout entriesContainer) {
