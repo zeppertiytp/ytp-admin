@@ -53,6 +53,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 /**
@@ -89,7 +91,7 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
     private final Map<String, Object> fieldValues = new HashMap<>();
     private final Map<String, List<Runnable>> visibilityWatchers = new HashMap<>();
     private final Map<String, List<Runnable>> readOnlyWatchers = new HashMap<>();
-    private final Map<String, Consumer<Boolean>> readOnlyHandlers = new HashMap<>();
+    private final Map<String, List<Consumer<Boolean>>> readOnlyHandlers = new HashMap<>();
     private final List<Runnable> localeUpdaters = new ArrayList<>();
     private final Map<String, ActionDefinition> actionsById = new LinkedHashMap<>();
     private final List<SubmissionListener> submissionListeners = new ArrayList<>();
@@ -1189,23 +1191,21 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                 int minItems = field.has("minItems") ? field.get("minItems").asInt() : 0;
                 int maxItems = field.has("maxItems") ? field.get("maxItems").asInt() : Integer.MAX_VALUE;
                 List<Map<String, Object>> items = new ArrayList<>();
+                List<RepeatableRowHandler> rowHandlers = new ArrayList<>();
+                AtomicBoolean containerReadOnly = new AtomicBoolean(false);
+                AtomicInteger rowSequence = new AtomicInteger();
                 Button addBtn = new Button(getTranslation("form.addItem"));
 
                 Runnable refreshGroupButtons = () -> {
-                    addBtn.setEnabled(items.size() < maxItems);
-                    groupContainer.getChildren().forEach(child -> {
-                        if (child instanceof HorizontalLayout hl) {
-                            hl.getChildren().forEach(c -> {
-                                if (c instanceof Button b && b.getElement().getThemeList().contains("error")) {
-                                    b.setEnabled(items.size() > minItems);
-                                }
-                            });
-                        }
-                    });
+                    boolean canAdd = !containerReadOnly.get() && items.size() < maxItems;
+                    addBtn.setEnabled(canAdd);
+                    addBtn.getElement().setAttribute("aria-disabled", String.valueOf(!canAdd));
+                    rowHandlers.forEach(handler -> handler.refresh(minItems, items.size()));
                 };
 
-                Consumer<Void> addRow = unused -> {
+                Consumer<JsonNode> addRow = itemSpec -> {
                     if (items.size() >= maxItems) {
+                        refreshGroupButtons.run();
                         return;
                     }
                     HorizontalLayout row = new HorizontalLayout();
@@ -1270,20 +1270,44 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                     }
                     Button rem = new Button(getTranslation("form.removeItem"));
                     rem.getElement().getThemeList().add("error");
-                    rem.addClickListener(ev -> {
-                        if (items.size() > minItems) {
-                            groupContainer.remove(row);
-                            items.remove(itemValues);
-                            fieldValues.put(name, new ArrayList<>(items));
-                            notifyStateWatchers(name);
-                            refreshGroupButtons.run();
-                        }
-                    });
                     row.add(rem);
                     groupContainer.add(row);
                     items.add(itemValues);
                     fieldValues.put(name, new ArrayList<>(items));
                     notifyStateWatchers(name);
+
+                    RepeatableRowHandler handler = new RepeatableRowHandler(row, rem);
+                    rowHandlers.add(handler);
+                    String handlerKey = name + "[" + rowSequence.getAndIncrement() + "]";
+                    Consumer<Boolean> rowReadOnlyHandler = readOnly -> {
+                        handler.applyBaseReadOnly(readOnly, minItems, items.size());
+                        refreshGroupButtons.run();
+                    };
+                    handler.setHandler(handlerKey, rowReadOnlyHandler);
+                    registerReadOnlyHandler(handlerKey, rowReadOnlyHandler);
+
+                    RepeatableItemMetadata metadata = resolveRepeatableItemMetadata(itemSpec);
+                    if (metadata.readOnly() != null) {
+                        handler.applyBaseReadOnly(metadata.readOnly(), minItems, items.size());
+                    }
+                    if (metadata.readOnlyWhen() != null) {
+                        setupReadOnlyWatcher(handlerKey, metadata.readOnlyWhen());
+                    }
+
+                    handler.applyContainerReadOnly(containerReadOnly.get(), minItems, items.size());
+
+                    rem.addClickListener(ev -> {
+                        if (items.size() <= minItems) {
+                            return;
+                        }
+                        groupContainer.remove(row);
+                        items.remove(itemValues);
+                        rowHandlers.remove(handler);
+                        unregisterReadOnlyHandler(handler.getHandlerKey(), handler.getHandlerConsumer());
+                        fieldValues.put(name, new ArrayList<>(items));
+                        notifyStateWatchers(name);
+                        refreshGroupButtons.run();
+                    });
                     refreshGroupButtons.run();
                 };
 
@@ -1292,63 +1316,31 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
                 wrapper.setSpacing(false);
                 wrapper.setPadding(false);
                 wrapper.addClassName("stack-sm");
-                int initial = Math.max(1, minItems);
-                for (int i = 0; i < initial; i++) {
-                    addRow.accept(null);
+
+                List<JsonNode> predefinedItems = new ArrayList<>();
+                if (field.has("items") && field.get("items").isArray()) {
+                    field.get("items").forEach(predefinedItems::add);
                 }
-                readOnlyHandlers.put(name, readOnly -> {
+                int base = Math.max(minItems, 1);
+                int prefill = Math.min(predefinedItems.size(), maxItems);
+                int initial = Math.max(base, prefill);
+                for (int i = 0; i < initial; i++) {
+                    JsonNode itemSpec = i < predefinedItems.size() ? predefinedItems.get(i) : null;
+                    addRow.accept(itemSpec);
+                }
+                refreshGroupButtons.run();
+
+                registerReadOnlyHandler(name, readOnly -> {
+                    containerReadOnly.set(readOnly);
                     if (readOnly) {
-                        addBtn.setEnabled(false);
-                        addBtn.getElement().setAttribute("aria-disabled", "true");
+                        groupContainer.getElement().setAttribute("aria-readonly", "true");
+                        groupContainer.addClassName("ytp-readonly");
                     } else {
-                        boolean canAdd = items.size() < maxItems;
-                        addBtn.setEnabled(canAdd);
-                        addBtn.getElement().setAttribute("aria-disabled", String.valueOf(!canAdd));
+                        groupContainer.getElement().removeAttribute("aria-readonly");
+                        groupContainer.removeClassName("ytp-readonly");
                     }
-                    groupContainer.getChildren().forEach(child -> {
-                        if (!(child instanceof HorizontalLayout)) {
-                            return;
-                        }
-                        HorizontalLayout row = (HorizontalLayout) child;
-                        row.getChildren().forEach(component -> {
-                            if (component instanceof Button) {
-                                Button button = (Button) component;
-                                if (button.getElement().getThemeList().contains("error")) {
-                                    boolean canRemove = !readOnly && items.size() > minItems;
-                                    button.setEnabled(canRemove);
-                                    if (readOnly) {
-                                        button.getElement().setAttribute("aria-disabled", "true");
-                                    } else {
-                                        button.getElement().setAttribute("aria-disabled", String.valueOf(!canRemove));
-                                    }
-                                }
-                                return;
-                            }
-                            if (component instanceof HasValue<?, ?>) {
-                                HasValue<?, ?> hv = (HasValue<?, ?>) component;
-                                Component valueComponent = (Component) component;
-                                try {
-                                    hv.setReadOnly(readOnly);
-                                } catch (Exception ignored) {
-                                }
-                                if (readOnly) {
-                                    valueComponent.getElement().setAttribute("aria-readonly", "true");
-                                } else {
-                                    valueComponent.getElement().removeAttribute("aria-readonly");
-                                }
-                                return;
-                            }
-                            if (component instanceof HasEnabled) {
-                                HasEnabled hasEnabled = (HasEnabled) component;
-                                hasEnabled.setEnabled(!readOnly);
-                                if (readOnly) {
-                                    component.getElement().setAttribute("aria-disabled", "true");
-                                } else {
-                                    component.getElement().removeAttribute("aria-disabled");
-                                }
-                            }
-                        });
-                    });
+                    rowHandlers.forEach(handler -> handler.applyContainerReadOnly(readOnly, minItems, items.size()));
+                    refreshGroupButtons.run();
                 });
                 comp = wrapper;
 
@@ -1623,6 +1615,21 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
         runReadOnlyWatchers(fieldName);
     }
 
+    private void registerReadOnlyHandler(String key, Consumer<Boolean> handler) {
+        readOnlyHandlers.computeIfAbsent(key, unused -> new ArrayList<>()).add(handler);
+    }
+
+    private void unregisterReadOnlyHandler(String key, Consumer<Boolean> handler) {
+        List<Consumer<Boolean>> handlers = readOnlyHandlers.get(key);
+        if (handlers == null) {
+            return;
+        }
+        handlers.remove(handler);
+        if (handlers.isEmpty()) {
+            readOnlyHandlers.remove(key);
+        }
+    }
+
     private void setupReadOnlyWatcher(String fieldName, JsonNode condition) {
         if (condition == null || condition.isNull()) {
             return;
@@ -1728,16 +1735,16 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
     }
 
     private void setFieldReadOnly(String fieldName, boolean readOnly) {
-        Consumer<Boolean> handler = readOnlyHandlers.get(fieldName);
-        if (handler != null) {
-            handler.accept(readOnly);
+        List<Consumer<Boolean>> handlers = readOnlyHandlers.get(fieldName);
+        if (handlers != null && !handlers.isEmpty()) {
+            handlers.forEach(handler -> handler.accept(readOnly));
         }
         Component component = fieldComponents.get(fieldName);
         if (component == null) {
             return;
         }
-        boolean fallback = handler == null;
-        if (handler == null && component instanceof HasValue<?, ?>) {
+        boolean fallback = handlers == null || handlers.isEmpty();
+        if (fallback && component instanceof HasValue<?, ?>) {
             HasValue<?, ?> hasValue = (HasValue<?, ?>) component;
             try {
                 hasValue.setReadOnly(readOnly);
@@ -1768,6 +1775,133 @@ public class GeneratedForm extends VerticalLayout implements LocaleChangeObserve
             component.getElement().removeAttribute("aria-readonly");
             component.getElement().getThemeList().remove("ytp-readonly");
         }
+    }
+
+    private void applyComponentReadOnly(Component component, boolean readOnly) {
+        if (component instanceof HasValue<?, ?> hasValue) {
+            try {
+                hasValue.setReadOnly(readOnly);
+            } catch (Exception ignored) {
+                // fall through and update aria attributes only
+            }
+            if (readOnly) {
+                component.getElement().setAttribute("aria-readonly", "true");
+            } else {
+                component.getElement().removeAttribute("aria-readonly");
+            }
+        } else if (component instanceof HasEnabled hasEnabled) {
+            hasEnabled.setEnabled(!readOnly);
+            if (readOnly) {
+                component.getElement().setAttribute("aria-disabled", "true");
+            } else {
+                component.getElement().removeAttribute("aria-disabled");
+            }
+        } else if (readOnly) {
+            component.getElement().setAttribute("aria-disabled", "true");
+        } else {
+            component.getElement().removeAttribute("aria-disabled");
+        }
+        if (readOnly) {
+            component.getElement().getThemeList().add("ytp-readonly");
+        } else {
+            component.getElement().getThemeList().remove("ytp-readonly");
+        }
+    }
+
+    private RepeatableItemMetadata resolveRepeatableItemMetadata(JsonNode itemNode) {
+        if (itemNode == null || itemNode.isNull()) {
+            return new RepeatableItemMetadata(null, null);
+        }
+        JsonNode metaSource = itemNode;
+        if (itemNode.has("meta") && itemNode.get("meta").isObject()) {
+            metaSource = itemNode.get("meta");
+        } else if (itemNode.has("_meta") && itemNode.get("_meta").isObject()) {
+            metaSource = itemNode.get("_meta");
+        }
+        JsonNode readOnlyNode = itemNode.get("readOnly");
+        if ((readOnlyNode == null || readOnlyNode.isNull()) && metaSource != itemNode) {
+            readOnlyNode = metaSource.get("readOnly");
+        }
+        Boolean readOnly = null;
+        if (readOnlyNode != null && readOnlyNode.isBoolean()) {
+            readOnly = readOnlyNode.asBoolean();
+        }
+        JsonNode readOnlyWhenNode = itemNode.get("readOnlyWhen");
+        if ((readOnlyWhenNode == null || readOnlyWhenNode.isNull()) && metaSource != itemNode) {
+            readOnlyWhenNode = metaSource.get("readOnlyWhen");
+        }
+        if (readOnlyWhenNode != null && readOnlyWhenNode.isNull()) {
+            readOnlyWhenNode = null;
+        }
+        return new RepeatableItemMetadata(readOnly, readOnlyWhenNode);
+    }
+
+    private final class RepeatableRowHandler {
+        private final HorizontalLayout row;
+        private final Button removeButton;
+        private boolean baseReadOnly;
+        private boolean containerReadOnly;
+        private String handlerKey;
+        private Consumer<Boolean> handlerConsumer;
+
+        private RepeatableRowHandler(HorizontalLayout row, Button removeButton) {
+            this.row = row;
+            this.removeButton = removeButton;
+        }
+
+        private void setHandler(String key, Consumer<Boolean> consumer) {
+            this.handlerKey = key;
+            this.handlerConsumer = consumer;
+        }
+
+        private String getHandlerKey() {
+            return handlerKey;
+        }
+
+        private Consumer<Boolean> getHandlerConsumer() {
+            return handlerConsumer;
+        }
+
+        private void applyBaseReadOnly(boolean readOnly, int minItems, int itemsCount) {
+            this.baseReadOnly = readOnly;
+            updateState(minItems, itemsCount);
+        }
+
+        private void applyContainerReadOnly(boolean readOnly, int minItems, int itemsCount) {
+            this.containerReadOnly = readOnly;
+            updateState(minItems, itemsCount);
+        }
+
+        private void refresh(int minItems, int itemsCount) {
+            updateState(minItems, itemsCount);
+        }
+
+        private boolean isEffectivelyReadOnly() {
+            return baseReadOnly || containerReadOnly;
+        }
+
+        private void updateState(int minItems, int itemsCount) {
+            boolean readOnly = isEffectivelyReadOnly();
+            row.getChildren().forEach(component -> {
+                if (component == removeButton) {
+                    return;
+                }
+                applyComponentReadOnly(component, readOnly);
+            });
+            boolean canRemove = !readOnly && itemsCount > minItems;
+            removeButton.setEnabled(canRemove);
+            removeButton.getElement().setAttribute("aria-disabled", String.valueOf(!canRemove));
+            if (readOnly) {
+                row.getElement().setAttribute("aria-readonly", "true");
+                row.addClassName("ytp-readonly");
+            } else {
+                row.getElement().removeAttribute("aria-readonly");
+                row.removeClassName("ytp-readonly");
+            }
+        }
+    }
+
+    private record RepeatableItemMetadata(Boolean readOnly, JsonNode readOnlyWhen) {
     }
 
     /**
