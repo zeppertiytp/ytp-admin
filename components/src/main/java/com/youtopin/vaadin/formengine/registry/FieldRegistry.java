@@ -362,10 +362,18 @@ public final class FieldRegistry {
                 Map<String, Double> coords = Map.of(
                         "lat", event.getLat(),
                         "lng", event.getLng());
+                currentValue = coords;
+                updateSelectionText();
                 setModelValue(coords, true);
                 dialog.close();
             });
             dialog.add(picker);
+            dialog.addOpenedChangeListener(event -> {
+                if (event.isOpened()) {
+                    picker.getUI().ifPresent(ui ->
+                            ui.beforeClientResponse(picker, ctx -> picker.invalidateSize()));
+                }
+            });
             openButton.addClickListener(event -> dialog.open());
             openButton.getElement().setAttribute("aria-haspopup", "dialog");
             openButton.getElement().getThemeList().add("primary");
