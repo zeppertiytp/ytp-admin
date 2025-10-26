@@ -101,7 +101,7 @@ public final class OutboundTourBasicsFormDefinition {
                 validations = {
                         @UiValidation(messageKey = "tourwizard.validation.title.min", expression = "value != null && value.length() >= 5"),
                         @UiValidation(messageKey = "tourwizard.validation.title.max", expression = "value != null && value.length() <= 30")
-                })
+                }, order = 0)
         public void title() {
         }
 
@@ -112,35 +112,38 @@ public final class OutboundTourBasicsFormDefinition {
                                 expression = "value == null || value.isBlank() || value.length() >= 5"),
                         @UiValidation(messageKey = "tourwizard.validation.subtitle.max",
                                 expression = "value == null || value.isBlank() || value.length() <= 100")
-                })
+                }, order = 10)
         public void subtitle() {
         }
 
         @UiField(path = "general.operatorId", component = UiField.ComponentType.SELECT,
                 labelKey = "tourwizard.basics.field.operator", requiredWhen = "true",
                 requiredMessageKey = "forms.validation.required",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.operators"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.operators"),
+                order = 20)
         public void operator() {
         }
 
         @UiField(path = "general.leaderId", component = UiField.ComponentType.SELECT,
                 labelKey = "tourwizard.basics.field.leader", requiredWhen = "true",
                 requiredMessageKey = "forms.validation.required",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.leaders"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.leaders"),
+                order = 30)
         public void leader() {
         }
 
         @UiField(path = "general.tourClassId", component = UiField.ComponentType.SELECT,
                 labelKey = "tourwizard.basics.field.class", requiredWhen = "true",
                 requiredMessageKey = "forms.validation.required",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.classes"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.classes"),
+                order = 40)
         public void tourClass() {
         }
 
         @UiField(path = "general.tagIds", component = UiField.ComponentType.TAGS,
                 labelKey = "tourwizard.basics.field.tags",
                 options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.tags"),
-                colSpan = 2)
+                colSpan = 1, order = 50)
         public void tags() {
         }
     }
@@ -151,14 +154,16 @@ public final class OutboundTourBasicsFormDefinition {
         @UiField(path = "origin.provinceId", component = UiField.ComponentType.SELECT,
                 labelKey = "tourwizard.basics.field.province", requiredWhen = "true",
                 requiredMessageKey = "forms.validation.required",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.provinces"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.provinces"),
+                order = 0)
         public void province() {
         }
 
         @UiField(path = "origin.cityId", component = UiField.ComponentType.SELECT,
                 labelKey = "tourwizard.basics.field.city", requiredWhen = "true",
                 requiredMessageKey = "forms.validation.required",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.provinceCities"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.provinceCities"),
+                order = 10)
         public void city() {
         }
     }
@@ -175,7 +180,7 @@ public final class OutboundTourBasicsFormDefinition {
                 labelKey = "tourwizard.basics.field.transit.continent", requiredWhen = "true",
                 requiredMessageKey = "forms.validation.required",
                 options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.continents"),
-                colSpan = 1)
+                colSpan = 1, order = 0)
         public void continent() {
         }
 
@@ -183,7 +188,7 @@ public final class OutboundTourBasicsFormDefinition {
                 labelKey = "tourwizard.basics.field.transit.country", requiredWhen = "true",
                 requiredMessageKey = "forms.validation.required",
                 options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.countries"),
-                colSpan = 1)
+                colSpan = 1, order = 10)
         public void country() {
         }
 
@@ -191,7 +196,7 @@ public final class OutboundTourBasicsFormDefinition {
                 labelKey = "tourwizard.basics.field.transit.city", requiredWhen = "true",
                 requiredMessageKey = "forms.validation.required",
                 options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.worldCities"),
-                colSpan = 1)
+                colSpan = 1, order = 20)
         public void city() {
         }
     }
@@ -207,26 +212,29 @@ public final class OutboundTourBasicsFormDefinition {
         @UiField(path = "destinationPlan.destinations.continentId", component = UiField.ComponentType.SELECT,
                 labelKey = "tourwizard.basics.field.destination.continent", requiredWhen = "true",
                 requiredMessageKey = "forms.validation.required",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.continents"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.continents"),
+                order = 0)
         public void continent() {
         }
 
         @UiField(path = "destinationPlan.destinations.countryId", component = UiField.ComponentType.SELECT,
                 labelKey = "tourwizard.basics.field.destination.country", requiredWhen = "true",
                 requiredMessageKey = "forms.validation.required",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.countries"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.countries"),
+                order = 10)
         public void country() {
         }
 
         @UiField(path = "destinationPlan.destinations.cityId", component = UiField.ComponentType.SELECT,
                 labelKey = "tourwizard.basics.field.destination.city", requiredWhen = "true",
                 requiredMessageKey = "forms.validation.required",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.worldCities"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.worldCities"),
+                order = 20)
         public void city() {
         }
 
         @UiField(path = "destinationPlan.destinations.overnightStay", component = UiField.ComponentType.CHECKBOX,
-                labelKey = "tourwizard.basics.field.destination.overnight", colSpan = 1)
+                labelKey = "tourwizard.basics.field.destination.overnight", colSpan = 1, order = 30)
         public void overnightStay() {
         }
     }
@@ -236,7 +244,7 @@ public final class OutboundTourBasicsFormDefinition {
 
         @UiField(path = "media.coverImages", component = UiField.ComponentType.FILE,
                 labelKey = "tourwizard.basics.field.cover", requiredWhen = "true",
-                requiredMessageKey = "forms.validation.required", colSpan = 1)
+                requiredMessageKey = "forms.validation.required", colSpan = 1, order = 0)
         public void cover() {
         }
     }
@@ -246,7 +254,7 @@ public final class OutboundTourBasicsFormDefinition {
 
         @UiField(path = "media.galleryImages", component = UiField.ComponentType.FILE,
                 labelKey = "tourwizard.basics.field.gallery", requiredWhen = "true",
-                requiredMessageKey = "forms.validation.required", colSpan = 1)
+                requiredMessageKey = "forms.validation.required", colSpan = 1, order = 0)
         public void gallery() {
         }
     }
@@ -256,7 +264,7 @@ public final class OutboundTourBasicsFormDefinition {
 
         @UiField(path = "media.videos", component = UiField.ComponentType.FILE,
                 labelKey = "tourwizard.basics.field.videos", requiredWhen = "true",
-                requiredMessageKey = "forms.validation.required", colSpan = 1)
+                requiredMessageKey = "forms.validation.required", colSpan = 1, order = 0)
         public void videos() {
         }
     }
@@ -270,7 +278,7 @@ public final class OutboundTourBasicsFormDefinition {
                 validations = {
                         @UiValidation(messageKey = "tourwizard.validation.days.min", expression = "value != null && value >= 1"),
                         @UiValidation(messageKey = "tourwizard.validation.days.max", expression = "value != null && value <= 30")
-                })
+                }, order = 0)
         public void durationDays() {
         }
 
@@ -288,7 +296,7 @@ public final class OutboundTourBasicsFormDefinition {
                         @UiCrossField(expression = "bean.details.durationDays != null && bean.details.durationNights != null && bean.details.durationNights < bean.details.durationDays - 1",
                                 messageKey = "tourwizard.validation.nights.minRelation",
                                 targetPaths = {"details.durationNights"})
-                })
+                }, order = 10)
         public void durationNights() {
         }
 
@@ -298,38 +306,42 @@ public final class OutboundTourBasicsFormDefinition {
                 validations = {
                         @UiValidation(messageKey = "tourwizard.validation.capacity.min", expression = "value != null && value >= 1"),
                         @UiValidation(messageKey = "tourwizard.validation.capacity.max", expression = "value != null && value <= 100")
-                })
+                }, order = 20)
         public void baseCapacity() {
         }
 
         @UiField(path = "details.closingDaysBeforeDeparture", component = UiField.ComponentType.INTEGER,
                 labelKey = "tourwizard.basics.field.closingDays", requiredWhen = "true",
-                requiredMessageKey = "forms.validation.required")
+                requiredMessageKey = "forms.validation.required", order = 30)
         public void closingDays() {
         }
 
         @UiField(path = "details.excludedServiceIds", component = UiField.ComponentType.MULTI_SELECT,
                 labelKey = "tourwizard.basics.field.excludedServices", requiredWhen = "true",
                 requiredMessageKey = "forms.validation.required",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.excludedServices"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.excludedServices"),
+                order = 40)
         public void excludedServices() {
         }
 
         @UiField(path = "details.requiredDocumentIds", component = UiField.ComponentType.MULTI_SELECT,
                 labelKey = "tourwizard.basics.field.requiredDocuments",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.requiredDocuments"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.requiredDocuments"),
+                order = 50)
         public void requiredDocuments() {
         }
 
         @UiField(path = "details.requiredEquipmentIds", component = UiField.ComponentType.MULTI_SELECT,
                 labelKey = "tourwizard.basics.field.requiredEquipment",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.requiredEquipment"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.requiredEquipment"),
+                order = 60)
         public void requiredEquipment() {
         }
 
         @UiField(path = "details.difficultyLevel", component = UiField.ComponentType.SELECT,
                 labelKey = "tourwizard.basics.field.difficulty",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.difficulty"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.difficulty"),
+                order = 70)
         public void difficulty() {
         }
 
@@ -338,7 +350,7 @@ public final class OutboundTourBasicsFormDefinition {
                 validations = {
                         @UiValidation(messageKey = "tourwizard.validation.slug.max",
                                 expression = "value == null || value.isBlank() || value.length() <= 40")
-                }, colSpan = 2)
+                }, colSpan = 1, order = 80)
         public void slug() {
         }
     }
@@ -352,7 +364,7 @@ public final class OutboundTourBasicsFormDefinition {
 
         @UiField(path = "itinerary.days.description", component = UiField.ComponentType.TEXT_AREA,
                 labelKey = "tourwizard.basics.field.itinerary.description", requiredWhen = "true",
-                requiredMessageKey = "forms.validation.required", colSpan = 1)
+                requiredMessageKey = "forms.validation.required", colSpan = 1, order = 0)
         public void description() {
         }
 
@@ -363,7 +375,7 @@ public final class OutboundTourBasicsFormDefinition {
                         entries = {
                                 "1|tourwizard.basics.option.overnight.stay",
                                 "2|tourwizard.basics.option.overnight.transport"
-                        }))
+                        }), order = 10)
         public void overnightType() {
         }
     }
@@ -375,7 +387,7 @@ public final class OutboundTourBasicsFormDefinition {
                 labelKey = "tourwizard.basics.field.cancellation", requiredWhen = "true",
                 requiredMessageKey = "forms.validation.required",
                 validations = {@UiValidation(messageKey = "tourwizard.validation.text.min",
-                        expression = "value != null && value.length() >= 10")})
+                        expression = "value != null && value.length() >= 10")}, order = 0)
         public void cancellation() {
         }
 
@@ -383,14 +395,14 @@ public final class OutboundTourBasicsFormDefinition {
                 labelKey = "tourwizard.basics.field.description", requiredWhen = "true",
                 requiredMessageKey = "forms.validation.required",
                 validations = {@UiValidation(messageKey = "tourwizard.validation.text.min",
-                        expression = "value != null && value.length() >= 10")})
+                        expression = "value != null && value.length() >= 10")}, order = 10)
         public void description() {
         }
 
         @UiField(path = "notes.terms", component = UiField.ComponentType.TEXT_AREA,
                 labelKey = "tourwizard.basics.field.terms",
                 validations = {@UiValidation(messageKey = "tourwizard.validation.terms.min",
-                        expression = "value == null || value.isBlank() || value.length() >= 10")})
+                        expression = "value == null || value.isBlank() || value.length() >= 10")}, order = 20)
         public void terms() {
         }
     }

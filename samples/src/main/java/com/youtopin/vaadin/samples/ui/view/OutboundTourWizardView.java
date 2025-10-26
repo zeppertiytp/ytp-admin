@@ -36,6 +36,7 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.data.provider.CallbackDataProvider;
 import com.vaadin.flow.data.provider.DataProvider;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
@@ -405,10 +406,14 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
     }
 
     private void configureItineraryGroup(RenderedForm<OutboundTourBasicsFormData> form) {
-        Integer days = wizardState.getBasics().getDetails().getDurationDays();
-        if (days != null && days > 0) {
-            form.setRepeatableEntryCount("tour-itinerary-group", days);
-        }
+        int days = Optional.ofNullable(wizardState.getBasics().getDetails().getDurationDays()).orElse(0);
+        form.setRepeatableEntryCount("tour-itinerary-group", Math.max(days, 0));
+        findIntegerField(form, "details.durationDays").ifPresent(field ->
+                field.addValueChangeListener(event -> {
+                    Integer value = event.getValue();
+                    int desired = value == null ? 0 : Math.max(value, 0);
+                    form.setRepeatableEntryCount("tour-itinerary-group", desired);
+                }));
     }
 
     private void configureAccommodationForm(RenderedForm<OutboundTourAccommodationFormData> form) {
@@ -579,6 +584,16 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
                 .filter(entry -> entry.getKey().getPath().equals(path))
                 .map(Map.Entry::getValue)
                 .map(field -> (MultiSelectComboBox<OptionItem>) field.getValueComponent())
+                .findFirst();
+    }
+
+    private Optional<IntegerField> findIntegerField(RenderedForm<?> form, String path) {
+        return form.getFields().entrySet().stream()
+                .filter(entry -> entry.getKey().getPath().equals(path))
+                .map(Map.Entry::getValue)
+                .map(FieldInstance::getValueComponent)
+                .filter(component -> component instanceof IntegerField)
+                .map(component -> (IntegerField) component)
                 .findFirst();
     }
 

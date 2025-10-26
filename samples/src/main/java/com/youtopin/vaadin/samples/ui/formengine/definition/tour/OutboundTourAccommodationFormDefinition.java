@@ -55,27 +55,30 @@ public final class OutboundTourAccommodationFormDefinition {
     public static class AccommodationsGroup {
 
         @UiField(path = "accommodations.destinationCityName", component = UiField.ComponentType.TEXT,
-                labelKey = "tourwizard.accommodation.field.destinationCity", readOnlyWhen = "true", colSpan = 3)
+                labelKey = "tourwizard.accommodation.field.destinationCity", readOnlyWhen = "true", colSpan = 3,
+                order = 0)
         public void destinationCityName() {
         }
 
         @UiField(path = "accommodations.accommodationTypeId", component = UiField.ComponentType.SELECT,
                 labelKey = "tourwizard.accommodation.field.type", requiredWhen = "true",
                 requiredMessageKey = "forms.validation.required",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.accommodationTypes"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.accommodationTypes"),
+                order = 10)
         public void type() {
         }
 
         @UiField(path = "accommodations.defaultAccommodationId", component = UiField.ComponentType.SELECT,
                 labelKey = "tourwizard.accommodation.field.defaultHotel",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.defaultAccommodations"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.defaultAccommodations"),
+                order = 20)
         public void defaultAccommodation() {
         }
 
         @UiField(path = "accommodations.accommodationName", component = UiField.ComponentType.TEXT,
                 labelKey = "tourwizard.accommodation.field.name",
                 validations = {@UiValidation(messageKey = "tourwizard.validation.accommodation.name",
-                        expression = "value == null || value.isBlank() || value.length() >= 3")})
+                        expression = "value == null || value.isBlank() || value.length() >= 3")}, order = 30)
         public void accommodationName() {
         }
 
@@ -83,31 +86,34 @@ public final class OutboundTourAccommodationFormDefinition {
                 labelKey = "tourwizard.accommodation.field.nights", requiredWhen = "true",
                 requiredMessageKey = "forms.validation.required",
                 validations = {@UiValidation(messageKey = "tourwizard.validation.accommodation.nights",
-                        expression = "value != null && value >= 1")})
+                        expression = "value != null && value >= 1")}, order = 40)
         public void nights() {
         }
 
         @UiField(path = "accommodations.qualityId", component = UiField.ComponentType.SELECT,
                 labelKey = "tourwizard.accommodation.field.quality",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.hotelQualities"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.hotelQualities"),
+                order = 50)
         public void quality() {
         }
 
         @UiField(path = "accommodations.cateringServiceId", component = UiField.ComponentType.SELECT,
                 labelKey = "tourwizard.accommodation.field.catering",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.cateringServices"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.cateringServices"),
+                order = 60)
         public void catering() {
         }
 
         @UiField(path = "accommodations.amenityServiceId", component = UiField.ComponentType.SELECT,
                 labelKey = "tourwizard.accommodation.field.amenities",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.amenityServices"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.amenityServices"),
+                order = 70)
         public void amenities() {
         }
 
         @UiField(path = "accommodations.gallery", component = UiField.ComponentType.FILE,
                 labelKey = "tourwizard.accommodation.field.images", requiredWhen = "true",
-                requiredMessageKey = "forms.validation.required", colSpan = 3)
+                requiredMessageKey = "forms.validation.required", colSpan = 3, order = 80)
         public void gallery() {
         }
     }
@@ -121,12 +127,13 @@ public final class OutboundTourAccommodationFormDefinition {
         @UiField(path = "rooms.roomTypeId", component = UiField.ComponentType.SELECT,
                 labelKey = "tourwizard.accommodation.field.roomType", requiredWhen = "true",
                 requiredMessageKey = "forms.validation.required",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.roomTypes"))
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "tour.roomTypes"),
+                order = 0)
         public void roomType() {
         }
 
         @UiField(path = "rooms.description", component = UiField.ComponentType.TEXT_AREA,
-                labelKey = "tourwizard.accommodation.field.roomNotes")
+                labelKey = "tourwizard.accommodation.field.roomNotes", order = 10)
         public void roomNotes() {
         }
     }

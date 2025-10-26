@@ -102,7 +102,11 @@ public final class BinderOrchestrator<T> {
                     : definition.getRequiredMessageKey();
             messages.add(key);
         }
+        boolean optionalAndEmpty = definition.getRequiredWhen().isBlank() && isEmpty(value);
         for (ValidationDefinition validation : definition.getValidations()) {
+            if (optionalAndEmpty) {
+                continue;
+            }
             if (!validation.getExpression().isBlank()) {
                 SerializablePredicate<Object> predicate = candidate -> evaluateExpression(validation.getExpression(), candidate);
                 if (!predicate.test(value)) {
