@@ -319,6 +319,7 @@ public class WizardFormFlowView extends AppPageLayout implements LocaleChangeObs
         try {
             int resumeIndex = computeResumeIndex();
             wizard.setSteps(buildWizardSteps(resumeIndex));
+            wizard.setCompletedSteps(wizardState.getCompletedSteps());
             String targetStep = desiredCurrentStep;
             if (targetStep == null || !stepOrder.contains(targetStep)) {
                 targetStep = stepOrder.get(Math.min(resumeIndex, stepOrder.size() - 1));
