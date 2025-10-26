@@ -8,6 +8,8 @@
 * **Samples:** Seeded the profile locking demo with immutable administrator data and applied a dynamic override so forms render
   with read-only content immediately while still allowing other sections to be edited.
 * **Tests:** Extended the form engine read-only suite to cover the programmatic override flow and state refresh behaviour.
+* **Docs:** Expanded `docs/form-engine-reference.md` with `readOnlyWhen` guidance, mixed-state repeatable examples, and a
+  runtime override walkthrough that links back to the profile locking sample.
 
 ## v4.6.15
 ### Read-only metadata and locking sample
