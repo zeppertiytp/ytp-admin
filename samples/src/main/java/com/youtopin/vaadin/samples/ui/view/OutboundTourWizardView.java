@@ -51,6 +51,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * Sample wizard demonstrating a multi-step product creation flow using the form engine.
@@ -92,6 +93,7 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
     private final H1 pageTitle = new H1();
     private final Paragraph productBadge = new Paragraph();
     private final Button resetButton = new Button();
+    private final Div wizardContainer = new Div();
     private final Div formHost = new Div();
 
     private RenderedForm<OutboundTourBasicsFormData> basicsForm;
@@ -126,7 +128,11 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
         setPadding(false);
         setSpacing(false);
         wizard.setWidthFull();
-        wizard.addClassName("mb-lg");
+        wizard.getElement().getStyle().set("--horizontal-wizard-circle-size", "56px");
+        wizard.getElement().getStyle().set("--horizontal-wizard-connector-color", "var(--color-primary-500)");
+        wizardContainer.addClassNames("app-card", "stack-lg", "mb-lg");
+        wizardContainer.setWidthFull();
+        wizardContainer.add(wizard);
 
         pageTitle.addClassName("page-title");
         productBadge.addClassNames("text-secondary", "font-monospace");
@@ -142,8 +148,14 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
 
         formHost.setWidthFull();
         formHost.addClassName("stack-lg");
+        formHost.getStyle().set("min-height", "var(--lumo-size-xl, 320px)");
 
-        add(header, wizard, formHost);
+        Div formCard = new Div(formHost);
+        formCard.addClassNames("app-card", "stack-lg");
+        formCard.setWidthFull();
+
+        add(header, wizardContainer, formCard);
+        setFlexGrow(1, formCard);
     }
 
     private void configureWizard() {
@@ -603,8 +615,18 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
 
     private CallbackDataProvider<OptionItem, String> optionProvider(Function<String, List<OptionItem>> search) {
         return DataProvider.fromFilteringCallbacks(query -> {
-                    List<OptionItem> items = search.apply(query.getFilter().orElse(""));
-                    return items.stream();
+                    String filter = query.getFilter().orElse("");
+                    List<OptionItem> items = search.apply(filter);
+                    int offset = Math.max(query.getOffset(), 0);
+                    int limit = query.getLimit();
+                    if (offset >= items.size()) {
+                        return Stream.empty();
+                    }
+                    if (limit <= 0) {
+                        return items.stream().skip(offset);
+                    }
+                    int end = Math.min(items.size(), offset + limit);
+                    return items.subList(offset, end).stream();
                 }, query -> search.apply(query.getFilter().orElse("")).size());
     }
 }
