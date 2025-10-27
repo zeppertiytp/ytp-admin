@@ -36,7 +36,6 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.data.binder.ValidationResult;
 import com.vaadin.flow.data.provider.CallbackDataProvider;
 import com.vaadin.flow.data.provider.DataProvider;
@@ -416,12 +415,15 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
     }
 
     private void configureItineraryGroup(RenderedForm<OutboundTourBasicsFormData> form) {
-        int days = Optional.ofNullable(wizardState.getBasics().getDetails().getDurationDays()).orElse(0);
-        form.setRepeatableEntryCount("tour-itinerary-group", Math.max(days, 0));
-        findIntegerField(form, "details.durationDays").ifPresent(field ->
+        Integer storedDays = wizardState.getBasics().getDetails().getDurationDays();
+        int initial = storedDays == null ? 0 : Math.max(storedDays, 0);
+        wizardState.getBasics().getItinerary().ensureSize(storedDays);
+        form.setRepeatableEntryCount("tour-itinerary-group", initial);
+        findIntegerValueField(form, "details.durationDays").ifPresent(field ->
                 field.addValueChangeListener(event -> {
                     Integer value = event.getValue();
                     int desired = value == null ? 0 : Math.max(value, 0);
+                    wizardState.getBasics().getItinerary().ensureSize(value);
                     form.setRepeatableEntryCount("tour-itinerary-group", desired);
                 }));
     }
@@ -597,14 +599,22 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
                 .findFirst();
     }
 
-    private Optional<IntegerField> findIntegerField(RenderedForm<?> form, String path) {
-        return form.getFields().entrySet().stream()
-                .filter(entry -> entry.getKey().getPath().equals(path))
-                .map(Map.Entry::getValue)
-                .map(FieldInstance::getValueComponent)
-                .filter(component -> component instanceof IntegerField)
-                .map(component -> (IntegerField) component)
-                .findFirst();
+    private Optional<HasValue<?, Integer>> findIntegerValueField(RenderedForm<?> form, String path) {
+        for (Map.Entry<FieldDefinition, FieldInstance> entry : form.getFields().entrySet()) {
+            if (!entry.getKey().getPath().equals(path)) {
+                continue;
+            }
+            Object component = entry.getValue().getValueComponent();
+            if (component instanceof HasValue<?, ?> hasValue) {
+                Object value = hasValue.getValue();
+                if (value == null || value instanceof Integer) {
+                    @SuppressWarnings("unchecked")
+                    HasValue<?, Integer> integerField = (HasValue<?, Integer>) hasValue;
+                    return Optional.of(integerField);
+                }
+            }
+        }
+        return Optional.empty();
     }
 
     @SuppressWarnings("unchecked")
