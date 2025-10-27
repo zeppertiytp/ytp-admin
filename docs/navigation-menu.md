@@ -32,7 +32,10 @@ with optional children.
 Whitespace in `group`, `labelKey`, `icon`, and `navigationTarget` is trimmed at
 load time. Icon names are converted to lower-case and normalised to hyphenated
 `kebab-case` so `CLIPBOARD_TEXT`, `clipboard-text`, and `clipboard text` all
-resolve to the same Iconoir symbol identifier.
+resolve to the same Iconoir symbol identifier. The bundled sprite mirrors the
+complete [Iconoir catalogue](https://iconoir.com/), including solid variants
+under the `*-solid` suffix, so any gallery name can be used directly in the JSON
+configuration.
 
 ## Scope-based filtering
 
@@ -59,9 +62,11 @@ Visibility rules propagate down the tree:
    `labelKey` values.
 3. Provide a valid Iconoir symbol identifier (see the
    [Iconoir gallery](https://iconoir.com/)). Use the kebab-cased name from the
-   regular set (e.g. `profile-circle` or `magic-wand`). Legacy uppercase or
+   regular set (e.g. `profile-circle` or `magic-wand`). Solid icons follow the
+   same slug with a `-solid` suffix (e.g. `calendar-solid`). Legacy uppercase or
    underscore-separated values continue to work but are converted to the
-   Iconoir-friendly format automatically.
+   Iconoir-friendly format automatically. The admin bundle vendors the upstream
+   sprite so every gallery icon is available without additional setup.
 4. Define `requiredScopes` only when the route should be restricted. Keep scope
    names consistent with the issuing identity provider. If multiple scopes are
    required, set `requiredScopesLogic` to `AND`; use `OR` for alternative scope
@@ -73,5 +78,6 @@ Visibility rules propagate down the tree:
 
 `JsonNavigationMenuService` validates that every entry has a non-empty `group`
 and `labelKey`. The application fails fast during startup when the JSON file is
-malformed, an icon name cannot be resolved, or scope logic contains an unknown
-value. This keeps misconfigurations from surfacing as runtime UI issues.
+malformed or scope logic contains an unknown value. This keeps
+misconfigurations from surfacing as runtime UI issues while allowing any
+Iconoir icon name published upstream.
