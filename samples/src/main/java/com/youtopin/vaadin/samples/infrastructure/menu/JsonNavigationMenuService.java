@@ -5,7 +5,6 @@ import com.youtopin.vaadin.samples.application.security.UserScopeService;
 import com.youtopin.vaadin.navigation.MenuItem;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.vaadin.flow.component.icon.VaadinIcon;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -79,28 +78,17 @@ public class JsonNavigationMenuService implements NavigationMenuService {
             return Optional.empty();
         }
 
-        VaadinIcon icon = definition.iconName()
-                .map(this::resolveIcon)
-                .orElse(null);
+        String iconName = definition.iconName().orElse(null);
 
         String group = definition.group().trim();
         String labelKey = definition.labelKey().trim();
         String navigationTarget = definition.navigationTargetOptional().orElse(null);
 
         MenuItem menuItem = children.isEmpty()
-                ? new MenuItem(group, labelKey, icon, navigationTarget)
-                : new MenuItem(group, labelKey, icon, navigationTarget, children);
-
+                ? new MenuItem(group, labelKey, iconName, navigationTarget)
+                : new MenuItem(group, labelKey, iconName, navigationTarget, children);
+    
         return Optional.of(menuItem);
-    }
-
-    private VaadinIcon resolveIcon(String iconName) {
-        String normalized = iconName.trim().replace('-', '_').toUpperCase(Locale.ROOT);
-        try {
-            return VaadinIcon.valueOf(normalized);
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalStateException("Unknown Vaadin icon name '" + iconName + "' in navigation menu configuration", ex);
-        }
     }
 
     private static List<MenuItemDefinition> loadDefinitions(ObjectMapper objectMapper, Resource resource) {
@@ -174,7 +162,10 @@ public class JsonNavigationMenuService implements NavigationMenuService {
         Optional<String> iconName() {
             return Optional.ofNullable(icon)
                     .map(String::trim)
-                    .filter(name -> !name.isEmpty());
+                    .filter(name -> !name.isEmpty())
+                    .map(name -> name.replace(' ', '-'))
+                    .map(name -> name.replace('_', '-'))
+                    .map(name -> name.toLowerCase(Locale.ROOT));
         }
 
         Optional<String> navigationTargetOptional() {

@@ -3,7 +3,6 @@ package com.youtopin.vaadin.samples.infrastructure.menu;
 import com.youtopin.vaadin.samples.application.security.UserScopeService;
 import com.youtopin.vaadin.navigation.MenuItem;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.vaadin.flow.component.icon.VaadinIcon;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -97,7 +96,7 @@ class JsonNavigationMenuServiceTest {
                     {
                       \"group\": \" general \",
                       \"labelKey\": \" menu.trimmed \",
-                      \"icon\": \"palette\",
+                      \"icon\": \"CLIPBOARD_TEXT\",
                       \"navigationTarget\": \"  design-system  \"
                     }
                   ]
@@ -110,7 +109,7 @@ class JsonNavigationMenuServiceTest {
 
         assertThat(item.getGroup()).isEqualTo("general");
         assertThat(item.getLabelKey()).isEqualTo("menu.trimmed");
-        assertThat(item.getIcon()).isEqualTo(VaadinIcon.PALETTE);
+        assertThat(item.getIconName()).contains("clipboard-text");
         assertThat(item.getNavigationTarget()).contains("design-system");
     }
 

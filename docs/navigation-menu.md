@@ -23,15 +23,16 @@ with optional children.
 | --- | --- | --- | --- |
 | `group` | string | ✓ | Translation key suffix (e.g. `general`) used to group items under `menu.<group>` headings. |
 | `labelKey` | string | ✓ | Full translation key for the drawer label (e.g. `menu.persons`). |
-| `icon` | string | – | Name of a Vaadin icon (case insensitive, hyphen or underscore). When omitted the drawer row renders without an icon. |
+| `icon` | string | – | Name of an Iconoir symbol (case insensitive). When omitted the drawer row renders without an icon. |
 | `navigationTarget` | string | – | Vaadin route identifier. Trailing/leading whitespace is trimmed; empty values mean the item does not navigate. |
 | `children` | array | – | Nested `MenuItemDefinition` entries. When present, the parent behaves as an expandable section. |
 | `requiredScopes` | array | – | OAuth/OIDC scope names that guard visibility of the item (and its children). |
 | `requiredScopesLogic` | string (`AND`/`OR`) | – | Determines whether *all* (`AND`, default) or *any* (`OR`) of the listed scopes are needed. |
 
 Whitespace in `group`, `labelKey`, `icon`, and `navigationTarget` is trimmed at
-load time. Icons are normalised to upper-case underscores before being resolved
-with `VaadinIcon.valueOf`.
+load time. Icon names are converted to lower-case and normalised to hyphenated
+`kebab-case` so `CLIPBOARD_TEXT`, `clipboard-text`, and `clipboard text` all
+resolve to the same Iconoir symbol identifier.
 
 ## Scope-based filtering
 
@@ -56,10 +57,11 @@ Visibility rules propagate down the tree:
 2. Introduce matching translations in `messages.properties` and
    `messages_fa.properties` for both `menu.<group>` (section header) and the
    `labelKey` values.
-3. Provide a valid Vaadin icon identifier (see the
-   [Vaadin Icon Gallery](https://vaadin.com/docs/latest/components/icon#available-icons)).
-   Use uppercase names (e.g. `CLIPBOARD_TEXT`) or lowercase hyphenated forms
-   (`clipboard-text`); both formats are supported.
+3. Provide a valid Iconoir symbol identifier (see the
+   [Iconoir gallery](https://iconoir.com/)). Use the kebab-cased name from the
+   regular set (e.g. `profile-circle` or `magic-wand`). Legacy uppercase or
+   underscore-separated values continue to work but are converted to the
+   Iconoir-friendly format automatically.
 4. Define `requiredScopes` only when the route should be restricted. Keep scope
    names consistent with the issuing identity provider. If multiple scopes are
    required, set `requiredScopesLogic` to `AND`; use `OR` for alternative scope

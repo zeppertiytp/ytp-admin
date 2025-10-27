@@ -1,7 +1,5 @@
 package com.youtopin.vaadin.navigation;
 
-import com.vaadin.flow.component.icon.VaadinIcon;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -10,7 +8,7 @@ import java.util.Optional;
 /**
  * Simple data holder representing a single menu entry.  Each menu item
  * belongs to a group (for example, "general" or "other"), has a
- * translation key for its label, an optional Vaadin icon, and an
+ * translation key for its label, an optional Iconoir icon name, and an
  * optional navigation target (a Vaadin route identifier).  When no
  * navigation target is provided the item can be used to open dialogs or
  * trigger other UI actions instead of navigating.
@@ -18,7 +16,7 @@ import java.util.Optional;
 public final class MenuItem {
     private final String group;
     private final String labelKey;
-    private final VaadinIcon icon;
+    private final String iconName;
     private final Optional<String> navigationTarget;
     private final List<MenuItem> children;
 
@@ -29,11 +27,11 @@ public final class MenuItem {
      *
      * @param group    the group key used for top‑level grouping
      * @param labelKey the translation key for the item label (under the prefix {@code menu.})
-     * @param icon     optional Vaadin icon to display; may be {@code null}
+     * @param iconName optional Iconoir symbol name to display; may be {@code null}
      * @param navigationTarget optional Vaadin route to navigate to; may be {@code null} for non‑navigating items
      */
-    public MenuItem(String group, String labelKey, VaadinIcon icon, String navigationTarget) {
-        this(group, labelKey, icon, navigationTarget, Collections.emptyList());
+    public MenuItem(String group, String labelKey, String iconName, String navigationTarget) {
+        this(group, labelKey, iconName, navigationTarget, Collections.emptyList());
     }
 
     /**
@@ -44,15 +42,15 @@ public final class MenuItem {
      *
      * @param group    the group key used for top‑level grouping
      * @param labelKey the translation key for the item label (under the prefix {@code menu.})
-     * @param icon     optional Vaadin icon to display; may be {@code null}
+     * @param iconName optional Iconoir symbol name to display; may be {@code null}
      * @param navigationTarget optional Vaadin route to navigate to; ignored when children are present
      * @param children the list of child menu items; may be {@code null} or empty for no children
      */
-    public MenuItem(String group, String labelKey, VaadinIcon icon, String navigationTarget,
+    public MenuItem(String group, String labelKey, String iconName, String navigationTarget,
                     List<MenuItem> children) {
         this.group = Objects.requireNonNull(group, "group must not be null");
         this.labelKey = Objects.requireNonNull(labelKey, "labelKey must not be null");
-        this.icon = icon;
+        this.iconName = normalize(iconName);
         this.navigationTarget = Optional.ofNullable(navigationTarget);
         this.children = children != null ? List.copyOf(children) : Collections.emptyList();
     }
@@ -65,8 +63,8 @@ public final class MenuItem {
         return labelKey;
     }
 
-    public VaadinIcon getIcon() {
-        return icon;
+    public Optional<String> getIconName() {
+        return Optional.ofNullable(iconName);
     }
 
     public Optional<String> getNavigationTarget() {
@@ -96,5 +94,13 @@ public final class MenuItem {
      */
     public boolean hasChildren() {
         return !children.isEmpty();
+    }
+
+    private static String normalize(String iconName) {
+        if (iconName == null) {
+            return null;
+        }
+        String trimmed = iconName.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

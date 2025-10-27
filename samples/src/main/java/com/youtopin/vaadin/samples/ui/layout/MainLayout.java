@@ -182,7 +182,9 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
             for (MenuItem item : items) {
                 if (item.hasChildren()) {
                     // Parent item with children (use Details)
-                    Component icon = item.getIcon() != null ? new AppIcon(mapIconName(item.getIcon()), "20") : null;
+                    Component icon = item.getIconName()
+                            .map(name -> new AppIcon(name, "20"))
+                            .orElse(null);
                     Span label = new Span(getTranslation(item.getLabelKey()));
 
                     HorizontalLayout summary = createNavRow(icon, label);
@@ -202,7 +204,9 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
                     childrenLayout.addClassName("nav-children");
 
                     for (MenuItem child : item.getChildren()) {
-                        Component childIcon = child.getIcon() != null ? new AppIcon(mapIconName(child.getIcon()), "18") : null;
+                        Component childIcon = child.getIconName()
+                                .map(name -> new AppIcon(name, "18"))
+                                .orElse(null);
                         Span childLabel = new Span(getTranslation(child.getLabelKey()));
 
                         HorizontalLayout childRow = createNavRow(childIcon, childLabel);
@@ -228,7 +232,9 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
                     groupLayout.add(details);
                 } else {
                     // Leaf item row
-                    Component icon = item.getIcon() != null ? new AppIcon(mapIconName(item.getIcon()), "20") : null;
+                    Component icon = item.getIconName()
+                            .map(name -> new AppIcon(name, "20"))
+                            .orElse(null);
                     Span label = new Span(getTranslation(item.getLabelKey()));
 
                     HorizontalLayout row = createNavRow(icon, label);
@@ -308,20 +314,6 @@ public class MainLayout extends AppLayout implements LocaleChangeObserver {
 
         updateHeaderOrder();
         buildMenu();
-    }
-
-    /* ------------------- Icon mapping ------------------- */
-
-    private String mapIconName(com.vaadin.flow.component.icon.VaadinIcon v) {
-        if (v == null) return "dashboard";
-        switch (v) {
-            case DASHBOARD: return "dashboard";
-            case USERS: return "users";
-            case CLIPBOARD_TEXT: return "clipboard_text";
-            case LIST: return "list";
-            case PLUS: return "plus";
-            default: return "dashboard";
-        }
     }
 
     /* ------------------- Attach hook ------------------- */

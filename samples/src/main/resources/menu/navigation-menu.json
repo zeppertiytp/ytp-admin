@@ -3,48 +3,48 @@
     {
       "group": "general",
       "labelKey": "menu.dashboard",
-      "icon": "DASHBOARD",
+      "icon": "dashboard",
       "navigationTarget": ""
     },
     {
       "group": "general",
       "labelKey": "menu.persons",
-      "icon": "USERS",
+      "icon": "profile-circle",
       "children": [
         {
           "group": "general",
           "labelKey": "menu.persons.list",
-          "icon": "LIST",
+          "icon": "list",
           "navigationTarget": "persons"
         },
         {
           "group": "general",
           "labelKey": "menu.persons.add",
-          "icon": "PLUS"
+          "icon": "plus"
         }
       ]
     },
     {
       "group": "examples",
       "labelKey": "menu.examples",
-      "icon": "TABLE",
+      "icon": "dots-grid-3x3",
       "children": [
         {
           "group": "examples",
           "labelKey": "menu.fullgrid",
-          "icon": "LIST",
+          "icon": "list",
           "navigationTarget": "full-grid"
         },
         {
           "group": "examples",
           "labelKey": "menu.compactgrid",
-          "icon": "LIST",
+          "icon": "list",
           "navigationTarget": "compact-grid"
         },
         {
           "group": "examples",
           "labelKey": "menu.multigrids",
-          "icon": "LIST",
+          "icon": "list",
           "navigationTarget": "multi-grids"
         }
       ]
@@ -52,24 +52,24 @@
     {
       "group": "forms",
       "labelKey": "menu.forms",
-      "icon": "CLIPBOARD_TEXT",
+      "icon": "clipboard-check",
       "children": [
         {
           "group": "forms",
           "labelKey": "menu.formengine.samples",
-          "icon": "CLIPBOARD_TEXT",
+          "icon": "list",
           "navigationTarget": "forms"
         },
         {
           "group": "forms",
           "labelKey": "menu.formengine.wizard",
-          "icon": "CLIPBOARD_CHECK",
+          "icon": "magic-wand",
           "navigationTarget": "forms/wizard-flow"
         },
         {
           "group": "forms",
           "labelKey": "menu.formengine.wizardCoordinator",
-          "icon": "CLIPBOARD_CHECK",
+          "icon": "magic-wand",
           "navigationTarget": "forms/wizard-coordinator"
         }
       ]
@@ -77,48 +77,48 @@
     {
       "group": "other",
       "labelKey": "menu.designSystem",
-      "icon": "PALETTE",
+      "icon": "palette",
       "navigationTarget": "design-system"
     },
     {
       "group": "components",
       "labelKey": "menu.components",
-      "icon": "CUBES",
+      "icon": "puzzle",
       "children": [
         {
           "group": "components",
           "labelKey": "menu.components.accordion",
-          "icon": "MENU",
+          "icon": "menu",
           "navigationTarget": "components/accordion"
         },
         {
           "group": "components",
           "labelKey": "menu.components.appLayout",
-          "icon": "LAYOUT",
+          "icon": "layout-left",
           "navigationTarget": "components/app-layout"
         },
         {
           "group": "components",
           "labelKey": "menu.components.card",
-          "icon": "CREDIT_CARD",
+          "icon": "credit-card",
           "navigationTarget": "components/card"
         },
         {
           "group": "components",
           "labelKey": "menu.components.confirmDialog",
-          "icon": "QUESTION_CIRCLE",
+          "icon": "question-mark",
           "navigationTarget": "components/confirm-dialog"
         },
         {
           "group": "components",
           "labelKey": "menu.components.masterDetailLayout",
-          "icon": "GRID",
+          "icon": "grid-plus",
           "navigationTarget": "components/master-detail-layout"
         },
         {
           "group": "components",
           "labelKey": "menu.components.progressBar",
-          "icon": "TRENDING_UP",
+          "icon": "activity",
           "navigationTarget": "components/progress-bar"
         }
       ]
@@ -126,13 +126,13 @@
     {
       "group": "other",
       "labelKey": "menu.wizard",
-      "icon": "LIST",
+      "icon": "magic-wand",
       "navigationTarget": "wizard"
     },
     {
       "group": "other",
       "labelKey": "menu.placeholder",
-      "icon": "CLIPBOARD_TEXT"
+      "icon": "clipboard-check"
     }
   ]
 }

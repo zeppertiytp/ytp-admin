@@ -1,5 +1,12 @@
 # CHANGELOG
 
+# Unreleased
+### Iconoir-first navigation icons
+
+* **Navigation:** Switched navigation menu metadata to use Iconoir sprite identifiers directly, removing the Vaadin icon mapping layer and trimming JSON down to kebab-cased names.
+* **Samples:** Refreshed the bundled icon sprite with Iconoir glyphs used by the sample navigation tree and updated menu JSON to reference them directly.
+* **Docs:** Documented the Iconoir naming scheme and relaxed input handling so legacy uppercase or underscored names continue to resolve.
+
 ## v4.6.18
 ### Wizard form coordinator and persistent sample flows
 
