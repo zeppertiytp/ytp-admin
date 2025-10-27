@@ -4,20 +4,26 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 /**
- * Aligns Spring Security with the demo's session-based guard so that the custom
- * Vaadin login view is presented instead of the default Spring login form.
+ * Configures the sample to rely exclusively on Keycloak OIDC with PKCE. All Vaadin routes and backend endpoints
+ * require authentication and unauthenticated users are redirected to the Keycloak login page.
  */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfiguration {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   SessionScopeStoringAuthenticationSuccessHandler successHandler,
+                                                   OidcClientInitiatedLogoutSuccessHandler logoutSuccessHandler) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/VAADIN/**",
@@ -33,10 +39,21 @@ public class SecurityConfiguration {
                                 "/sw.js",
                                 "/offline.html"
                         ).permitAll()
-                        .anyRequest().permitAll())
-                .formLogin(form -> form.disable())
-                .httpBasic(httpBasic -> httpBasic.disable())
-                .logout(logout -> logout.disable());
+                        .anyRequest().authenticated())
+                .oauth2Login(oauth2 -> oauth2.successHandler(successHandler))
+                .logout(logout -> logout
+                        .logoutRequestMatcher(new AntPathRequestMatcher("/logout", "GET"))
+                        .logoutSuccessHandler(logoutSuccessHandler)
+                        .permitAll())
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable);
         return http.build();
+    }
+
+    @Bean
+    public OidcClientInitiatedLogoutSuccessHandler oidcLogoutSuccessHandler(ClientRegistrationRepository clientRegistrationRepository) {
+        OidcClientInitiatedLogoutSuccessHandler handler = new OidcClientInitiatedLogoutSuccessHandler(clientRegistrationRepository);
+        handler.setPostLogoutRedirectUri("{baseUrl}");
+        return handler;
     }
 }

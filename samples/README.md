@@ -8,7 +8,8 @@ as living documentation when building product features.
 ```bash
 mvn -pl samples spring-boot:run
 ```
-Visit `http://localhost:8080`. The default login is **admin / admin**.
+Visit `http://localhost:8080`. The application immediately redirects to Keycloak for authentication; configure a realm and
+client as described below before launching the sample.
 
 ## Routes & scenarios
 | Route | View class | Highlights |
@@ -30,8 +31,28 @@ Visit `http://localhost:8080`. The default login is **admin / admin**.
 | `/components/confirm-dialog` | `com.youtopin.vaadin.samples.ui.view.components.ConfirmDialogSampleView` | Confirm dialog flows with asynchronous operations. |
 | `/components/progress-bar` | `com.youtopin.vaadin.samples.ui.view.components.ProgressBarSampleView` | Progress bar styling, indeterminate state, and success/warning colours. |
 
-The login view (`/login`) uses `LoginView` to showcase a minimal authentication
-screen compatible with RTL.
+## Keycloak & PKCE setup
+
+The showcase relies exclusively on Keycloak's OpenID Connect support with PKCE. Create a **public** client (no client secret)
+for the sample UI and enable the following redirect URL:
+
+```
+http://localhost:8080/login/oauth2/code/keycloak
+```
+
+Recommended environment variables:
+
+```bash
+export KEYCLOAK_CLIENT_ID=ytp-admin-ui
+export KEYCLOAK_AUTH_URI="http://localhost:18080/realms/ytp-admin/protocol/openid-connect/auth"
+export KEYCLOAK_TOKEN_URI="http://localhost:18080/realms/ytp-admin/protocol/openid-connect/token"
+export KEYCLOAK_JWK_SET_URI="http://localhost:18080/realms/ytp-admin/protocol/openid-connect/certs"
+export KEYCLOAK_USER_INFO_URI="http://localhost:18080/realms/ytp-admin/protocol/openid-connect/userinfo"
+```
+
+Once Keycloak is running and the client is configured, start the Vaadin sample. All routes remain protected until Keycloak
+completes the login flow. User scopes from the ID token, `scope` claim, and Keycloak role assignments are cached in the Vaadin
+session so the navigation menu can react to Keycloak permissions without extra round trips.
 
 ## Directory structure
 ```

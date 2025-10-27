@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v4.6.19
+### Keycloak-only authentication and scope-aware navigation
+
+* **Samples:** Replaced the in-memory login with Keycloak OIDC using PKCE, securing every Vaadin route behind Spring Security's OAuth2 client.
+* **Samples:** Normalised Keycloak scopes and role claims into the Vaadin session so the navigation menu reflects server-side permissions without extra round-trips.
+* **Docs:** Documented the Keycloak PKCE configuration and updated the sample README with setup instructions and environment variables.
+
 ## v4.6.18
 ### Wizard form coordinator and persistent sample flows
 
