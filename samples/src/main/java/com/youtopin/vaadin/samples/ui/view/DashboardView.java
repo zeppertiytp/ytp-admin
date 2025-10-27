@@ -1,19 +1,15 @@
 package com.youtopin.vaadin.samples.ui.view;
 
-import com.youtopin.vaadin.samples.application.security.SecurityService;
 import com.youtopin.vaadin.samples.ui.layout.AppPageLayout;
 import com.youtopin.vaadin.samples.ui.layout.MainLayout;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.router.BeforeEnterEvent;
-import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
-import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * The dashboard view displayed after successful login.  It acts as the
@@ -22,16 +18,13 @@ import org.springframework.beans.factory.annotation.Autowired;
  */
 @Route(value = "", layout = MainLayout.class)
 // The page title is set programmatically in the constructor and on locale changes
-public class DashboardView extends AppPageLayout implements LocaleChangeObserver, BeforeEnterObserver {
+public class DashboardView extends AppPageLayout implements LocaleChangeObserver {
 
-    private final SecurityService securityService;
     private H1 title;
     private Span subtitle;
     private Span heroMessage;
 
-    @Autowired
-    public DashboardView(SecurityService securityService) {
-        this.securityService = securityService;
+    public DashboardView() {
         title = createPageTitle(getTranslation("dashboard.title"));
 
         subtitle = new Span(getTranslation("dashboard.subtitle"));
@@ -57,11 +50,4 @@ public class DashboardView extends AppPageLayout implements LocaleChangeObserver
         UI.getCurrent().getPage().setTitle(getTranslation("dashboard.title"));
     }
 
-    @Override
-    public void beforeEnter(BeforeEnterEvent event) {
-        // Redirect unauthenticated users to the login page
-        if (!securityService.isAuthenticated()) {
-            event.forwardTo("login");
-        }
-    }
 }

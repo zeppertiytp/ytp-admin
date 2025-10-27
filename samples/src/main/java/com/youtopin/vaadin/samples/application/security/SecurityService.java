@@ -4,89 +4,51 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.server.VaadinSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 /**
- * Simple security service that performs in‑memory authentication for
- * demonstration purposes.  In production this class should be
- * replaced or extended to delegate authentication to an external
- * provider (e.g. Keycloak) via Spring Security.
+ * Security facade exposing authentication helpers to the Vaadin UI layer. Authentication is delegated to Spring
+ * Security's Keycloak OIDC integration so there are no manual username/password checks in the application code.
  */
 @Service
 public class SecurityService {
     private static final Logger log = LoggerFactory.getLogger(SecurityService.class);
 
-    /** Session attribute name used to store the authentication flag. */
-    private static final String AUTH_SESSION_ATTR = "authenticated";
-
     /**
-     * Attempts to authenticate the user.  For this demo the only
-     * accepted credentials are {@code admin/admin}.  When
-     * authenticated the flag is stored in the Vaadin session.
+     * Returns {@code true} when the current thread is associated with an authenticated Spring Security context.
      *
-     * @param username the username provided by the user
-     * @param password the password provided by the user
-     * @return {@code true} if authentication was successful; {@code false} otherwise
-     */
-    public boolean authenticate(String username, String password) {
-        boolean authenticated = "admin".equals(username) && "admin".equals(password);
-        VaadinSession session = resolveSession();
-        if (session != null) {
-            session.setAttribute(AUTH_SESSION_ATTR, authenticated);
-        } else {
-            log.warn("Authentication attempted for user '{}' without an active Vaadin session", username);
-        }
-
-        if (authenticated) {
-            log.info("User '{}' authenticated successfully", username);
-        } else {
-            log.warn("Authentication failed for user '{}'", username);
-        }
-
-        return authenticated;
-    }
-
-    /**
-     * Checks whether the current user has been authenticated.
-     *
-     * @return {@code true} if the session holds an authenticated flag
+     * @return {@code true} if the user is authenticated with Keycloak
      */
     public boolean isAuthenticated() {
-        VaadinSession session = resolveSession();
-        if (session == null) {
-            return false;
-        }
-        Object attr = session.getAttribute(AUTH_SESSION_ATTR);
-        if (attr instanceof Boolean bool) {
-            return bool;
-        }
-        return false;
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null
+                && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken);
     }
 
     /**
-     * Logs out the current user by clearing the session and navigating
-     * back to the login view.  This method can be called from any
-     * point inside the UI.
+     * Initiates the OIDC logout flow by redirecting the browser to the Spring Security logout endpoint. Keycloak handles
+     * the session termination and redirects back to the application based on the `post_logout_redirect_uri` configured in
+     * {@link com.youtopin.vaadin.samples.infrastructure.security.SecurityConfiguration}.
      */
     public void logout() {
-        VaadinSession session = resolveSession();
-        if (session != null) {
-            session.getSession().invalidate();
-            session.close();
-            log.info("User session invalidated and closed");
-        } else {
-            log.debug("Logout requested but no Vaadin session was available");
-        }
-        // Redirect to login page
         UI current = UI.getCurrent();
         if (current != null) {
-            current.navigate("login");
+            current.getPage().setLocation("/logout");
         } else {
-            log.debug("Unable to redirect to login view because no UI is bound to the current thread");
+            log.warn("Logout requested but no UI is bound to the current thread; ensure logout is triggered from the UI thread.");
         }
     }
 
-    private VaadinSession resolveSession() {
+    /**
+     * Convenience accessor used by legacy callers to obtain the current Vaadin session.
+     *
+     * @return the active {@link VaadinSession} or {@code null} when no UI is bound to the thread
+     */
+    public VaadinSession resolveSession() {
         VaadinSession session = VaadinSession.getCurrent();
         if (session != null) {
             return session;

@@ -1,12 +1,16 @@
 package com.youtopin.vaadin.samples.application.security;
 
 import com.vaadin.flow.component.UI;
-import com.vaadin.flow.server.VaadinSession;
-import com.vaadin.flow.server.WrappedSession;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -22,65 +26,42 @@ class SecurityServiceTest {
 
     @AfterEach
     void tearDown() {
-        VaadinSession.setCurrent(null);
+        SecurityContextHolder.clearContext();
         UI.setCurrent(null);
     }
 
     @Test
-    void authenticateStoresFlagInCurrentSession() {
-        VaadinSession session = Mockito.mock(VaadinSession.class);
-        VaadinSession.setCurrent(session);
-
-        boolean authenticated = securityService.authenticate("admin", "admin");
-
-        assertTrue(authenticated);
-        Mockito.verify(session).setAttribute("authenticated", true);
-    }
-
-    @Test
-    void authenticateFallsBackToUiSessionWhenCurrentMissing() {
-        UI ui = Mockito.mock(UI.class);
-        VaadinSession session = Mockito.mock(VaadinSession.class);
-        Mockito.when(ui.getSession()).thenReturn(session);
-        UI.setCurrent(ui);
-
-        boolean authenticated = securityService.authenticate("admin", "admin");
-
-        assertTrue(authenticated);
-        Mockito.verify(session).setAttribute("authenticated", true);
-    }
-
-    @Test
-    void isAuthenticatedReadsFlagFromSession() {
-        VaadinSession session = Mockito.mock(VaadinSession.class);
-        Mockito.when(session.getAttribute("authenticated")).thenReturn(Boolean.TRUE);
-        VaadinSession.setCurrent(session);
-
-        assertTrue(securityService.isAuthenticated());
-    }
-
-    @Test
-    void isAuthenticatedReturnsFalseWhenNoSession() {
-        VaadinSession.setCurrent(null);
-        UI.setCurrent(null);
+    void isAuthenticatedReturnsFalseWhenContextEmpty() {
+        SecurityContextHolder.clearContext();
 
         assertFalse(securityService.isAuthenticated());
     }
 
     @Test
-    void logoutInvalidatesSessionAndNavigates() {
-        VaadinSession session = Mockito.mock(VaadinSession.class);
-        WrappedSession wrappedSession = Mockito.mock(WrappedSession.class);
-        Mockito.when(session.getSession()).thenReturn(wrappedSession);
-        VaadinSession.setCurrent(session);
+    void isAuthenticatedIgnoresAnonymousAuthentication() {
+        AnonymousAuthenticationToken anonymous = new AnonymousAuthenticationToken(
+                "key", "anonymousUser", List.of(new SimpleGrantedAuthority("ROLE_ANONYMOUS")));
+        SecurityContextHolder.getContext().setAuthentication(anonymous);
 
-        UI ui = Mockito.mock(UI.class);
+        assertFalse(securityService.isAuthenticated());
+    }
+
+    @Test
+    void isAuthenticatedReturnsTrueForAuthenticatedUser() {
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken("user", "credentials");
+        authentication.setAuthenticated(true);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        assertTrue(securityService.isAuthenticated());
+    }
+
+    @Test
+    void logoutRedirectsBrowserToSpringSecurityLogoutEndpoint() {
+        UI ui = Mockito.mock(UI.class, Mockito.RETURNS_DEEP_STUBS);
         UI.setCurrent(ui);
 
         securityService.logout();
 
-        Mockito.verify(wrappedSession).invalidate();
-        Mockito.verify(session).close();
-        Mockito.verify(ui).navigate("login");
+        Mockito.verify(ui.getPage()).setLocation("/logout");
     }
 }
