@@ -93,6 +93,7 @@ public final class FieldRegistry {
             field.setValueChangeMode(ValueChangeMode.EAGER);
             field.getElement().setAttribute("inputmode", "decimal");
             field.getElement().setProperty("dir", "ltr");
+            field.getElement().setAttribute("dir", "ltr");
             return wrap(field);
         });
         register(UiField.ComponentType.INTEGER, (definition, context) -> {
@@ -100,6 +101,7 @@ public final class FieldRegistry {
             field.setValueChangeMode(ValueChangeMode.EAGER);
             field.getElement().setAttribute("inputmode", "numeric");
             field.getElement().setProperty("dir", "ltr");
+            field.getElement().setAttribute("dir", "ltr");
             return wrap(field);
         });
         register(UiField.ComponentType.MONEY, (definition, context) -> {
@@ -110,6 +112,7 @@ public final class FieldRegistry {
             }
             field.setValueChangeMode(ValueChangeMode.EAGER);
             field.getElement().setProperty("dir", "ltr");
+            field.getElement().setAttribute("dir", "ltr");
             return wrap(field);
         });
         register(UiField.ComponentType.DATE, (definition, context) -> wrap(new DatePicker()));
@@ -118,6 +121,7 @@ public final class FieldRegistry {
             TimePicker picker = new TimePicker();
             picker.setStep(java.time.Duration.ofMinutes(5));
             picker.getElement().setProperty("dir", "ltr");
+            picker.getElement().setAttribute("dir", "ltr");
             return wrap(picker);
         });
         register(UiField.ComponentType.JALALI_DATE, (definition, context) -> {
@@ -159,6 +163,7 @@ public final class FieldRegistry {
             field.setPattern("[0-9()+\\- ]*");
             field.setAllowedCharPattern("[0-9()+\\- ]");
             field.getElement().setProperty("dir", "ltr");
+            field.getElement().setAttribute("dir", "ltr");
             return wrap(field);
         });
         register(UiField.ComponentType.FILE, this::createFileUpload);
@@ -193,7 +198,13 @@ public final class FieldRegistry {
         component.getElement().getStyle().set("color", "var(--lumo-body-text-color)");
         component.getElement().getStyle().set("background-color", "var(--lumo-base-color)");
         if (context.isRtl()) {
-            component.getElement().setAttribute("dir", "rtl");
+            String attrDir = component.getElement().getAttribute("dir");
+            String propDir = component.getElement().getProperty("dir");
+            boolean hasExplicitDirection = (attrDir != null && !attrDir.isBlank())
+                    || (propDir != null && !propDir.isBlank());
+            if (!hasExplicitDirection) {
+                component.getElement().setAttribute("dir", "rtl");
+            }
         }
         context.applyTheme(component);
     }

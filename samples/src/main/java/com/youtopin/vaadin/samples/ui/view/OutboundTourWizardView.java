@@ -37,6 +37,7 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.IntegerField;
+import com.vaadin.flow.data.binder.ValidationResult;
 import com.vaadin.flow.data.provider.CallbackDataProvider;
 import com.vaadin.flow.data.provider.DataProvider;
 import com.vaadin.flow.i18n.LocaleChangeEvent;
@@ -212,6 +213,15 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
         rendered.getFields().forEach((FieldDefinition definition, FieldInstance instance) ->
                 rendered.getOrchestrator().bindField(instance, definition));
         rendered.initializeWithBean(beanSupplier.get());
+        rendered.addValidationFailureListener((actionDefinition, exception) -> {
+            String message = exception.getValidationErrors().stream()
+                    .map(ValidationResult::getErrorMessage)
+                    .filter(error -> error != null && !error.isBlank())
+                    .findFirst()
+                    .orElse(getTranslation("tourwizard.validation.generic"));
+            Notification notification = Notification.show(message);
+            notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+        });
         return rendered;
     }
 
