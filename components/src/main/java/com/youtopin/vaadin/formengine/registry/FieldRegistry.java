@@ -260,12 +260,13 @@ public final class FieldRegistry {
                 query -> fetchOptions(catalog, query, context),
                 query -> sizeOptions(catalog, query, context));
         comboBox.setDataProvider(provider, filter -> filter);
+        DataProvider<OptionItem, ?> dataProvider = comboBox.getDataProvider();
         comboBox.setItemLabelGenerator(OptionItem::getLabel);
         boolean allowCreate = definition.getOptionsDefinition().isAllowCreate();
         comboBox.setAllowCustomValue(allowCreate);
         if (allowCreate) {
             comboBox.addCustomValueSetListener(event -> {
-                OptionItem created = tryCreateOption(event.getDetail(), definition, context, catalog, provider, comboBox);
+                OptionItem created = tryCreateOption(event.getDetail(), definition, context, catalog, dataProvider, comboBox);
                 if (created != null) {
                     comboBox.setValue(created);
                 }
@@ -282,12 +283,13 @@ public final class FieldRegistry {
                 query -> fetchOptions(catalog, query, context),
                 query -> sizeOptions(catalog, query, context));
         field.setDataProvider(provider, filter -> filter);
+        DataProvider<OptionItem, ?> dataProvider = field.getDataProvider();
         field.setItemLabelGenerator(OptionItem::getLabel);
         boolean allowCreate = definition.getOptionsDefinition().isAllowCreate();
         field.setAllowCustomValue(allowCreate);
         if (allowCreate) {
             field.addCustomValueSetListener(event -> {
-                OptionItem created = tryCreateOption(event.getDetail(), definition, context, catalog, provider, field);
+                OptionItem created = tryCreateOption(event.getDetail(), definition, context, catalog, dataProvider, field);
                 if (created != null) {
                     Set<OptionItem> current = field.getValue();
                     Set<OptionItem> updated = new LinkedHashSet<>(current == null ? Set.of() : current);
@@ -306,12 +308,13 @@ public final class FieldRegistry {
                 query -> fetchOptions(catalog, query, context),
                 query -> sizeOptions(catalog, query, context));
         field.setDataProvider(provider, filter -> filter);
+        DataProvider<OptionItem, ?> dataProvider = field.getDataProvider();
         field.setItemLabelGenerator(OptionItem::getLabel);
         boolean allowCreate = definition.getOptionsDefinition().isAllowCreate();
         field.setAllowCustomValue(allowCreate);
         if (allowCreate) {
             field.addCustomValueSetListener(event -> {
-                OptionItem created = tryCreateOption(event.getDetail(), definition, context, catalog, provider, field);
+                OptionItem created = tryCreateOption(event.getDetail(), definition, context, catalog, dataProvider, field);
                 if (created != null) {
                     Set<OptionItem> current = field.getValue();
                     Set<OptionItem> updated = new LinkedHashSet<>(current == null ? Set.of() : current);
@@ -327,7 +330,7 @@ public final class FieldRegistry {
                                        FieldDefinition definition,
                                        FieldFactoryContext context,
                                        OptionCatalog catalog,
-                                       CallbackDataProvider<OptionItem, String> provider,
+                                       DataProvider<OptionItem, ?> provider,
                                        HasValidation component) {
         if (!catalog.supportsCreate()) {
             setCreationError(component, "Option creation is not supported");
