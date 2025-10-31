@@ -74,6 +74,12 @@
         },
         {
           "group": "forms",
+          "labelKey": "menu.formengine.dynamicWizard",
+          "icon": "magic-wand",
+          "navigationTarget": "forms/dynamic-repeatable"
+        },
+        {
+          "group": "forms",
           "labelKey": "menu.formengine.tourWizard",
           "icon": "CLIPBOARD_TEXT",
           "navigationTarget": "forms/outbound-tour"

@@ -38,4 +38,7 @@ Practical workflows for extending the Vaadin admin platform.
    entity ID before navigating to the next step.
 3. Reference the `/forms/wizard-coordinator` sample for a complete example that issues an ID in
    the first step and reuses it later in the flow.
+4. For schema-driven repeatable groups, read
+   [`docs/how-to-dynamic-repeatable-wizard.md`](how-to-dynamic-repeatable-wizard.md) and explore the
+   `/forms/dynamic-repeatable` sample.
 
