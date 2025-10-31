@@ -414,6 +414,11 @@ metadata (e.g. colour swatches, category hints) required by the client. Reject i
 caller so hosts can provide feedback. Registrations performed via `OptionCatalogRegistry#register` reuse the same catalog
 instance for every locale, so implementations should be thread-safe when persisting new items.
 
+The `/forms` showcase includes the **Product catalog editor** sample where the
+`catalog.product-tags` provider enables inline tag creation. Submit a new tag in
+the availability section to see how the engine calls `OptionCatalog#create` and
+automatically selects the freshly persisted option.
+
 ### `@UiValidation`
 
 Defines per-field validators executed in addition to Bean Validation constraints.

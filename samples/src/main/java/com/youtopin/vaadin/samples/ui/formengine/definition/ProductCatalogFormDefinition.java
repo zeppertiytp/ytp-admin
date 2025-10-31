@@ -126,7 +126,8 @@ public final class ProductCatalogFormDefinition {
 
         @UiField(path = "availability.tags", component = UiField.ComponentType.TAGS,
                 labelKey = "forms.catalog.availability.tags",
-                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK, callbackRef = "catalog.product-tags"),
+                options = @UiOptions(enabled = true, type = UiOptions.ProviderType.CALLBACK,
+                        callbackRef = "catalog.product-tags", allowCreate = true),
                 colSpan = 2)
         public void tags() {
         }
