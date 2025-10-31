@@ -5,7 +5,7 @@ import com.youtopin.vaadin.formengine.annotation.UiField;
 import com.youtopin.vaadin.formengine.annotation.UiForm;
 import com.youtopin.vaadin.formengine.annotation.UiGroup;
 import com.youtopin.vaadin.formengine.annotation.UiSection;
-import com.youtopin.vaadin.samples.ui.formengine.model.ProjectLaunchBasicsFormData;
+import com.youtopin.vaadin.samples.application.wizard.model.ProjectLaunchBasicsFormData;
 
 /**
  * Form definition for the wizard's first step collecting project basics.

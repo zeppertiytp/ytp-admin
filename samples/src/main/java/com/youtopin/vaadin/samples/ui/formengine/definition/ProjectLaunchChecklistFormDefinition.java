@@ -6,7 +6,7 @@ import com.youtopin.vaadin.formengine.annotation.UiForm;
 import com.youtopin.vaadin.formengine.annotation.UiGroup;
 import com.youtopin.vaadin.formengine.annotation.UiOptions;
 import com.youtopin.vaadin.formengine.annotation.UiSection;
-import com.youtopin.vaadin.samples.ui.formengine.model.ProjectLaunchChecklistFormData;
+import com.youtopin.vaadin.samples.application.wizard.model.ProjectLaunchChecklistFormData;
 
 /**
  * Form definition for the launch readiness checklist step.

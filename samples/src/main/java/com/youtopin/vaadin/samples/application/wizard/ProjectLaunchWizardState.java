@@ -1,8 +1,8 @@
 package com.youtopin.vaadin.samples.application.wizard;
 
-import com.youtopin.vaadin.samples.ui.formengine.model.ProjectLaunchBasicsFormData;
-import com.youtopin.vaadin.samples.ui.formengine.model.ProjectLaunchChecklistFormData;
-import com.youtopin.vaadin.samples.ui.formengine.model.ProjectLaunchTeamFormData;
+import com.youtopin.vaadin.samples.application.wizard.model.ProjectLaunchBasicsFormData;
+import com.youtopin.vaadin.samples.application.wizard.model.ProjectLaunchChecklistFormData;
+import com.youtopin.vaadin.samples.application.wizard.model.ProjectLaunchTeamFormData;
 
 import java.io.Serial;
 import java.io.Serializable;
