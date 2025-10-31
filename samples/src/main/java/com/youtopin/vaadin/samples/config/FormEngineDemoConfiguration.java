@@ -1,11 +1,14 @@
 package com.youtopin.vaadin.samples.config;
 
+import java.text.Normalizer;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -78,7 +81,7 @@ public class FormEngineDemoConfiguration {
                 "mobile", "forms.options.channels.mobile",
                 "retail", "forms.options.channels.retail"
         )));
-        registry.register("catalog.product-tags", messageCatalog(Map.of(
+        registry.register("catalog.product-tags", creatableCatalog(Map.of(
                 "premium", "forms.options.productTags.premium",
                 "bundle", "forms.options.productTags.bundle",
                 "seasonal", "forms.options.productTags.seasonal",
@@ -151,7 +154,11 @@ public class FormEngineDemoConfiguration {
     }
 
     private OptionCatalog messageCatalog(Map<String, String> entries) {
-        return new MessageOptionCatalog(translationProvider, new LinkedHashMap<>(entries));
+        return new MessageOptionCatalog(translationProvider, new LinkedHashMap<>(entries), false);
+    }
+
+    private OptionCatalog creatableCatalog(Map<String, String> entries) {
+        return new MessageOptionCatalog(translationProvider, new LinkedHashMap<>(entries), true);
     }
 
     private OptionCatalog searchCatalog(Function<String, List<OptionItem>> searchFunction) {
@@ -192,17 +199,30 @@ public class FormEngineDemoConfiguration {
     private static final class MessageOptionCatalog implements OptionCatalog {
         private final TranslationProvider translationProvider;
         private final LinkedHashMap<String, String> entries;
+        private final boolean creationEnabled;
+        private final Map<String, String> createdEntries;
+        private final AtomicInteger sequence;
 
-        private MessageOptionCatalog(TranslationProvider translationProvider, LinkedHashMap<String, String> entries) {
+        private MessageOptionCatalog(TranslationProvider translationProvider,
+                                    LinkedHashMap<String, String> entries,
+                                    boolean creationEnabled) {
             this.translationProvider = translationProvider;
             this.entries = entries;
+            this.creationEnabled = creationEnabled;
+            if (creationEnabled) {
+                this.createdEntries = Collections.synchronizedMap(new LinkedHashMap<>());
+                this.sequence = new AtomicInteger(1);
+            } else {
+                this.createdEntries = Map.of();
+                this.sequence = null;
+            }
         }
 
         @Override
         public OptionPage fetch(SearchQuery query) {
-            List<OptionItem> allItems = entries.entrySet().stream()
-                    .map(entry -> toOptionItem(entry.getKey(), entry.getValue(), query.getLocale()))
-                    .filter(item -> matchesFilter(item, query))
+            Locale locale = effectiveLocale(query.getLocale());
+            List<OptionItem> allItems = allItems(locale).stream()
+                    .filter(item -> matchesFilter(item, query, locale))
                     .toList();
             int fromIndex = Math.min(query.getPage() * query.getPageSize(), allItems.size());
             int toIndex = Math.min(fromIndex + query.getPageSize(), allItems.size());
@@ -211,20 +231,44 @@ public class FormEngineDemoConfiguration {
 
         @Override
         public List<OptionItem> byIds(java.util.Collection<String> ids) {
+            if (ids == null || ids.isEmpty()) {
+                return List.of();
+            }
+            Locale locale = Locale.getDefault();
             return ids.stream()
-                    .filter(entries::containsKey)
-                    .map(id -> toOptionItem(id, entries.get(id), Locale.getDefault()))
+                    .map(id -> resolveById(id, locale))
+                    .filter(Objects::nonNull)
                     .collect(Collectors.toList());
         }
 
         @Override
         public boolean supportsCreate() {
-            return false;
+            return creationEnabled;
         }
 
         @Override
         public OptionItem create(String value, Locale locale, Map<String, Object> context) {
-            return OptionCatalog.super.create(value, locale, context);
+            if (!creationEnabled) {
+                return OptionCatalog.super.create(value, locale, context);
+            }
+            Locale effectiveLocale = effectiveLocale(locale);
+            String label = value == null ? "" : value.trim();
+            if (label.isEmpty()) {
+                String message = translationProvider.getTranslation("forms.catalog.tags.create.invalid", effectiveLocale);
+                throw new IllegalArgumentException(message);
+            }
+            String slug = slugify(label, effectiveLocale);
+            synchronized (createdEntries) {
+                if (!slug.isBlank()) {
+                    OptionItem existing = resolveById(slug, effectiveLocale);
+                    if (existing != null) {
+                        return existing;
+                    }
+                }
+                String identifier = nextAvailableIdentifier(slug);
+                createdEntries.put(identifier, label);
+                return new OptionItem(identifier, label);
+            }
         }
 
         private OptionItem toOptionItem(String id, String messageKey, Locale locale) {
@@ -232,14 +276,67 @@ public class FormEngineDemoConfiguration {
             return new OptionItem(id, label);
         }
 
-        private boolean matchesFilter(OptionItem item, SearchQuery query) {
+        private boolean matchesFilter(OptionItem item, SearchQuery query, Locale locale) {
             String filter = query.getSearch();
             if (filter == null || filter.isBlank()) {
                 return true;
             }
-            Locale locale = query.getLocale();
             String normalized = filter.toLowerCase(locale);
             return item.getLabel().toLowerCase(locale).contains(normalized);
+        }
+
+        private List<OptionItem> allItems(Locale locale) {
+            List<OptionItem> baseItems = entries.entrySet().stream()
+                    .map(entry -> toOptionItem(entry.getKey(), entry.getValue(), locale))
+                    .toList();
+            if (!creationEnabled) {
+                return baseItems;
+            }
+            List<OptionItem> dynamicItems;
+            synchronized (createdEntries) {
+                dynamicItems = createdEntries.entrySet().stream()
+                        .map(entry -> new OptionItem(entry.getKey(), entry.getValue()))
+                        .toList();
+            }
+            return java.util.stream.Stream.concat(baseItems.stream(), dynamicItems.stream())
+                    .toList();
+        }
+
+        private OptionItem resolveById(String id, Locale locale) {
+            if (id == null) {
+                return null;
+            }
+            if (entries.containsKey(id)) {
+                return toOptionItem(id, entries.get(id), locale);
+            }
+            if (!creationEnabled) {
+                return null;
+            }
+            String label;
+            synchronized (createdEntries) {
+                label = createdEntries.get(id);
+            }
+            return label == null ? null : new OptionItem(id, label);
+        }
+
+        private Locale effectiveLocale(Locale locale) {
+            return locale != null ? locale : Locale.getDefault();
+        }
+
+        private String slugify(String value, Locale locale) {
+            String normalized = Normalizer.normalize(value, Normalizer.Form.NFKC)
+                    .toLowerCase(locale);
+            String collapsed = normalized.replaceAll("[^\\p{L}\\p{Nd}]+", "-");
+            return collapsed.replaceAll("^-+", "").replaceAll("-+$", "");
+        }
+
+        private String nextAvailableIdentifier(String slug) {
+            String prefix = (slug == null || slug.isBlank()) ? "tag" : slug;
+            String candidate = (slug == null || slug.isBlank()) ? prefix + '-' + sequence.getAndIncrement() : slug;
+            while (entries.containsKey(candidate) || createdEntries.containsKey(candidate)) {
+                candidate = prefix + '-' + sequence.getAndIncrement();
+            }
+            return candidate;
         }
     }
 }
