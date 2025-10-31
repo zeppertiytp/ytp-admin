@@ -330,4 +330,8 @@ public class WizardFormFlowCoordinator<C> {
     public C getContext() {
         return context;
     }
+
+    public HorizontalWizard getWizard() {
+        return wizard;
+    }
 }
