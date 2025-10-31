@@ -50,6 +50,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -177,43 +178,57 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
 
     private void rebuildForms() {
         coordinator.clearForms();
-        basicsForm = renderForm(OutboundTourBasicsFormDefinition.class, wizardState::getBasics);
+        basicsForm = renderForm(OutboundTourWizardState.STEP_BASICS,
+                OutboundTourBasicsFormDefinition.class, wizardState::getBasics);
         configureBasicsForm(basicsForm);
         coordinator.registerStepForm(OutboundTourWizardState.STEP_BASICS, basicsForm, OutboundTourWizardState::getBasics);
 
-        accommodationForm = renderForm(OutboundTourAccommodationFormDefinition.class, wizardState::getAccommodations);
+        accommodationForm = renderForm(OutboundTourWizardState.STEP_ACCOMMODATIONS,
+                OutboundTourAccommodationFormDefinition.class, wizardState::getAccommodations);
         configureAccommodationForm(accommodationForm);
         coordinator.registerStepForm(OutboundTourWizardState.STEP_ACCOMMODATIONS, accommodationForm,
                 OutboundTourWizardState::getAccommodations);
 
-        transportForm = renderForm(OutboundTourPlaceholderFormDefinition.class, wizardState::getTransport);
+        transportForm = renderForm(OutboundTourWizardState.STEP_TRANSPORT,
+                OutboundTourPlaceholderFormDefinition.class, wizardState::getTransport);
         configurePlaceholderForm(transportForm, OutboundTourWizardState.STEP_TRANSPORT);
         coordinator.registerStepForm(OutboundTourWizardState.STEP_TRANSPORT, transportForm, OutboundTourWizardState::getTransport);
 
-        servicesForm = renderForm(OutboundTourPlaceholderFormDefinition.class, wizardState::getServices);
+        servicesForm = renderForm(OutboundTourWizardState.STEP_SERVICES,
+                OutboundTourPlaceholderFormDefinition.class, wizardState::getServices);
         configurePlaceholderForm(servicesForm, OutboundTourWizardState.STEP_SERVICES);
         coordinator.registerStepForm(OutboundTourWizardState.STEP_SERVICES, servicesForm, OutboundTourWizardState::getServices);
 
-        datesForm = renderForm(OutboundTourPlaceholderFormDefinition.class, wizardState::getDates);
+        datesForm = renderForm(OutboundTourWizardState.STEP_DATES,
+                OutboundTourPlaceholderFormDefinition.class, wizardState::getDates);
         configurePlaceholderForm(datesForm, OutboundTourWizardState.STEP_DATES);
         coordinator.registerStepForm(OutboundTourWizardState.STEP_DATES, datesForm, OutboundTourWizardState::getDates);
 
-        pricingForm = renderForm(OutboundTourPlaceholderFormDefinition.class, wizardState::getPricing);
+        pricingForm = renderForm(OutboundTourWizardState.STEP_PRICING,
+                OutboundTourPlaceholderFormDefinition.class, wizardState::getPricing);
         configurePlaceholderForm(pricingForm, OutboundTourWizardState.STEP_PRICING);
         coordinator.registerStepForm(OutboundTourWizardState.STEP_PRICING, pricingForm, OutboundTourWizardState::getPricing);
 
-        summaryForm = renderForm(OutboundTourPlaceholderFormDefinition.class, wizardState::getSummary);
+        summaryForm = renderForm(OutboundTourWizardState.STEP_SUMMARY,
+                OutboundTourPlaceholderFormDefinition.class, wizardState::getSummary);
         configurePlaceholderForm(summaryForm, OutboundTourWizardState.STEP_SUMMARY);
         coordinator.registerStepForm(OutboundTourWizardState.STEP_SUMMARY, summaryForm, OutboundTourWizardState::getSummary);
     }
 
-    private <T> RenderedForm<T> renderForm(Class<?> definitionClass, java.util.function.Supplier<T> beanSupplier) {
+    private <T> RenderedForm<T> renderForm(String stepId, Class<?> definitionClass,
+                                           java.util.function.Supplier<T> beanSupplier) {
         Locale locale = getLocale();
         RenderedForm<T> rendered = formEngine.render(definitionClass, translationProvider, locale, isRtl(locale));
         rendered.getFields().forEach((FieldDefinition definition, FieldInstance instance) ->
                 rendered.getOrchestrator().bindField(instance, definition));
         rendered.initializeWithBean(beanSupplier.get());
         rendered.addValidationFailureListener((actionDefinition, exception) -> {
+            if (actionDefinition == null) {
+                return;
+            }
+            if (!Objects.equals(stepId, wizardState.getCurrentStepId())) {
+                return;
+            }
             String message = exception.getValidationErrors().stream()
                     .map(ValidationResult::getErrorMessage)
                     .filter(error -> error != null && !error.isBlank())
