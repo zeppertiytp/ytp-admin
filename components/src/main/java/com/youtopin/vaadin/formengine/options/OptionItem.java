@@ -35,6 +35,22 @@ public final class OptionItem {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof OptionItem optionItem)) {
+            return false;
+        }
+        return id.equals(optionItem.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id.hashCode();
+    }
+
+    @Override
     public String toString() {
         return label;
     }
