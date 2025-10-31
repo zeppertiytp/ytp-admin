@@ -46,6 +46,7 @@ import com.youtopin.vaadin.formengine.options.OptionCatalogRegistry;
 import com.youtopin.vaadin.formengine.options.OptionItem;
 import com.youtopin.vaadin.formengine.options.OptionPage;
 import com.youtopin.vaadin.formengine.options.SearchQuery;
+import com.youtopin.vaadin.util.LocaleUtil;
 
 /**
  * Registry mapping component types to configurable factories.
@@ -89,19 +90,21 @@ public final class FieldRegistry {
             return wrap(area);
         });
         register(UiField.ComponentType.NUMBER, (definition, context) -> {
+            String direction = LocaleUtil.isRtl(context.getLocale()) ? "rtl" : "ltr";
             NumberField field = new NumberField();
             field.setValueChangeMode(ValueChangeMode.EAGER);
             field.getElement().setAttribute("inputmode", "decimal");
-            field.getElement().setProperty("dir", "ltr");
-            field.getElement().setAttribute("dir", "ltr");
+            field.getElement().setProperty("dir", direction);
+            field.getElement().setAttribute("dir", direction);
             return wrap(field);
         });
         register(UiField.ComponentType.INTEGER, (definition, context) -> {
+            String direction = LocaleUtil.isRtl(context.getLocale()) ? "rtl" : "ltr";
             IntegerField field = new IntegerField();
             field.setValueChangeMode(ValueChangeMode.EAGER);
             field.getElement().setAttribute("inputmode", "numeric");
-            field.getElement().setProperty("dir", "ltr");
-            field.getElement().setAttribute("dir", "ltr");
+            field.getElement().setProperty("dir", direction);
+            field.getElement().setAttribute("dir", direction);
             return wrap(field);
         });
         register(UiField.ComponentType.MONEY, (definition, context) -> {
@@ -118,10 +121,11 @@ public final class FieldRegistry {
         register(UiField.ComponentType.DATE, (definition, context) -> wrap(new DatePicker()));
         register(UiField.ComponentType.DATETIME, (definition, context) -> wrap(new DateTimePicker()));
         register(UiField.ComponentType.TIME, (definition, context) -> {
+            String direction = LocaleUtil.isRtl(context.getLocale()) ? "rtl" : "ltr";
             TimePicker picker = new TimePicker();
             picker.setStep(java.time.Duration.ofMinutes(5));
             picker.getElement().setProperty("dir", "ltr");
-            picker.getElement().setAttribute("dir", "ltr");
+            picker.getElement().setAttribute("dir", direction);
             return wrap(picker);
         });
         register(UiField.ComponentType.JALALI_DATE, (definition, context) -> {
@@ -159,11 +163,12 @@ public final class FieldRegistry {
         });
         register(UiField.ComponentType.EMAIL, (definition, context) -> wrap(new EmailField()));
         register(UiField.ComponentType.PHONE, (definition, context) -> {
+            String direction = LocaleUtil.isRtl(context.getLocale()) ? "rtl" : "ltr";
             TextField field = new TextField();
             field.setPattern("[0-9()+\\- ]*");
             field.setAllowedCharPattern("[0-9()+\\- ]");
             field.getElement().setProperty("dir", "ltr");
-            field.getElement().setAttribute("dir", "ltr");
+            field.getElement().setAttribute("dir", direction);
             return wrap(field);
         });
         register(UiField.ComponentType.FILE, this::createFileUpload);
@@ -185,6 +190,8 @@ public final class FieldRegistry {
     }
 
     private void applyCommonAttributes(FieldDefinition definition, FieldFactoryContext context, Component component) {
+        String direction = LocaleUtil.isRtl(context.getLocale()) ? "rtl" : "ltr";
+
         if (component instanceof HasLabel hasLabel) {
             hasLabel.setLabel(context.translate(definition.getLabelKey()));
         } else {
@@ -203,7 +210,7 @@ public final class FieldRegistry {
             boolean hasExplicitDirection = (attrDir != null && !attrDir.isBlank())
                     || (propDir != null && !propDir.isBlank());
             if (!hasExplicitDirection) {
-                component.getElement().setAttribute("dir", "rtl");
+                component.getElement().setAttribute("dir", direction);
             }
         }
         context.applyTheme(component);
@@ -343,7 +350,7 @@ public final class FieldRegistry {
         protected void setPresentationValue(Map<String, Object> map) {
         }
 
-                protected Component initContent() {
+        protected Component initContent() {
             return openButton;
         }
     }
@@ -462,7 +469,7 @@ public final class FieldRegistry {
             updateValue();
         }
 
-                protected Component initContent() {
+        protected Component initContent() {
             return layout;
         }
 
