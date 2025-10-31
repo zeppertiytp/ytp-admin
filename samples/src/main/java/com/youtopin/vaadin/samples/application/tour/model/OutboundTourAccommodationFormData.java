@@ -2,8 +2,13 @@ package com.youtopin.vaadin.samples.application.tour.model;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Bean representing the accommodation step of the outbound tour wizard.
@@ -39,29 +44,47 @@ public class OutboundTourAccommodationFormData implements Serializable {
         }
     }
 
-    public DestinationAccommodation ensureAccommodationForCity(String cityId, String cityName) {
-        return accommodations.stream()
-                .filter(entry -> Objects.equals(entry.getDestinationCityId(), cityId))
-                .findFirst()
-                .orElseGet(() -> {
-                    DestinationAccommodation created = new DestinationAccommodation();
-                    created.setDestinationCityId(cityId);
-                    created.setDestinationCityName(cityName);
-                    accommodations.add(created);
-                    return created;
-                });
-    }
+    public void synchronizeLocations(List<String> orderedCityIds, Function<String, String> cityNameResolver) {
+        Objects.requireNonNull(orderedCityIds, "orderedCityIds");
+        Objects.requireNonNull(cityNameResolver, "cityNameResolver");
 
-    public void removeAccommodationForUnknownCities(List<String> validCityIds) {
-        accommodations.removeIf(entry -> entry == null
-                || entry.getDestinationCityId().isBlank()
-                || !validCityIds.contains(entry.getDestinationCityId()));
+        LinkedHashSet<String> uniqueOrdered = orderedCityIds.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(id -> !id.isBlank())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        Map<String, DestinationAccommodation> existingById = accommodations.stream()
+                .filter(Objects::nonNull)
+                .filter(entry -> entry.getDestinationCityId() != null && !entry.getDestinationCityId().isBlank())
+                .collect(Collectors.toMap(DestinationAccommodation::getDestinationCityId, Function.identity(),
+                        (left, right) -> left, LinkedHashMap::new));
+
+        List<DestinationAccommodation> reordered = new ArrayList<>();
+        for (String cityId : uniqueOrdered) {
+            DestinationAccommodation entry = existingById.get(cityId);
+            if (entry == null) {
+                entry = new DestinationAccommodation();
+            }
+            entry.setDestinationCityId(cityId);
+            String resolvedName = cityNameResolver.apply(cityId);
+            entry.setDestinationCityName(resolvedName == null ? "" : resolvedName);
+            if (entry.getAccommodationTypeId().isBlank()) {
+                entry.setAccommodationTypeId(DestinationAccommodation.DEFAULT_TYPE);
+            }
+            reordered.add(entry);
+        }
+
+        accommodations.clear();
+        accommodations.addAll(reordered);
     }
 
     public static final class DestinationAccommodation implements Serializable {
         private String destinationCityId = "";
         private String destinationCityName = "";
-        private String accommodationTypeId = "";
+        static final String DEFAULT_TYPE = "hotel";
+
+        private String accommodationTypeId = DEFAULT_TYPE;
         private String defaultAccommodationId = "";
         private String accommodationName = "";
         private Integer nights;
@@ -91,7 +114,8 @@ public class OutboundTourAccommodationFormData implements Serializable {
         }
 
         public void setAccommodationTypeId(String accommodationTypeId) {
-            this.accommodationTypeId = normalize(accommodationTypeId);
+            String normalized = normalize(accommodationTypeId);
+            this.accommodationTypeId = normalized.isBlank() ? DEFAULT_TYPE : normalized;
         }
 
         public String getDefaultAccommodationId() {

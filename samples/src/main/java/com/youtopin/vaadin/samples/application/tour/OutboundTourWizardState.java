@@ -111,13 +111,25 @@ public class OutboundTourWizardState implements Serializable {
         basics.ensureItinerarySize();
     }
 
-    public void syncAccommodationDestinations(List<String> destinationCityIds, java.util.function.Function<String, String> cityNameResolver) {
+    public void syncAccommodationLocations(String originCityId,
+                                           List<String> destinationCityIds,
+                                           java.util.function.Function<String, String> cityNameResolver) {
         Objects.requireNonNull(destinationCityIds, "destinationCityIds");
         Objects.requireNonNull(cityNameResolver, "cityNameResolver");
-        accommodations.removeAccommodationForUnknownCities(destinationCityIds);
-        destinationCityIds.forEach(cityId -> {
-            String name = cityNameResolver.apply(cityId);
-            accommodations.ensureAccommodationForCity(cityId, name);
+
+        List<String> orderedIds = new java.util.ArrayList<>();
+        if (originCityId != null && !originCityId.isBlank()) {
+            orderedIds.add(originCityId);
+        }
+        destinationCityIds.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(id -> !id.isBlank())
+                .forEach(orderedIds::add);
+
+        accommodations.synchronizeLocations(orderedIds, id -> {
+            String resolved = cityNameResolver.apply(id);
+            return resolved == null ? "" : resolved;
         });
     }
 

@@ -36,6 +36,7 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.data.binder.ValidationResult;
 import com.vaadin.flow.data.provider.CallbackDataProvider;
 import com.vaadin.flow.data.provider.DataProvider;
@@ -49,6 +50,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -176,43 +178,57 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
 
     private void rebuildForms() {
         coordinator.clearForms();
-        basicsForm = renderForm(OutboundTourBasicsFormDefinition.class, wizardState::getBasics);
+        basicsForm = renderForm(OutboundTourWizardState.STEP_BASICS,
+                OutboundTourBasicsFormDefinition.class, wizardState::getBasics);
         configureBasicsForm(basicsForm);
         coordinator.registerStepForm(OutboundTourWizardState.STEP_BASICS, basicsForm, OutboundTourWizardState::getBasics);
 
-        accommodationForm = renderForm(OutboundTourAccommodationFormDefinition.class, wizardState::getAccommodations);
+        accommodationForm = renderForm(OutboundTourWizardState.STEP_ACCOMMODATIONS,
+                OutboundTourAccommodationFormDefinition.class, wizardState::getAccommodations);
         configureAccommodationForm(accommodationForm);
         coordinator.registerStepForm(OutboundTourWizardState.STEP_ACCOMMODATIONS, accommodationForm,
                 OutboundTourWizardState::getAccommodations);
 
-        transportForm = renderForm(OutboundTourPlaceholderFormDefinition.class, wizardState::getTransport);
+        transportForm = renderForm(OutboundTourWizardState.STEP_TRANSPORT,
+                OutboundTourPlaceholderFormDefinition.class, wizardState::getTransport);
         configurePlaceholderForm(transportForm, OutboundTourWizardState.STEP_TRANSPORT);
         coordinator.registerStepForm(OutboundTourWizardState.STEP_TRANSPORT, transportForm, OutboundTourWizardState::getTransport);
 
-        servicesForm = renderForm(OutboundTourPlaceholderFormDefinition.class, wizardState::getServices);
+        servicesForm = renderForm(OutboundTourWizardState.STEP_SERVICES,
+                OutboundTourPlaceholderFormDefinition.class, wizardState::getServices);
         configurePlaceholderForm(servicesForm, OutboundTourWizardState.STEP_SERVICES);
         coordinator.registerStepForm(OutboundTourWizardState.STEP_SERVICES, servicesForm, OutboundTourWizardState::getServices);
 
-        datesForm = renderForm(OutboundTourPlaceholderFormDefinition.class, wizardState::getDates);
+        datesForm = renderForm(OutboundTourWizardState.STEP_DATES,
+                OutboundTourPlaceholderFormDefinition.class, wizardState::getDates);
         configurePlaceholderForm(datesForm, OutboundTourWizardState.STEP_DATES);
         coordinator.registerStepForm(OutboundTourWizardState.STEP_DATES, datesForm, OutboundTourWizardState::getDates);
 
-        pricingForm = renderForm(OutboundTourPlaceholderFormDefinition.class, wizardState::getPricing);
+        pricingForm = renderForm(OutboundTourWizardState.STEP_PRICING,
+                OutboundTourPlaceholderFormDefinition.class, wizardState::getPricing);
         configurePlaceholderForm(pricingForm, OutboundTourWizardState.STEP_PRICING);
         coordinator.registerStepForm(OutboundTourWizardState.STEP_PRICING, pricingForm, OutboundTourWizardState::getPricing);
 
-        summaryForm = renderForm(OutboundTourPlaceholderFormDefinition.class, wizardState::getSummary);
+        summaryForm = renderForm(OutboundTourWizardState.STEP_SUMMARY,
+                OutboundTourPlaceholderFormDefinition.class, wizardState::getSummary);
         configurePlaceholderForm(summaryForm, OutboundTourWizardState.STEP_SUMMARY);
         coordinator.registerStepForm(OutboundTourWizardState.STEP_SUMMARY, summaryForm, OutboundTourWizardState::getSummary);
     }
 
-    private <T> RenderedForm<T> renderForm(Class<?> definitionClass, java.util.function.Supplier<T> beanSupplier) {
+    private <T> RenderedForm<T> renderForm(String stepId, Class<?> definitionClass,
+                                           java.util.function.Supplier<T> beanSupplier) {
         Locale locale = getLocale();
         RenderedForm<T> rendered = formEngine.render(definitionClass, translationProvider, locale, isRtl(locale));
         rendered.getFields().forEach((FieldDefinition definition, FieldInstance instance) ->
                 rendered.getOrchestrator().bindField(instance, definition));
         rendered.initializeWithBean(beanSupplier.get());
         rendered.addValidationFailureListener((actionDefinition, exception) -> {
+            if (actionDefinition == null) {
+                return;
+            }
+            if (!Objects.equals(stepId, wizardState.getCurrentStepId())) {
+                return;
+            }
             String message = exception.getValidationErrors().stream()
                     .map(ValidationResult::getErrorMessage)
                     .filter(error -> error != null && !error.isBlank())
@@ -259,11 +275,13 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
         wizardService.ensureProductId(wizardState);
         wizardService.store(wizardState);
         updateProductBadge();
+        String originCityId = wizardState.getBasics().getOrigin().getCityId();
         List<String> destinationCityIds = wizardState.getBasics().getDestinationPlan().getDestinations().stream()
                 .map(OutboundTourBasicsFormData.Destination::getCityId)
                 .filter(id -> id != null && !id.isBlank())
                 .toList();
-        wizardService.synchronizeDestinations(wizardState, destinationCityIds, referenceDataService::resolveCityName);
+        wizardService.synchronizeAccommodationLocations(wizardState, originCityId, destinationCityIds,
+                referenceDataService::resolveCityName);
         rebuildForms();
         coordinator.setCompletedSteps(wizardState.getCompletedSteps());
         if (!advance) {
@@ -429,6 +447,7 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
     }
 
     private void configureAccommodationForm(RenderedForm<OutboundTourAccommodationFormData> form) {
+        ensureAccommodationEntryCount(form);
         form.addActionHandler("outbound-accommodation-save", context -> {
             if (handleAccommodationSubmission(false)) {
                 Notification notification = Notification.show(getTranslation("tourwizard.notification.saved"));
@@ -454,6 +473,11 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
         });
         configureAccommodationGroups(form);
         configureRoomGroup(form);
+    }
+
+    private void ensureAccommodationEntryCount(RenderedForm<OutboundTourAccommodationFormData> form) {
+        int locations = wizardState.getAccommodations().getAccommodations().size();
+        form.setRepeatableEntryCount("tour-accommodation-group", locations);
     }
 
     private boolean handleAccommodationSubmission(boolean advance) {
@@ -490,6 +514,10 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
             setComboBoxProvider(quality, referenceDataService::searchHotelQualities);
             setComboBoxProvider(catering, referenceDataService::searchCateringServices);
             setComboBoxProvider(amenities, referenceDataService::searchAmenityServices);
+            if (type != null && quality != null) {
+                type.addValueChangeListener(event -> updateQualityRequirementIndicator(type, quality));
+                updateQualityRequirementIndicator(type, quality);
+            }
             FieldInstance nameField = entry.entrySet().stream()
                     .filter(e -> e.getKey().getPath().equals("accommodations.accommodationName"))
                     .map(Map.Entry::getValue)
@@ -506,12 +534,29 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
                     }
                 });
             }
+            FieldInstance galleryField = entry.entrySet().stream()
+                    .filter(e -> e.getKey().getPath().equals("accommodations.gallery"))
+                    .map(Map.Entry::getValue)
+                    .findFirst()
+                    .orElse(null);
+            if (galleryField != null && galleryField.getComponent() instanceof Upload upload) {
+                upload.setAcceptedFileTypes("image/jpeg", "image/png", "image/webp", "image/gif");
+            }
         }
     }
 
     private void configureRoomGroup(RenderedForm<OutboundTourAccommodationFormData> form) {
         findRepeatableCombos(form, "tour-rooms-group", "rooms.roomTypeId")
                 .forEach(combo -> setComboBoxProvider(combo, referenceDataService::searchRoomTypes));
+    }
+
+    private void updateQualityRequirementIndicator(ComboBox<OptionItem> type, ComboBox<OptionItem> quality) {
+        OptionItem selectedType = type.getValue();
+        boolean hotelSelected = selectedType != null && "hotel".equals(selectedType.getId());
+        quality.setRequiredIndicatorVisible(hotelSelected);
+        if (!hotelSelected) {
+            quality.setInvalid(false);
+        }
     }
 
     private void configurePlaceholderForm(RenderedForm<OutboundTourPlaceholderFormData> form, String stepId) {
