@@ -2,15 +2,19 @@ package com.youtopin.vaadin.formengine.registry;
 
 import java.util.Currency;
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.HasHelper;
 import com.vaadin.flow.component.HasLabel;
 import com.vaadin.flow.component.HasValue;
+import com.vaadin.flow.component.HasValidation;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -244,19 +248,22 @@ public final class FieldRegistry {
     private FieldInstance createComboBox(FieldDefinition definition, FieldFactoryContext context) {
         ComboBox<OptionItem> comboBox = new ComboBox<>();
         comboBox.setPageSize(30);
-        comboBox.setAllowCustomValue(false);
         OptionCatalog catalog = optionCatalogRegistry.resolve(definition, context.getLocale());
         CallbackDataProvider<OptionItem, String> provider = DataProvider.fromFilteringCallbacks(
                 query -> fetchOptions(catalog, query, context),
                 query -> sizeOptions(catalog, query, context));
         comboBox.setDataProvider(provider, filter -> filter);
         comboBox.setItemLabelGenerator(OptionItem::getLabel);
-        comboBox.addCustomValueSetListener(event -> {
-            if (definition.getOptionsDefinition().isAllowCreate()) {
-                comboBox.getElement().executeJs("this.dispatchEvent(new CustomEvent('form-engine-create', {detail: $0}))",
-                        event.getDetail());
-            }
-        });
+        boolean allowCreate = definition.getOptionsDefinition().isAllowCreate();
+        comboBox.setAllowCustomValue(allowCreate);
+        if (allowCreate) {
+            comboBox.addCustomValueSetListener(event -> {
+                OptionItem created = tryCreateOption(event.getDetail(), definition, context, catalog, provider, comboBox);
+                if (created != null) {
+                    comboBox.setValue(created);
+                }
+            });
+        }
         return new FieldInstance(comboBox, comboBox, List.of());
     }
 
@@ -269,6 +276,19 @@ public final class FieldRegistry {
                 query -> sizeOptions(catalog, query, context));
         field.setDataProvider(provider, filter -> filter);
         field.setItemLabelGenerator(OptionItem::getLabel);
+        boolean allowCreate = definition.getOptionsDefinition().isAllowCreate();
+        field.setAllowCustomValue(allowCreate);
+        if (allowCreate) {
+            field.addCustomValueSetListener(event -> {
+                OptionItem created = tryCreateOption(event.getDetail(), definition, context, catalog, provider, field);
+                if (created != null) {
+                    Set<OptionItem> current = field.getValue();
+                    Set<OptionItem> updated = new LinkedHashSet<>(current == null ? Set.of() : current);
+                    updated.add(created);
+                    field.setValue(updated);
+                }
+            });
+        }
         return new FieldInstance(field, field, List.of());
     }
 
@@ -280,8 +300,67 @@ public final class FieldRegistry {
                 query -> sizeOptions(catalog, query, context));
         field.setDataProvider(provider, filter -> filter);
         field.setItemLabelGenerator(OptionItem::getLabel);
+        boolean allowCreate = definition.getOptionsDefinition().isAllowCreate();
+        field.setAllowCustomValue(allowCreate);
+        if (allowCreate) {
+            field.addCustomValueSetListener(event -> {
+                OptionItem created = tryCreateOption(event.getDetail(), definition, context, catalog, provider, field);
+                if (created != null) {
+                    Set<OptionItem> current = field.getValue();
+                    Set<OptionItem> updated = new LinkedHashSet<>(current == null ? Set.of() : current);
+                    updated.add(created);
+                    field.setValue(updated);
+                }
+            });
+        }
         return new FieldInstance(field, field, List.of());
     }
+
+    private OptionItem tryCreateOption(String value,
+                                       FieldDefinition definition,
+                                       FieldFactoryContext context,
+                                       OptionCatalog catalog,
+                                       CallbackDataProvider<OptionItem, String> provider,
+                                       HasValidation component) {
+        if (!catalog.supportsCreate()) {
+            setCreationError(component, "Option creation is not supported");
+            return null;
+        }
+        try {
+            OptionItem created = catalog.create(value, context.getLocale(), creationContext(definition, context));
+            if (created == null) {
+                setCreationError(component, DEFAULT_CREATION_ERROR_MESSAGE);
+                return null;
+            }
+            provider.refreshAll();
+            component.setInvalid(false);
+            component.setErrorMessage("");
+            return created;
+        } catch (RuntimeException ex) {
+            setCreationError(component, ex.getMessage());
+            return null;
+        }
+    }
+
+    private Map<String, Object> creationContext(FieldDefinition definition, FieldFactoryContext context) {
+        Map<String, Object> details = new HashMap<>();
+        details.put("formId", context.getFormDefinition().getId());
+        details.put("fieldPath", definition.getPath());
+        details.put("componentType", definition.getComponentType().name());
+        String createFormId = definition.getOptionsDefinition().getAllowCreateFormId();
+        if (createFormId != null && !createFormId.isBlank()) {
+            details.put("allowCreateFormId", createFormId);
+        }
+        return Map.copyOf(details);
+    }
+
+    private void setCreationError(HasValidation component, String message) {
+        String resolvedMessage = (message == null || message.isBlank()) ? DEFAULT_CREATION_ERROR_MESSAGE : message;
+        component.setErrorMessage(resolvedMessage);
+        component.setInvalid(true);
+    }
+
+    private static final String DEFAULT_CREATION_ERROR_MESSAGE = "Unable to create option";
 
     private java.util.stream.Stream<OptionItem> fetchOptions(OptionCatalog catalog, Query<OptionItem, String> query,
                                                              FieldFactoryContext context) {

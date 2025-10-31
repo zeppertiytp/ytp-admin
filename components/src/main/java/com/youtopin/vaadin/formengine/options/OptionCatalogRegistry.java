@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.youtopin.vaadin.formengine.annotation.UiOptions;
 import com.youtopin.vaadin.formengine.definition.FieldDefinition;
+import com.youtopin.vaadin.formengine.definition.OptionsDefinition;
 
 /**
  * Registry creating option providers based on {@link UiOptions} metadata.
@@ -15,6 +16,14 @@ public final class OptionCatalogRegistry {
     private final Map<String, OptionCatalog> catalogById = new ConcurrentHashMap<>();
     private final Map<String, OptionCatalog> explicitCatalogs = new ConcurrentHashMap<>();
 
+    /**
+     * Registers a catalog under an explicit identifier (callback or remote reference).
+     * Implementations may be mutable and can opt into creation via
+     * {@link OptionCatalog#supportsCreate()}.
+     *
+     * @param key     callback or remote reference defined in {@link UiOptions}
+     * @param catalog catalog instance to reuse for all locales
+     */
     public void register(String key, OptionCatalog catalog) {
         explicitCatalogs.put(key, catalog);
     }
@@ -23,12 +32,29 @@ public final class OptionCatalogRegistry {
         if (!fieldDefinition.getOptionsDefinition().isEnabled()) {
             return OptionCatalog.EMPTY;
         }
-        String cacheKey = fieldDefinition.getPath() + locale.toLanguageTag();
-        OptionCatalog explicit = explicitCatalogs.get(fieldDefinition.getOptionsDefinition().getCallbackRef());
+        OptionsDefinition optionsDefinition = fieldDefinition.getOptionsDefinition();
+        OptionCatalog explicit = findExplicitCatalog(optionsDefinition);
         if (explicit != null) {
             return explicit;
         }
+        String cacheKey = fieldDefinition.getPath() + locale.toLanguageTag();
         return catalogById.computeIfAbsent(cacheKey, key -> create(fieldDefinition, locale));
+    }
+
+    private OptionCatalog findExplicitCatalog(OptionsDefinition optionsDefinition) {
+        if (!optionsDefinition.getCallbackRef().isBlank()) {
+            OptionCatalog explicit = explicitCatalogs.get(optionsDefinition.getCallbackRef());
+            if (explicit != null) {
+                return explicit;
+            }
+        }
+        if (!optionsDefinition.getRemoteRef().isBlank()) {
+            OptionCatalog explicit = explicitCatalogs.get(optionsDefinition.getRemoteRef());
+            if (explicit != null) {
+                return explicit;
+            }
+        }
+        return null;
     }
 
     private OptionCatalog create(FieldDefinition fieldDefinition, Locale locale) {

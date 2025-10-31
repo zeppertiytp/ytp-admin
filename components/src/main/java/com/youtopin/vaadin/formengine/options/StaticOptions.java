@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -28,5 +29,15 @@ public final class StaticOptions implements OptionCatalog {
     @Override
     public List<OptionItem> byIds(Collection<String> ids) {
         return items.stream().filter(item -> ids.contains(item.getId())).toList();
+    }
+
+    @Override
+    public boolean supportsCreate() {
+        return false;
+    }
+
+    @Override
+    public OptionItem create(String value, Locale locale, Map<String, Object> context) {
+        return OptionCatalog.super.create(value, locale, context);
     }
 }
