@@ -400,7 +400,7 @@ public final class FormEngine {
                 boolean sectionReadOnly = evaluateStateExpression(section.getReadOnlyWhen(), beanContext);
                 for (GroupDefinition group : section.getGroups()) {
                     boolean groupReadOnly = sectionReadOnly || evaluateStateExpression(group.getReadOnlyWhen(), beanContext);
-                    if (group.getRepeatableDefinition().isEnabled()) {
+                    if (isRepeatableGroup(group)) {
                         RepeatableGroupState state = repeatableGroups.get(group.getId());
                         if (state != null) {
                             applyReadOnlyToRepeatableGroup(state, groupReadOnly, evaluationBean, beanContext);
@@ -1359,7 +1359,7 @@ public final class FormEngine {
                                   FieldFactoryContext context,
                                   Map<FieldDefinition, FieldInstance> instances,
                                   Map<String, RepeatableGroupState> repeatableGroups) {
-        if (group.getRepeatableDefinition().isEnabled()) {
+        if (isRepeatableGroup(group)) {
             return createRepeatableGroup(group, registry, context, repeatableGroups);
         }
         com.vaadin.flow.component.formlayout.FormLayout formLayout = new com.vaadin.flow.component.formlayout.FormLayout();
@@ -1517,6 +1517,11 @@ public final class FormEngine {
             wrapper.add(state.getDuplicateDialog());
         }
         return wrapper;
+    }
+
+    private boolean isRepeatableGroup(GroupDefinition group) {
+        RepeatableDefinition repeatable = group.getRepeatableDefinition();
+        return repeatable != null && repeatable.isEnabled();
     }
 
     private RepeatableEntry addRepeatableEntry(RepeatableGroupState state,
