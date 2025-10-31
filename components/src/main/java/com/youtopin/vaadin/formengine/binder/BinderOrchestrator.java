@@ -179,6 +179,9 @@ public final class BinderOrchestrator<T> {
     }
 
     private Object accessGetter(Object bean, String property) throws ReflectiveOperationException {
+        if (bean instanceof DynamicPropertyBag bag) {
+            return bag.readDynamicProperty(property);
+        }
         try {
             Method getter = bean.getClass().getMethod("get" + capitalize(property));
             return getter.invoke(bean);
@@ -189,6 +192,9 @@ public final class BinderOrchestrator<T> {
     }
 
     private void accessSetter(Object bean, String property, Object value) throws ReflectiveOperationException {
+        if (bean instanceof DynamicPropertyBag bag && bag.writeDynamicProperty(property, value)) {
+            return;
+        }
         Method setter = Arrays.stream(bean.getClass().getMethods())
                 .filter(method -> method.getName().equals("set" + capitalize(property)))
                 .findFirst()

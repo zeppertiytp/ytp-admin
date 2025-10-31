@@ -40,6 +40,7 @@ import com.vaadin.flow.data.binder.ValidationException;
 import com.vaadin.flow.i18n.I18NProvider;
 import com.youtopin.vaadin.formengine.annotation.UiForm;
 import com.youtopin.vaadin.formengine.binder.BinderOrchestrator;
+import com.youtopin.vaadin.formengine.binder.DynamicPropertyBag;
 import com.youtopin.vaadin.formengine.definition.ActionDefinition;
 import com.youtopin.vaadin.formengine.definition.FieldDefinition;
 import com.youtopin.vaadin.formengine.definition.FormDefinition;
@@ -77,6 +78,15 @@ public final class FormEngine {
             throw new IllegalArgumentException("Class " + definitionClass + " is not annotated with @UiForm");
         }
         FormDefinition definition = scanner.scan(definitionClass);
+        return render(definition, provider, locale, rtl);
+    }
+
+    public <T> RenderedForm<T> render(FormDefinition definition,
+                                      I18NProvider provider,
+                                      Locale locale,
+                                      boolean rtl) {
+        Objects.requireNonNull(definition, "definition");
+        Objects.requireNonNull(provider, "provider");
         @SuppressWarnings("unchecked")
         Class<T> beanType = (Class<T>) definition.getBeanType();
         BinderOrchestrator<T> orchestrator = new BinderOrchestrator<>(beanType,
@@ -111,7 +121,7 @@ public final class FormEngine {
                 sectionLayout.add(new com.vaadin.flow.component.html.H3(context.translate(section.getTitleKey())));
             }
             for (GroupDefinition group : section.getGroups()) {
-                Component renderedGroup = renderGroup(group, registry, context, instances, repeatableGroups);
+                Component renderedGroup = renderGroup(group, registry, context, instances, repeatableGroups, beanType);
                 sectionLayout.add(renderedGroup);
             }
             sectionLayouts.put(section, sectionLayout);
@@ -362,9 +372,11 @@ public final class FormEngine {
                     FieldDefinition definition = fieldEntry.getKey();
                     FieldInstance instance = fieldEntry.getValue();
                     String path = definition.getPath();
-                    int lastDot = path.lastIndexOf('.');
-                    String property = lastDot >= 0 ? path.substring(lastDot + 1) : path;
-                    Object propertyValue = valueMap.get(property);
+                    String relativePath = toRelativePath(path, state.getParentPath());
+                    if (relativePath.isBlank()) {
+                        continue;
+                    }
+                    Object propertyValue = valueMap.get(relativePath);
                     applyComponentValue(instance, definition, propertyValue);
                 }
             }
@@ -391,7 +403,7 @@ public final class FormEngine {
                 boolean sectionReadOnly = evaluateStateExpression(section.getReadOnlyWhen(), beanContext);
                 for (GroupDefinition group : section.getGroups()) {
                     boolean groupReadOnly = sectionReadOnly || evaluateStateExpression(group.getReadOnlyWhen(), beanContext);
-                    if (group.getRepeatableDefinition().isEnabled()) {
+                    if (isRepeatableGroup(group)) {
                         RepeatableGroupState state = repeatableGroups.get(group.getId());
                         if (state != null) {
                             applyReadOnlyToRepeatableGroup(state, groupReadOnly, evaluationBean, beanContext);
@@ -925,8 +937,10 @@ public final class FormEngine {
                 Map<String, Object> entryValues = new LinkedHashMap<>();
                 for (FieldDefinition field : state.getGroup().getFields()) {
                     String path = field.getPath();
-                    int lastDot = path.lastIndexOf('.');
-                    String property = lastDot >= 0 ? path.substring(lastDot + 1) : path;
+                    String property = toRelativePath(path, state.getParentPath());
+                    if (property.isBlank()) {
+                        continue;
+                    }
                     Object propertyValue = readPropertyValue(element, property);
                     entryValues.put(property, propertyValue);
                 }
@@ -935,9 +949,30 @@ public final class FormEngine {
             return values;
         }
 
-        private Object readPropertyValue(Object target, String property) {
+        private Object readPropertyValue(Object target, String path) {
+            if (target == null || path == null || path.isBlank()) {
+                return null;
+            }
+            Object current = target;
+            String[] segments = path.split("\\.");
+            for (String segment : segments) {
+                if (segment == null || segment.isBlank()) {
+                    return null;
+                }
+                current = readSinglePropertyValue(current, segment);
+                if (current == null) {
+                    return null;
+                }
+            }
+            return current;
+        }
+
+        private Object readSinglePropertyValue(Object target, String property) {
             if (target == null || property == null || property.isBlank()) {
                 return null;
+            }
+            if (target instanceof DynamicPropertyBag bag) {
+                return bag.readDynamicProperty(property);
             }
             if (target instanceof Map<?, ?> map) {
                 return map.get(property);
@@ -1079,11 +1114,10 @@ public final class FormEngine {
                         FieldDefinition definition = fieldEntry.getKey();
                         FieldInstance instance = fieldEntry.getValue();
                         String path = definition.getPath();
-                        int lastDot = path.lastIndexOf('.');
-                        if (lastDot <= 0) {
+                        String property = toRelativePath(path, state.getParentPath());
+                        if (property.isBlank()) {
                             continue;
                         }
-                        String property = path.substring(lastDot + 1);
                         Object rawValue = ((com.vaadin.flow.component.HasValue<?, ?>) instance.getValueComponent()).getValue();
                         Object converted = orchestrator.convertRawValue(definition, rawValue);
                         valuesByProperty.put(property, converted);
@@ -1197,18 +1231,108 @@ public final class FormEngine {
             }
             Object element = elementType.getDeclaredConstructor().newInstance();
             for (Map.Entry<String, Object> entry : values.entrySet()) {
-                PropertyDescriptor descriptor = findDescriptor(elementType, entry.getKey());
-                if (descriptor == null) {
+                String propertyPath = entry.getKey();
+                if (propertyPath == null || propertyPath.isBlank()) {
                     continue;
                 }
-                Method write = descriptor.getWriteMethod();
-                if (write == null) {
-                    continue;
-                }
-                Object coerced = orchestrator.coerceValueForType(entry.getValue(), write.getParameterTypes()[0]);
-                write.invoke(element, coerced);
+                writePropertyPath(element, propertyPath, entry.getValue());
             }
             return element;
+        }
+
+        private void writePropertyPath(Object target, String path, Object value)
+                throws IntrospectionException, InvocationTargetException, InstantiationException, IllegalAccessException,
+                NoSuchMethodException {
+            if (target == null || path == null || path.isBlank()) {
+                return;
+            }
+            Object current = target;
+            String[] segments = path.split("\\.");
+            for (int i = 0; i < segments.length; i++) {
+                String segment = segments[i];
+                if (segment == null || segment.isBlank()) {
+                    return;
+                }
+                boolean last = i == segments.length - 1;
+                if (last) {
+                    assignPropertyValue(current, segment, value);
+                } else {
+                    Object next = readSinglePropertyValue(current, segment);
+                    if (next == null) {
+                        next = ensureIntermediateValue(current, segment);
+                    }
+                    if (next == null) {
+                        return;
+                    }
+                    current = next;
+                }
+            }
+        }
+
+        private Object ensureIntermediateValue(Object target, String property)
+                throws IntrospectionException, InvocationTargetException, InstantiationException, IllegalAccessException,
+                NoSuchMethodException {
+            if (target instanceof DynamicPropertyBag) {
+                return null;
+            }
+            if (target instanceof Map<?, ?> map) {
+                @SuppressWarnings("unchecked")
+                Map<Object, Object> mutable = (Map<Object, Object>) map;
+                Map<String, Object> nested = new LinkedHashMap<>();
+                mutable.put(property, nested);
+                return nested;
+            }
+            PropertyDescriptor descriptor = findDescriptor(target.getClass(), property);
+            if (descriptor == null) {
+                return null;
+            }
+            Method read = descriptor.getReadMethod();
+            if (read != null) {
+                Object existing = read.invoke(target);
+                if (existing != null) {
+                    return existing;
+                }
+            }
+            Class<?> propertyType = descriptor.getPropertyType();
+            if (propertyType == null) {
+                return null;
+            }
+            Object instance = instantiateIntermediate(propertyType);
+            if (instance == null) {
+                return null;
+            }
+            Method write = descriptor.getWriteMethod();
+            if (write != null) {
+                write.invoke(target, instance);
+                return instance;
+            }
+            return null;
+        }
+
+        private void assignPropertyValue(Object target, String property, Object value)
+                throws IntrospectionException, InvocationTargetException, IllegalAccessException {
+            if (target == null || property == null || property.isBlank()) {
+                return;
+            }
+            if (target instanceof DynamicPropertyBag bag && bag.writeDynamicProperty(property, value)) {
+                return;
+            }
+            if (target instanceof Map<?, ?> map) {
+                @SuppressWarnings("unchecked")
+                Map<Object, Object> mutable = (Map<Object, Object>) map;
+                mutable.put(property, value);
+                return;
+            }
+            PropertyDescriptor descriptor = findDescriptor(target.getClass(), property);
+            if (descriptor == null) {
+                return;
+            }
+            Method write = descriptor.getWriteMethod();
+            if (write == null) {
+                return;
+            }
+            Object coerced = orchestrator.coerceValueForType(value, write.getParameterTypes()[0]);
+            write.invoke(target, coerced);
         }
 
         private PathResolution resolvePath(Object root, String path)
@@ -1349,9 +1473,10 @@ public final class FormEngine {
                                   FieldRegistry registry,
                                   FieldFactoryContext context,
                                   Map<FieldDefinition, FieldInstance> instances,
-                                  Map<String, RepeatableGroupState> repeatableGroups) {
-        if (group.getRepeatableDefinition().isEnabled()) {
-            return createRepeatableGroup(group, registry, context, repeatableGroups);
+                                  Map<String, RepeatableGroupState> repeatableGroups,
+                                  Class<?> beanType) {
+        if (isRepeatableGroup(group)) {
+            return createRepeatableGroup(group, registry, context, repeatableGroups, beanType);
         }
         com.vaadin.flow.component.formlayout.FormLayout formLayout = new com.vaadin.flow.component.formlayout.FormLayout();
         configureResponsiveSteps(formLayout, group.getColumns());
@@ -1373,7 +1498,8 @@ public final class FormEngine {
     private Component createRepeatableGroup(GroupDefinition group,
                                             FieldRegistry registry,
                                             FieldFactoryContext context,
-                                            Map<String, RepeatableGroupState> repeatableGroups) {
+                                            Map<String, RepeatableGroupState> repeatableGroups,
+                                            Class<?> beanType) {
         com.vaadin.flow.component.orderedlayout.VerticalLayout wrapper = new com.vaadin.flow.component.orderedlayout.VerticalLayout();
         wrapper.setPadding(false);
         wrapper.setSpacing(false);
@@ -1446,7 +1572,8 @@ public final class FormEngine {
         Button cancelDuplicateRef = cancelDuplicate;
         RepeatableGroupState state = repeatableGroups.computeIfAbsent(group.getId(), key ->
                 new RepeatableGroupState(group, repeatable, entriesContainer, addEntry, duplicateButtonRef, duplicateDialogRef,
-                        duplicateSelectorRef, confirmDuplicateRef, cancelDuplicateRef, new ArrayList<>(), deriveParentPath(group)));
+                        duplicateSelectorRef, confirmDuplicateRef, cancelDuplicateRef, new ArrayList<>(),
+                        deriveParentPath(group, beanType)));
         addEntry.addClickListener(event -> {
             if (!state.getRepeatable().isAllowManualAdd()) {
                 return;
@@ -1508,6 +1635,11 @@ public final class FormEngine {
             wrapper.add(state.getDuplicateDialog());
         }
         return wrapper;
+    }
+
+    private boolean isRepeatableGroup(GroupDefinition group) {
+        RepeatableDefinition repeatable = group.getRepeatableDefinition();
+        return repeatable != null && repeatable.isEnabled();
     }
 
     private RepeatableEntry addRepeatableEntry(RepeatableGroupState state,
@@ -1720,13 +1852,60 @@ public final class FormEngine {
         return value;
     }
 
-    private String deriveParentPath(GroupDefinition group) {
-        return group.getFields().stream()
-                .map(FieldDefinition::getPath)
-                .map(this::extractParentPath)
-                .filter(path -> !path.isBlank())
-                .findFirst()
-                .orElse("");
+    private String deriveParentPath(GroupDefinition group, Class<?> beanType) {
+        if (group == null || group.getFields().isEmpty()) {
+            return "";
+        }
+        String samplePath = group.getFields().get(0).getPath();
+        if (samplePath == null || samplePath.isBlank()) {
+            return "";
+        }
+        if (beanType == null) {
+            return extractParentPath(samplePath);
+        }
+        String[] segments = samplePath.split("\\.");
+        StringBuilder traversed = new StringBuilder();
+        String collectionPath = "";
+        Class<?> currentType = beanType;
+        for (String segment : segments) {
+            if (segment == null || segment.isBlank()) {
+                break;
+            }
+            if (traversed.length() > 0) {
+                traversed.append('.');
+            }
+            traversed.append(segment);
+            PropertyDescriptor descriptor;
+            try {
+                descriptor = findDescriptor(currentType, segment);
+            } catch (IntrospectionException ex) {
+                collectionPath = "";
+                break;
+            }
+            if (descriptor == null) {
+                break;
+            }
+            Class<?> propertyType = descriptor.getPropertyType();
+            if (propertyType == null) {
+                break;
+            }
+            if (propertyType.isArray()) {
+                collectionPath = traversed.toString();
+                currentType = propertyType.getComponentType();
+                continue;
+            }
+            if (Collection.class.isAssignableFrom(propertyType)) {
+                collectionPath = traversed.toString();
+                Class<?> elementType = resolveTypeArgument(descriptor, 0);
+                currentType = elementType != null ? elementType : Object.class;
+                continue;
+            }
+            currentType = propertyType;
+        }
+        if (!collectionPath.isBlank()) {
+            return collectionPath;
+        }
+        return extractParentPath(samplePath);
     }
 
     private String extractParentPath(String path) {
@@ -1738,6 +1917,65 @@ public final class FormEngine {
             return "";
         }
         return path.substring(0, lastDot);
+    }
+
+    private String toRelativePath(String path, String parentPath) {
+        if (path == null || path.isBlank()) {
+            return "";
+        }
+        if (parentPath == null || parentPath.isBlank()) {
+            int lastDot = path.lastIndexOf('.');
+            return lastDot >= 0 ? path.substring(lastDot + 1) : path;
+        }
+        if (path.equals(parentPath)) {
+            return "";
+        }
+        String prefix = parentPath + ".";
+        if (path.startsWith(prefix)) {
+            return path.substring(prefix.length());
+        }
+        int lastDot = path.lastIndexOf('.');
+        return lastDot >= 0 ? path.substring(lastDot + 1) : path;
+    }
+
+    private PropertyDescriptor findDescriptor(Class<?> type, String name) throws IntrospectionException {
+        for (PropertyDescriptor descriptor : Introspector.getBeanInfo(type).getPropertyDescriptors()) {
+            if (descriptor.getName().equals(name)) {
+                return descriptor;
+            }
+        }
+        return null;
+    }
+
+    private Class<?> resolveTypeArgument(PropertyDescriptor descriptor, int index) {
+        Method read = descriptor.getReadMethod();
+        if (read != null) {
+            Class<?> resolved = resolveTypeArgument(read.getGenericReturnType(), index);
+            if (resolved != null) {
+                return resolved;
+            }
+        }
+        Method write = descriptor.getWriteMethod();
+        if (write != null && write.getGenericParameterTypes().length == 1) {
+            Class<?> resolved = resolveTypeArgument(write.getGenericParameterTypes()[0], index);
+            if (resolved != null) {
+                return resolved;
+            }
+        }
+        return null;
+    }
+
+    private Class<?> resolveTypeArgument(Type type, int index) {
+        if (type instanceof ParameterizedType parameterized) {
+            Type[] arguments = parameterized.getActualTypeArguments();
+            if (index >= 0 && index < arguments.length) {
+                Type argument = arguments[index];
+                if (argument instanceof Class<?> clazz) {
+                    return clazz;
+                }
+            }
+        }
+        return null;
     }
 
     private com.vaadin.flow.component.orderedlayout.HorizontalLayout createActionRow() {
