@@ -50,8 +50,10 @@ public final class OutboundTourAccommodationFormDefinition {
             repeatable = @UiRepeatable(enabled = true, min = 0, max = 8,
                     mode = UiRepeatable.RepeatableMode.INLINE_PANEL,
                     itemTitleKey = "tourwizard.accommodation.repeatable.destination",
-                    allowDuplicate = true,
-                    summaryTemplate = "{destinationCityName}"))
+                    allowReorder = false,
+                    allowDuplicate = false,
+                    allowManualAdd = false,
+                    allowManualRemove = false))
     public static class AccommodationsGroup {
 
         @UiField(path = "accommodations.destinationCityName", component = UiField.ComponentType.TEXT,

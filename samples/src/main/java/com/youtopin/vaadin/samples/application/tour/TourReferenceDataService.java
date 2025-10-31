@@ -295,11 +295,15 @@ public class TourReferenceDataService {
         cateringServices.put("half-board", "نیم‌پانسیون");
         cateringServices.put("full-board", "فول برد");
         cateringServices.put("all-inclusive", "آل اینکلوسیو");
+        cateringServices.put("afternoon-tea", "چای عصرانه");
+        cateringServices.put("midnight-snack", "میان وعده نیمه‌شب");
 
         amenityServices.put("wifi", "اینترنت بی‌سیم");
         amenityServices.put("spa", "اسپا");
         amenityServices.put("pool", "استخر");
         amenityServices.put("gym", "باشگاه ورزشی");
+        amenityServices.put("airport-transfer", "ترنسفر فرودگاهی");
+        amenityServices.put("kids-club", "کلاب کودکان");
 
         roomTypes.put("single", "سینگل");
         roomTypes.put("double", "دابل");

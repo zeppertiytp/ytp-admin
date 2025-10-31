@@ -33,12 +33,14 @@ public class OutboundTourWizardService {
         return repository.ensureProductId(state);
     }
 
-    public void synchronizeDestinations(OutboundTourWizardState state, List<String> destinationCityIds,
-                                         Function<String, String> cityNameResolver) {
+    public void synchronizeAccommodationLocations(OutboundTourWizardState state,
+                                                  String originCityId,
+                                                  List<String> destinationCityIds,
+                                                  Function<String, String> cityNameResolver) {
         if (state == null) {
             return;
         }
-        state.syncAccommodationDestinations(destinationCityIds, cityNameResolver);
+        state.syncAccommodationLocations(originCityId, destinationCityIds, cityNameResolver);
         repository.store(state);
     }
 }

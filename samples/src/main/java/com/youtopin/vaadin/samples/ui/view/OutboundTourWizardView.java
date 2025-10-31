@@ -36,6 +36,7 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.data.binder.ValidationResult;
 import com.vaadin.flow.data.provider.CallbackDataProvider;
 import com.vaadin.flow.data.provider.DataProvider;
@@ -259,11 +260,13 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
         wizardService.ensureProductId(wizardState);
         wizardService.store(wizardState);
         updateProductBadge();
+        String originCityId = wizardState.getBasics().getOrigin().getCityId();
         List<String> destinationCityIds = wizardState.getBasics().getDestinationPlan().getDestinations().stream()
                 .map(OutboundTourBasicsFormData.Destination::getCityId)
                 .filter(id -> id != null && !id.isBlank())
                 .toList();
-        wizardService.synchronizeDestinations(wizardState, destinationCityIds, referenceDataService::resolveCityName);
+        wizardService.synchronizeAccommodationLocations(wizardState, originCityId, destinationCityIds,
+                referenceDataService::resolveCityName);
         rebuildForms();
         coordinator.setCompletedSteps(wizardState.getCompletedSteps());
         if (!advance) {
@@ -429,6 +432,7 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
     }
 
     private void configureAccommodationForm(RenderedForm<OutboundTourAccommodationFormData> form) {
+        ensureAccommodationEntryCount(form);
         form.addActionHandler("outbound-accommodation-save", context -> {
             if (handleAccommodationSubmission(false)) {
                 Notification notification = Notification.show(getTranslation("tourwizard.notification.saved"));
@@ -454,6 +458,11 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
         });
         configureAccommodationGroups(form);
         configureRoomGroup(form);
+    }
+
+    private void ensureAccommodationEntryCount(RenderedForm<OutboundTourAccommodationFormData> form) {
+        int locations = wizardState.getAccommodations().getAccommodations().size();
+        form.setRepeatableEntryCount("tour-accommodation-group", locations);
     }
 
     private boolean handleAccommodationSubmission(boolean advance) {
@@ -490,6 +499,10 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
             setComboBoxProvider(quality, referenceDataService::searchHotelQualities);
             setComboBoxProvider(catering, referenceDataService::searchCateringServices);
             setComboBoxProvider(amenities, referenceDataService::searchAmenityServices);
+            if (type != null && quality != null) {
+                type.addValueChangeListener(event -> updateQualityRequirementIndicator(type, quality));
+                updateQualityRequirementIndicator(type, quality);
+            }
             FieldInstance nameField = entry.entrySet().stream()
                     .filter(e -> e.getKey().getPath().equals("accommodations.accommodationName"))
                     .map(Map.Entry::getValue)
@@ -506,12 +519,29 @@ public class OutboundTourWizardView extends AppPageLayout implements LocaleChang
                     }
                 });
             }
+            FieldInstance galleryField = entry.entrySet().stream()
+                    .filter(e -> e.getKey().getPath().equals("accommodations.gallery"))
+                    .map(Map.Entry::getValue)
+                    .findFirst()
+                    .orElse(null);
+            if (galleryField != null && galleryField.getComponent() instanceof Upload upload) {
+                upload.setAcceptedFileTypes("image/jpeg", "image/png", "image/webp", "image/gif");
+            }
         }
     }
 
     private void configureRoomGroup(RenderedForm<OutboundTourAccommodationFormData> form) {
         findRepeatableCombos(form, "tour-rooms-group", "rooms.roomTypeId")
                 .forEach(combo -> setComboBoxProvider(combo, referenceDataService::searchRoomTypes));
+    }
+
+    private void updateQualityRequirementIndicator(ComboBox<OptionItem> type, ComboBox<OptionItem> quality) {
+        OptionItem selectedType = type.getValue();
+        boolean hotelSelected = selectedType != null && "hotel".equals(selectedType.getId());
+        quality.setRequiredIndicatorVisible(hotelSelected);
+        if (!hotelSelected) {
+            quality.setInvalid(false);
+        }
     }
 
     private void configurePlaceholderForm(RenderedForm<OutboundTourPlaceholderFormData> form, String stepId) {
