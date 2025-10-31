@@ -17,6 +17,7 @@ import com.youtopin.vaadin.component.HorizontalWizard.WizardStep;
 import com.youtopin.vaadin.formengine.FormEngine;
 import com.youtopin.vaadin.formengine.FormEngine.RenderedForm;
 import com.youtopin.vaadin.formengine.definition.FieldDefinition;
+import com.youtopin.vaadin.formengine.definition.FormDefinition;
 import com.youtopin.vaadin.formengine.registry.FieldInstance;
 import com.youtopin.vaadin.formengine.wizard.WizardFormFlowCoordinator;
 import com.youtopin.vaadin.i18n.TranslationProvider;
@@ -24,9 +25,11 @@ import com.youtopin.vaadin.samples.application.dynamicrepeatable.DynamicRepeatab
 import com.youtopin.vaadin.samples.application.dynamicrepeatable.DynamicRepeatableWizardState;
 import com.youtopin.vaadin.samples.application.dynamicrepeatable.model.DynamicEntryCollectionFormData;
 import com.youtopin.vaadin.samples.application.dynamicrepeatable.model.DynamicEntryRow;
+import com.youtopin.vaadin.samples.application.dynamicrepeatable.model.DynamicFieldBlueprint;
+import com.youtopin.vaadin.samples.application.dynamicrepeatable.model.DynamicFieldSchema;
 import com.youtopin.vaadin.samples.application.dynamicrepeatable.model.DynamicFieldSchemaFormData;
-import com.youtopin.vaadin.samples.ui.formengine.definition.dynamic.DynamicEntryCollectionFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.dynamic.DynamicFieldSchemaFormDefinition;
+import com.youtopin.vaadin.samples.ui.formengine.definition.dynamic.DynamicEntryFormFactory;
 import com.youtopin.vaadin.samples.ui.layout.AppPageLayout;
 import com.youtopin.vaadin.samples.ui.layout.MainLayout;
 
@@ -126,12 +129,19 @@ public class DynamicRepeatableWizardView extends AppPageLayout implements Locale
         coordinator.clearForms();
 
         schemaForm = renderForm(DynamicFieldSchemaFormDefinition.class, DynamicRepeatableWizardState::getSchema);
-        coordinator.registerStepForm(DynamicRepeatableWizardState.STEP_SCHEMA, schemaForm, DynamicRepeatableWizardState::getSchema);
+        coordinator.registerStepForm(DynamicRepeatableWizardState.STEP_SCHEMA, schemaForm,
+                DynamicRepeatableWizardState::getSchema);
         configureSchemaForm(schemaForm);
 
-        entryForm = renderForm(DynamicEntryCollectionFormDefinition.class, DynamicRepeatableWizardState::getEntries);
-        coordinator.registerStepForm(DynamicRepeatableWizardState.STEP_ENTRIES, entryForm, DynamicRepeatableWizardState::getEntries);
-        entryForm.setRepeatableEntryCount("dynamic-entry-group", wizardState.getSchema().getEntryCount());
+        rebuildEntryForm();
+    }
+
+    private void rebuildEntryForm() {
+        FormDefinition definition = DynamicEntryFormFactory.create(wizardState.getSchema());
+        entryForm = renderForm(definition, DynamicRepeatableWizardState::getEntries);
+        coordinator.registerStepForm(DynamicRepeatableWizardState.STEP_ENTRIES, entryForm,
+                DynamicRepeatableWizardState::getEntries);
+        entryForm.setRepeatableEntryCount(DynamicEntryFormFactory.GROUP_ID, wizardState.getSchema().getEntryCount());
         configureEntryForm(entryForm);
     }
 
@@ -159,11 +169,22 @@ public class DynamicRepeatableWizardView extends AppPageLayout implements Locale
         return rendered;
     }
 
+    private <T> RenderedForm<T> renderForm(FormDefinition definition,
+                                           Function<DynamicRepeatableWizardState, T> beanResolver) {
+        Locale locale = getLocale();
+        RenderedForm<T> rendered = formEngine.render(definition, translationProvider, locale, isRtl(locale));
+        rendered.getFields().forEach((FieldDefinition fieldDefinition, FieldInstance instance) ->
+                rendered.getOrchestrator().bindField(instance, fieldDefinition));
+        T bean = beanResolver.apply(wizardState);
+        rendered.initializeWithBean(bean);
+        return rendered;
+    }
+
     private void configureSchemaForm(RenderedForm<DynamicFieldSchemaFormData> form) {
         form.addActionHandler("dynamic-schema-next", context -> {
+            wizardState.getSchema().sanitiseFieldKeys();
             wizardState.syncEntriesWithSchema();
-            entryForm.initializeWithBean(wizardState.getEntries());
-            entryForm.setRepeatableEntryCount("dynamic-entry-group", wizardState.getSchema().getEntryCount());
+            rebuildEntryForm();
             wizardState.markStepCompleted(DynamicRepeatableWizardState.STEP_SCHEMA);
             coordinator.markStepCompleted(DynamicRepeatableWizardState.STEP_SCHEMA);
             coordinator.nextStep(DynamicRepeatableWizardState.STEP_SCHEMA)
@@ -196,28 +217,28 @@ public class DynamicRepeatableWizardView extends AppPageLayout implements Locale
     }
 
     private List<String> validateEntries(DynamicEntryCollectionFormData data) {
+        DynamicFieldSchema schema = data.getSchema();
+        List<DynamicFieldBlueprint> fields = schema.getFieldSnapshot();
+        if (fields.isEmpty()) {
+            return List.of();
+        }
         String requiredMessage = getTranslation("forms.validation.required");
-        boolean requireOwner = data.getSchema().isRequireOwner();
-        boolean includeEmail = data.getSchema().isIncludeEmail();
-        boolean includePhone = data.getSchema().isIncludePhone();
-        boolean includeNotes = data.getSchema().isIncludeNotes();
         for (int i = 0; i < data.getEntries().size(); i++) {
             DynamicEntryRow row = data.getEntries().get(i);
             String indexLabel = getTranslation("dynamicwizard.validation.entryIndex", i + 1);
-            if (row.getLabel().isBlank()) {
-                return List.of(indexLabel + " - " + requiredMessage);
-            }
-            if (requireOwner && row.getOwner().isBlank()) {
-                return List.of(indexLabel + " - " + requiredMessage);
-            }
-            if (includeEmail && row.getEmail().isBlank()) {
-                return List.of(indexLabel + " - " + requiredMessage);
-            }
-            if (includePhone && row.getPhone().isBlank()) {
-                return List.of(indexLabel + " - " + getTranslation("dynamicwizard.validation.phone"));
-            }
-            if (includeNotes && row.getNotes().isBlank()) {
-                return List.of(indexLabel + " - " + requiredMessage);
+            for (DynamicFieldBlueprint blueprint : fields) {
+                if (!blueprint.isRequired()) {
+                    continue;
+                }
+                Object value = row.getValues().get(blueprint.getFieldKey());
+                if (value == null || (value instanceof String str && str.isBlank())) {
+                    String fieldLabel = blueprint.getLabel().isBlank()
+                            ? blueprint.getFieldKey()
+                            : blueprint.getLabel();
+                    String message = getTranslation("dynamicwizard.validation.requiredField",
+                            indexLabel, fieldLabel, requiredMessage);
+                    return List.of(message);
+                }
             }
         }
         return List.of();

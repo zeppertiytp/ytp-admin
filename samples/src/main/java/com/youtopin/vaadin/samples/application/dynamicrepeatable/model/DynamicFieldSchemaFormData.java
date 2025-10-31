@@ -1,23 +1,32 @@
 package com.youtopin.vaadin.samples.application.dynamicrepeatable.model;
 
 import java.io.Serial;
-import java.io.Serializable;
 
 /**
- * Bean backing the wizard's schema configuration step.
+ * Form bean backing the schema configuration step.
  */
-public class DynamicFieldSchemaFormData extends DynamicFieldSchema implements Serializable {
+public class DynamicFieldSchemaFormData extends DynamicFieldSchema {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private int entryCount = 3;
-
-    public int getEntryCount() {
-        return entryCount;
-    }
-
-    public void setEntryCount(int entryCount) {
-        this.entryCount = Math.max(1, Math.min(entryCount, 10));
+    public void sanitiseFieldKeys() {
+        java.util.LinkedHashSet<String> seen = new java.util.LinkedHashSet<>();
+        int counter = 1;
+        for (DynamicFieldBlueprint blueprint : getFields()) {
+            String candidate = DynamicFieldBlueprint.normaliseKey(blueprint.getFieldKey());
+            while (candidate.isBlank() || seen.contains(candidate)) {
+                candidate = "field" + counter++;
+            }
+            blueprint.setFieldKey(candidate);
+            seen.add(candidate);
+        }
+        ensureSeedField();
+        if (seen.isEmpty()) {
+            getFields().forEach(blueprint -> seen.add(blueprint.getFieldKey()));
+        }
+        if (!seen.contains(getSummaryFieldKey()) && !seen.isEmpty()) {
+            setSummaryFieldKey(seen.iterator().next());
+        }
     }
 }

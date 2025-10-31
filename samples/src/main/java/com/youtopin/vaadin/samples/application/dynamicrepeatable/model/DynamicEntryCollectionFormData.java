@@ -4,10 +4,12 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
- * Holds the repeatable entries while mirroring the schema configuration to drive visibility rules.
+ * Holds the repeatable rows alongside a schema snapshot for conditional rendering.
  */
 public class DynamicEntryCollectionFormData implements Serializable {
 
@@ -25,8 +27,12 @@ public class DynamicEntryCollectionFormData implements Serializable {
         return entries;
     }
 
+    public List<DynamicEntryRow> getEntriesSnapshot() {
+        return Collections.unmodifiableList(entries);
+    }
+
     public void ensureEntryCount(int desired) {
-        int target = Math.max(1, Math.min(desired, 10));
+        int target = Math.max(1, Math.min(desired, 20));
         while (entries.size() < target) {
             entries.add(new DynamicEntryRow());
         }
@@ -35,7 +41,15 @@ public class DynamicEntryCollectionFormData implements Serializable {
         }
     }
 
-    public List<DynamicEntryRow> getEntriesSnapshot() {
-        return Collections.unmodifiableList(entries);
+    public void syncWithSchema(DynamicFieldSchema sourceSchema) {
+        schema.copyFrom(sourceSchema);
+        ensureEntryCount(schema.getEntryCount());
+        Set<String> keys = new LinkedHashSet<>(schema.indexByKey().keySet());
+        if (!keys.contains(schema.getSummaryFieldKey()) && !keys.isEmpty()) {
+            schema.setSummaryFieldKey(keys.iterator().next());
+        }
+        for (DynamicEntryRow entry : entries) {
+            entry.getValues().ensureKeys(keys);
+        }
     }
 }

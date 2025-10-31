@@ -39,8 +39,7 @@ public class DynamicRepeatableWizardState implements Serializable {
     }
 
     public void syncEntriesWithSchema() {
-        entries.getSchema().copyFrom(schema);
-        entries.ensureEntryCount(schema.getEntryCount());
+        entries.syncWithSchema(schema);
     }
 
     public Set<String> getCompletedSteps() {
@@ -74,13 +73,11 @@ public class DynamicRepeatableWizardState implements Serializable {
         completedSteps.clear();
         currentStepId = STEP_SCHEMA;
         schema.setCollectionTitle("");
-        schema.setRequireOwner(true);
-        schema.setIncludeEmail(true);
-        schema.setIncludePhone(false);
-        schema.setIncludeNotes(false);
         schema.setEntryCount(3);
-        entries.getSchema().copyFrom(schema);
+        schema.getFields().clear();
+        schema.ensureSeedField();
+        schema.setSummaryFieldKey(schema.getFields().get(0).getFieldKey());
         entries.getEntries().clear();
-        entries.ensureEntryCount(schema.getEntryCount());
+        entries.syncWithSchema(schema);
     }
 }

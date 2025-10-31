@@ -77,6 +77,15 @@ public final class FormEngine {
             throw new IllegalArgumentException("Class " + definitionClass + " is not annotated with @UiForm");
         }
         FormDefinition definition = scanner.scan(definitionClass);
+        return render(definition, provider, locale, rtl);
+    }
+
+    public <T> RenderedForm<T> render(FormDefinition definition,
+                                      I18NProvider provider,
+                                      Locale locale,
+                                      boolean rtl) {
+        Objects.requireNonNull(definition, "definition");
+        Objects.requireNonNull(provider, "provider");
         @SuppressWarnings("unchecked")
         Class<T> beanType = (Class<T>) definition.getBeanType();
         BinderOrchestrator<T> orchestrator = new BinderOrchestrator<>(beanType,
