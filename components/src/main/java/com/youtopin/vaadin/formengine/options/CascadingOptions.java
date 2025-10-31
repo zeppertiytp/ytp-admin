@@ -2,6 +2,7 @@ package com.youtopin.vaadin.formengine.options;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -31,5 +32,16 @@ public final class CascadingOptions implements OptionCatalog {
     @Override
     public List<OptionItem> byIds(Collection<String> ids) {
         return delegate.byIds(ids);
+    }
+
+    @Override
+    public boolean supportsCreate() {
+        return delegate.supportsCreate();
+    }
+
+    @Override
+    public OptionItem create(String value, Locale locale, Map<String, Object> context) {
+        Map<String, Object> cascadedContext = contextTransformer.apply(context);
+        return delegate.create(value, locale, cascadedContext);
     }
 }

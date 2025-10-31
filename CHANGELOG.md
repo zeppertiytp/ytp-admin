@@ -1,6 +1,19 @@
 # CHANGELOG
 
-# Unreleased
+## Unreleased
+
+_No changes yet._
+
+## v4.6.19
+### Option catalog creation API
+
+* **Form engine:** Added opt-in `supportsCreate`/`create` hooks to `OptionCatalog` and propagated overrides across built-in
+  providers so persistence layers can accept inline option creation while static data keeps declining it.
+* **Form engine:** Taught `OptionCatalogRegistry` to document mutable registrations and reuse explicit remote or callback
+  catalogs, ensuring creation-capable providers stay reachable across locales.
+* **Docs:** Documented the runtime creation contract, identifier expectations, and error handling guidance in the form engine
+  reference.
+
 ### Iconoir-first navigation icons
 
 * **Navigation:** Switched navigation menu metadata to use Iconoir sprite identifiers directly, removing the Vaadin icon mapping layer and trimming JSON down to kebab-cased names.

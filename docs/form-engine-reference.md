@@ -398,6 +398,22 @@ The autocomplete fetches brands using the selected category as a filter, allows 
 subform, and automatically selects the newly created item. In this case the bean exposes a `BrandSummary` value object, but you
 can also bind to identifiers when preferred.
 
+#### Option catalog creation API
+
+`OptionCatalog` instances expose two opt-in methods for persisting new options at runtime:
+
+- `supportsCreate()` – return `true` once the catalog is wired to a persistence mechanism capable of storing the new option.
+  Static and enum providers continue to return `false` and rely on existing metadata.
+- `create(String value, Locale locale, Map<String, Object> context)` – persist the new entry and return an `OptionItem`
+  containing the canonical identifier, translated label, and optional payload. The context map mirrors the data supplied to
+  `SearchQuery` (such as cascade values or host-provided metadata) and should be treated as read-only.
+
+The method must return an identifier that the backing data store recognises. Use the `payload` map to include lightweight
+metadata (e.g. colour swatches, category hints) required by the client. Reject invalid submissions by throwing an
+`IllegalArgumentException` (validation problem) or a domain-specific runtime exception; the form engine surfaces the error to the
+caller so hosts can provide feedback. Registrations performed via `OptionCatalogRegistry#register` reuse the same catalog
+instance for every locale, so implementations should be thread-safe when persisting new items.
+
 ### `@UiValidation`
 
 Defines per-field validators executed in addition to Bean Validation constraints.

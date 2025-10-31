@@ -176,6 +176,16 @@ public class FormEngineDemoConfiguration {
                         .distinct()
                         .toList();
             }
+
+            @Override
+            public boolean supportsCreate() {
+                return false;
+            }
+
+            @Override
+            public OptionItem create(String value, Locale locale, Map<String, Object> context) {
+                return OptionCatalog.super.create(value, locale, context);
+            }
         };
     }
 
@@ -205,6 +215,16 @@ public class FormEngineDemoConfiguration {
                     .filter(entries::containsKey)
                     .map(id -> toOptionItem(id, entries.get(id), Locale.getDefault()))
                     .collect(Collectors.toList());
+        }
+
+        @Override
+        public boolean supportsCreate() {
+            return false;
+        }
+
+        @Override
+        public OptionItem create(String value, Locale locale, Map<String, Object> context) {
+            return OptionCatalog.super.create(value, locale, context);
         }
 
         private OptionItem toOptionItem(String id, String messageKey, Locale locale) {
