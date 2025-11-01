@@ -12,12 +12,22 @@ public final class ValidationDefinition {
     private final String expression;
     private final List<Class<?>> groups;
     private final String asyncValidatorBean;
+    private final String validatorBean;
 
     public ValidationDefinition(String messageKey, String expression, List<Class<?>> groups, String asyncValidatorBean) {
+        this(messageKey, expression, groups, asyncValidatorBean, "");
+    }
+
+    public ValidationDefinition(String messageKey,
+                                String expression,
+                                List<Class<?>> groups,
+                                String asyncValidatorBean,
+                                String validatorBean) {
         this.messageKey = Objects.requireNonNull(messageKey, "messageKey");
         this.expression = expression == null ? "" : expression;
         this.groups = List.copyOf(groups);
         this.asyncValidatorBean = asyncValidatorBean == null ? "" : asyncValidatorBean;
+        this.validatorBean = validatorBean == null ? "" : validatorBean;
     }
 
     public String getMessageKey() {
@@ -34,5 +44,9 @@ public final class ValidationDefinition {
 
     public String getAsyncValidatorBean() {
         return asyncValidatorBean;
+    }
+
+    public String getValidatorBean() {
+        return validatorBean;
     }
 }

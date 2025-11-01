@@ -466,6 +466,7 @@ Defines per-field validators executed in addition to Bean Validation constraints
 | `messageKey` | Localised message shown when the validation fails. |
 | `expression` | State-engine expression returning `true` for invalid states. Ideal for synchronous rules. |
 | `groups` | Bean Validation groups controlling when the rule is active. Useful for staged validation flows. |
+| `validatorBean` | Spring bean implementing `FieldValidator<T>` for Java-based checks that receive the full `ValidationContext`. |
 | `asyncValidatorBean` | Bean name implementing asynchronous validation via `CompletableFuture`. Blocks form submission until resolved. |
 
 **Example – async email uniqueness**
@@ -482,6 +483,37 @@ String email;
 
 When the user submits the form, the orchestrator waits for the `emailUniquenessValidator` bean to complete before finalising the
 binder submission.
+
+**Example – validator bean**
+
+```java
+@UiField(path = "payments.amount", labelKey = "form.payments.amount",
+        component = UiField.ComponentType.NUMBER,
+        validations = @UiValidation(messageKey = "forms.validation.amount.positive",
+                validatorBean = "positiveAmountValidator"))
+BigDecimal amount;
+```
+
+Validator beans implement the `FieldValidator<T>` interface. The engine injects the current value, field metadata, and the
+`ValidationContext` to allow rich, cross-field checks:
+
+```java
+@Component("positiveAmountValidator")
+class PositiveAmountValidator implements FieldValidator<PaymentDraft> {
+
+    @Override
+    public boolean validate(FieldValidationRequest<PaymentDraft> request) {
+        Object candidate = request.getValue();
+        if (candidate instanceof BigDecimal amount) {
+            return amount.signum() > 0;
+        }
+        return false;
+    }
+}
+```
+
+Outside Spring environments, specify the fully qualified validator class name in `validatorBean`. The orchestrator will attempt
+to instantiate the class via its zero-argument constructor.
 
 **Context-aware expressions**
 

@@ -170,7 +170,7 @@ public final class AnnotationFormScanner {
 
     private ValidationDefinition toValidation(UiValidation validation) {
         return new ValidationDefinition(validation.messageKey(), validation.expression(),
-                List.of(validation.groups()), validation.asyncValidatorBean());
+                List.of(validation.groups()), validation.asyncValidatorBean(), validation.validatorBean());
     }
 
     private CrossFieldValidationDefinition toCrossField(UiCrossField crossField) {

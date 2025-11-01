@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,8 +38,9 @@ public final class BinderOrchestrator<T> {
 
     private final Class<T> beanType;
     private final Map<FieldDefinition, FieldInstance> boundFields = new LinkedHashMap<>();
-    private final List<CompletableFuture<?>> asyncValidations = new ArrayList<>();
+    private final List<AsyncValidationTask> asyncValidations = new ArrayList<>();
     private final Function<String, String> messageResolver;
+    private final Function<String, Object> validatorBeanResolver;
 
     private static final Pattern LENGTH_PATTERN = Pattern.compile("^length\\s*(<=|>=|<|>)\\s*(\\d+)$", Pattern.CASE_INSENSITIVE);
     private static final Pattern VALUE_COMPARISON_PATTERN = Pattern.compile(
@@ -48,8 +50,15 @@ public final class BinderOrchestrator<T> {
             "^\\s*(.+?)\\s*(==|!=|>=|<=|>|<)\\s*(.+)\\s*$");
 
     public BinderOrchestrator(Class<T> beanType, Function<String, String> messageResolver) {
+        this(beanType, messageResolver, null);
+    }
+
+    public BinderOrchestrator(Class<T> beanType,
+                              Function<String, String> messageResolver,
+                              Function<String, Object> validatorBeanResolver) {
         this.beanType = beanType;
         this.messageResolver = messageResolver != null ? messageResolver : key -> key == null ? "" : key;
+        this.validatorBeanResolver = validatorBeanResolver != null ? validatorBeanResolver : name -> null;
     }
 
     public void bindField(FieldInstance instance, FieldDefinition definition) {
@@ -70,7 +79,7 @@ public final class BinderOrchestrator<T> {
             FieldInstance fieldInstance = entry.getValue();
             clearValidationState(fieldInstance);
             Object rawValue = ((HasValue<?, ?>) fieldInstance.getValueComponent()).getValue();
-            List<String> errorKeys = validate(definition, rawValue, effectiveContext);
+            List<String> errorKeys = validate(definition, fieldInstance, rawValue, effectiveContext);
             if (!errorKeys.isEmpty()) {
                 errorKeys.stream()
                         .map(this::resolveMessage)
@@ -87,8 +96,20 @@ public final class BinderOrchestrator<T> {
             asyncValidations.clear();
             throw new ValidationException(List.of(), validationErrors);
         }
-        asyncValidations.forEach(CompletableFuture::join);
-        asyncValidations.clear();
+        if (!asyncValidations.isEmpty()) {
+            for (AsyncValidationTask task : new ArrayList<>(asyncValidations)) {
+                boolean valid = awaitAsyncValidation(task);
+                if (!valid) {
+                    String message = resolveMessage(task.messageKey());
+                    applyValidationError(task.instance(), message);
+                    validationErrors.add(ValidationResult.error(message));
+                }
+            }
+            asyncValidations.clear();
+            if (!validationErrors.isEmpty()) {
+                throw new ValidationException(List.of(), validationErrors);
+            }
+        }
         for (Map.Entry<FieldDefinition, Object> entry : pendingWrites.entrySet()) {
             writeProperty(entry.getKey().getPath(), bean, entry.getValue());
         }
@@ -102,7 +123,10 @@ public final class BinderOrchestrator<T> {
         return coerceValue(value, targetType);
     }
 
-    private List<String> validate(FieldDefinition definition, Object value, ValidationContext<T> context) {
+    private List<String> validate(FieldDefinition definition,
+                                  FieldInstance fieldInstance,
+                                  Object value,
+                                  ValidationContext<T> context) {
         List<String> messages = new ArrayList<>();
         if (!definition.getRequiredWhen().isBlank() && isEmpty(value)) {
             String key = definition.getRequiredMessageKey().isBlank()
@@ -115,21 +139,117 @@ public final class BinderOrchestrator<T> {
             if (optionalAndEmpty) {
                 continue;
             }
+            boolean validationFailed = false;
             if (!validation.getExpression().isBlank()) {
                 SerializablePredicate<Object> predicate = candidate ->
                         evaluateExpression(definition, validation.getExpression(), candidate, context);
                 if (!predicate.test(value)) {
                     messages.add(validation.getMessageKey());
+                    validationFailed = true;
                 }
             }
-            if (!validation.getAsyncValidatorBean().isBlank()) {
-                asyncValidations.add(CompletableFuture.supplyAsync(() -> {
-                    evaluateExpression(definition, "true", value, context);
-                    return Boolean.TRUE;
-                }));
+            if (!validation.getValidatorBean().isBlank() && !validationFailed) {
+                if (!executeValidatorBean(validation.getValidatorBean(), definition, value, context)) {
+                    messages.add(validation.getMessageKey());
+                    validationFailed = true;
+                }
+            }
+            if (!validation.getAsyncValidatorBean().isBlank() && !validationFailed && messages.isEmpty()) {
+                scheduleAsyncValidation(fieldInstance, definition, validation, value, context);
             }
         }
         return messages;
+    }
+
+    private boolean executeValidatorBean(String beanName,
+                                          FieldDefinition definition,
+                                          Object value,
+                                          ValidationContext<T> context) {
+        Object candidate = resolveValidatorBean(beanName);
+        if (candidate instanceof FieldValidator<?> validator) {
+            @SuppressWarnings("unchecked")
+            FieldValidator<T> typed = (FieldValidator<T>) validator;
+            return typed.validate(new FieldValidationRequest<>(definition, value, context));
+        }
+        throw new IllegalStateException(
+                "Validator bean '" + beanName + "' must implement " + FieldValidator.class.getName());
+    }
+
+    private void scheduleAsyncValidation(FieldInstance fieldInstance,
+                                         FieldDefinition definition,
+                                         ValidationDefinition validation,
+                                         Object value,
+                                         ValidationContext<T> context) {
+        CompletableFuture<Boolean> future = invokeAsyncValidator(validation.getAsyncValidatorBean(), definition, value,
+                context);
+        asyncValidations.add(new AsyncValidationTask(fieldInstance, future, validation.getMessageKey(),
+                validation.getAsyncValidatorBean()));
+    }
+
+    private CompletableFuture<Boolean> invokeAsyncValidator(String beanName,
+                                                            FieldDefinition definition,
+                                                            Object value,
+                                                            ValidationContext<T> context) {
+        Object candidate = resolveValidatorBean(beanName);
+        if (candidate instanceof AsyncFieldValidator<?> asyncValidator) {
+            @SuppressWarnings("unchecked")
+            AsyncFieldValidator<T> typed = (AsyncFieldValidator<T>) asyncValidator;
+            CompletableFuture<Boolean> future = typed.validateAsync(new FieldValidationRequest<>(definition, value, context));
+            if (future == null) {
+                throw new IllegalStateException("Async validator '" + beanName + "' returned null future");
+            }
+            return future;
+        }
+        if (candidate instanceof FieldValidator<?> validator) {
+            @SuppressWarnings("unchecked")
+            FieldValidator<T> typed = (FieldValidator<T>) validator;
+            return CompletableFuture
+                    .supplyAsync(() -> typed.validate(new FieldValidationRequest<>(definition, value, context)));
+        }
+        throw new IllegalStateException("Validator bean '" + beanName + "' must implement "
+                + AsyncFieldValidator.class.getName() + " or " + FieldValidator.class.getName());
+    }
+
+    private boolean awaitAsyncValidation(AsyncValidationTask task) {
+        try {
+            Boolean result = task.future().join();
+            return Boolean.TRUE.equals(result);
+        } catch (CompletionException ex) {
+            Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+            throw new IllegalStateException("Async validator '" + task.beanName() + "' failed", cause);
+        }
+    }
+
+    private Object resolveValidatorBean(String beanName) {
+        if (beanName == null || beanName.isBlank()) {
+            return null;
+        }
+        Object bean = null;
+        try {
+            bean = validatorBeanResolver.apply(beanName);
+        } catch (RuntimeException ex) {
+            throw new IllegalStateException("Unable to resolve validator bean '" + beanName + "'", ex);
+        }
+        if (bean != null) {
+            return bean;
+        }
+        Object instantiated = instantiateValidatorBean(beanName);
+        if (instantiated != null) {
+            return instantiated;
+        }
+        throw new IllegalStateException(
+                "Validator bean '" + beanName + "' not found for orchestrator managing " + beanType.getName());
+    }
+
+    private Object instantiateValidatorBean(String className) {
+        try {
+            Class<?> type = Class.forName(className);
+            return type.getDeclaredConstructor().newInstance();
+        } catch (ClassNotFoundException ex) {
+            return null;
+        } catch (ReflectiveOperationException ex) {
+            throw new IllegalStateException("Unable to instantiate validator '" + className + "'", ex);
+        }
     }
 
     private Object convertToBean(FieldDefinition definition, Object value) {
@@ -756,5 +876,11 @@ public final class BinderOrchestrator<T> {
             return key;
         }
         return resolved;
+    }
+
+    private record AsyncValidationTask(FieldInstance instance,
+                                       CompletableFuture<Boolean> future,
+                                       String messageKey,
+                                       String beanName) {
     }
 }
