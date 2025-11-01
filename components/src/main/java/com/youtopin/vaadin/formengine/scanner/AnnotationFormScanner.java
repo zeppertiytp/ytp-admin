@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.youtopin.vaadin.formengine.RepeatableTitleGenerator;
+import com.youtopin.vaadin.formengine.binder.DynamicPropertyBag;
 import com.youtopin.vaadin.formengine.annotation.UiAction;
 import com.youtopin.vaadin.formengine.annotation.UiCrossField;
 import com.youtopin.vaadin.formengine.annotation.UiField;
@@ -196,6 +197,9 @@ public final class AnnotationFormScanner {
                 }
                 PropertyDescriptor descriptor = findDescriptor(currentType, segment);
                 if (descriptor == null) {
+                    if (DynamicPropertyBag.class.isAssignableFrom(currentType)) {
+                        return;
+                    }
                     throw new FormDefinitionException("Unable to resolve property '" + segment + "' on "
                             + currentType.getName() + " for path '" + path + "'");
                 }
