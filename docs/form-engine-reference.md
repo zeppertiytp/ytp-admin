@@ -315,6 +315,39 @@ rendered.addActionHandler("inventory-save", context -> inventoryRepository.save(
 When combined with an action handler that persists submissions back into an in-memory or remote repository, this pattern
 delivers a full edit experience without additional boilerplate.
 
+### Listening to value changes
+
+`RenderedForm#addValueChangeListener(FieldValueChangeListener<T>)` exposes a high-level hook for reacting to binder changes
+without wiring individual Vaadin components. The listener receives a `FieldValueChangeEvent` carrying:
+
+- the originating `RenderedForm`, so you can query additional components or metadata;
+- the `FieldDefinition` and `FieldInstance` that triggered the update;
+- the converted bean value (matching what `BinderOrchestrator` will write to the model) alongside the raw component value;
+- a `ValidationContext` snapshot that mirrors the coordinator’s evaluation context, including dynamic property bag values and
+  repeatable entry scopes; and
+- a `isFromClient()` flag to distinguish client-side edits from programmatic updates.
+
+```java
+RenderedForm<DynamicCustomer> rendered = formEngine.render(DynamicCustomerForm.class, provider, locale, rtl);
+rendered.addValueChangeListener(event -> {
+    if (!event.isFromClient()) {
+        return; // ignore programmatic updates
+    }
+
+    FieldDefinition field = event.getFieldDefinition();
+    Object value = event.getValue();
+    ValidationContext<DynamicCustomer> ctx = event.getValidationContext();
+
+    // Works for DynamicPropertyBag fields as well: read sibling bag values via the context snapshot.
+    Object segment = event.readScopedValue("segment");
+    auditLogger.record(field.getPath(), value, segment, ctx.getBean());
+});
+```
+
+Use `ValidationContext#read(FieldInstance, String)` when you need scoped access outside the event helper—for example inside
+utility methods that only receive the context object. The engine attaches the listener to every current and future repeatable
+entry, so dynamically added rows and `DynamicPropertyBag` bindings emit events without additional plumbing.
+
 ### Runtime read-only overrides
 
 Metadata covers most locking scenarios, but hosts can still mark individual fields as read-only at runtime. Use
