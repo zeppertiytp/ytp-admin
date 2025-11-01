@@ -139,6 +139,7 @@ Defines a layout container inside a section. Groups control the column count, ne
 | `titleKey` | Optional caption key displayed above the group. |
 | `columns` | Number of columns used in the responsive grid when rendering child fields. |
 | `repeatable` | `@UiRepeatable` configuration enabling list-style editing (grid, cards, inline panels). |
+| `entryGroups` | Array of `@UiGroup` classes rendered inside each repeatable entry. Child groups must keep their own `repeatable` configuration disabled. |
 | `subform` | `@UiSubform` configuration applied when the group contains SUBFORM components. |
 | `readOnlyWhen` | Expression that turns every field (and repeatable controls) inside the group read-only while keeping the layout visible. |
 
@@ -180,6 +181,43 @@ class AttachmentGroup {
 ```
 
 Users can add up to five attachment entries, each edited in a dialog card and summarised by the template.
+
+#### Multi-group repeatable entries
+
+Set `entryGroups` when a repeatable entry needs multiple layouts rendered together. The engine scans the
+parent group and every declared entry group into a single definition, sharing the field path registry so
+duplicates are still rejected across the entire form. Nested groups inherit their own `columns`, captions,
+and `colSpan` rules, but they must keep `@UiRepeatable(enabled = false)` to avoid nested repeatables.
+
+```java
+@UiGroup(id = "contact-directory", columns = 2,
+        repeatable = @UiRepeatable(enabled = true, mode = UiRepeatable.RepeatableMode.INLINE_PANEL,
+                min = 1, summaryTemplate = "{fullName}", itemTitleKey = "forms.composite.entry.caption"),
+        entryGroups = {ContactAddressGroup.class, ContactChannelGroup.class})
+class ContactDirectoryGroup {
+
+    @UiField(path = "contacts.fullName", component = UiField.ComponentType.TEXT,
+            labelKey = "forms.composite.field.fullName", requiredWhen = "true",
+            requiredMessageKey = "forms.validation.required")
+    String fullName;
+
+    @UiField(path = "contacts.email", component = UiField.ComponentType.EMAIL,
+            labelKey = "forms.composite.field.email")
+    String email;
+}
+
+@UiGroup(id = "contact-address", titleKey = "forms.composite.group.address", columns = 2)
+class ContactAddressGroup {
+
+    @UiField(path = "contacts.address.street", labelKey = "forms.composite.field.address.street", colSpan = 2)
+    String street;
+}
+```
+
+The renderer builds one `FormLayout` per group inside each entry wrapper and flattens every field into the
+repeatable state. Value extraction, duplication, and read-only evaluation continue to work against the
+shared flattened list, so hydrations include nested address and channel fields. See
+`CompositeContactFormDefinition` in the samples module for a complete example.
 
 #### Read-only metadata cascade
 

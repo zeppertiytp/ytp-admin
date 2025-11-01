@@ -62,15 +62,7 @@ public final class AnnotationFormScanner {
             }
             List<GroupDefinition> groups = new ArrayList<>();
             for (Class<?> groupClass : section.groups()) {
-                UiGroup group = groupClass.getAnnotation(UiGroup.class);
-                if (group == null) {
-                    throw new FormDefinitionException("Group class " + groupClass.getName() + " is missing @UiGroup");
-                }
-                List<FieldDefinition> fields = scanFields(groupClass, uiForm.bean(), fieldPaths);
-                RepeatableDefinition repeatable = toRepeatable(group.repeatable());
-                SubformDefinition subform = toSubform(group.subform());
-                groups.add(new GroupDefinition(group.id(), group.titleKey(), group.columns(), repeatable, subform,
-                        group.readOnlyWhen(), fields));
+                groups.add(scanGroup(groupClass, uiForm.bean(), fieldPaths, false));
             }
             sections.add(new SectionDefinition(section.id(), section.titleKey(), section.descriptionKey(),
                     section.visibleWhen(), section.readOnlyWhen(), section.securityGuard(), section.order(), groups));
@@ -85,6 +77,29 @@ public final class AnnotationFormScanner {
                 .collect(Collectors.toUnmodifiableMap(hook -> hook, hook -> new LifecycleHookDefinition(hook, "", "")));
         return new FormDefinition(uiForm.id(), uiForm.titleKey(), uiForm.descriptionKey(), uiForm.bean(), sections, actions,
                 lifecycleHooks);
+    }
+
+    private GroupDefinition scanGroup(Class<?> groupClass,
+                                      Class<?> beanType,
+                                      Set<String> fieldPaths,
+                                      boolean entryGroup) {
+        UiGroup group = groupClass.getAnnotation(UiGroup.class);
+        if (group == null) {
+            throw new FormDefinitionException("Group class " + groupClass.getName() + " is missing @UiGroup");
+        }
+        if (entryGroup && group.repeatable().enabled()) {
+            throw new FormDefinitionException("Entry group class " + groupClass.getName()
+                    + " cannot enable repeatable behaviour");
+        }
+        List<FieldDefinition> fields = scanFields(groupClass, beanType, fieldPaths);
+        List<GroupDefinition> entryGroups = new ArrayList<>();
+        for (Class<?> entryGroupClass : group.entryGroups()) {
+            entryGroups.add(scanGroup(entryGroupClass, beanType, fieldPaths, true));
+        }
+        RepeatableDefinition repeatable = toRepeatable(group.repeatable());
+        SubformDefinition subform = toSubform(group.subform());
+        return new GroupDefinition(group.id(), group.titleKey(), group.columns(), repeatable, subform,
+                group.readOnlyWhen(), fields, entryGroups);
     }
 
     private List<FieldDefinition> scanFields(Class<?> groupClass, Class<?> beanType, Set<String> fieldPaths) {
