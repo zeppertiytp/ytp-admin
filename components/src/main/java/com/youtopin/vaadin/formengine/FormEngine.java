@@ -17,6 +17,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -27,6 +28,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,6 +40,7 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.data.binder.ValidationException;
 import com.vaadin.flow.i18n.I18NProvider;
+import com.vaadin.flow.shared.Registration;
 import com.youtopin.vaadin.formengine.annotation.UiForm;
 import com.youtopin.vaadin.formengine.binder.BinderOrchestrator;
 import com.youtopin.vaadin.formengine.binder.DynamicPropertyBag;
@@ -178,6 +181,8 @@ public final class FormEngine {
         private final OptionCatalogRegistry optionCatalogRegistry;
         private final Locale locale;
         private T currentBean;
+        private final List<FieldValueChangeListener<T>> valueChangeListeners = new CopyOnWriteArrayList<>();
+        private final Map<FieldInstance, Registration> valueObserverRegistrations = new IdentityHashMap<>();
 
         private RenderedForm(FormDefinition definition,
                              BinderOrchestrator<T> orchestrator,
@@ -209,6 +214,7 @@ public final class FormEngine {
             this.optionCatalogRegistry = optionCatalogRegistry;
             this.locale = locale;
             this.currentBean = null;
+            wireInitialFieldObservers();
         }
 
         public FormDefinition getDefinition() {
@@ -315,6 +321,12 @@ public final class FormEngine {
             validationFailureListeners.add(Objects.requireNonNull(listener, "listener"));
         }
 
+        public Registration addValueChangeListener(FieldValueChangeListener<T> listener) {
+            Objects.requireNonNull(listener, "listener");
+            valueChangeListeners.add(listener);
+            return () -> valueChangeListeners.remove(listener);
+        }
+
         public void setRepeatableEntryCount(String groupId, int desiredCount) {
             RepeatableGroupState state = repeatableGroups.get(groupId);
             if (state == null) {
@@ -357,6 +369,73 @@ public final class FormEngine {
             }
             validationFailureListeners.forEach(listener -> listener.onValidationFailure(actionDefinition, exception));
             return true;
+        }
+
+        private void notifyFieldValueChange(FieldValueChangeEvent<T> event) {
+            if (valueChangeListeners.isEmpty()) {
+                return;
+            }
+            valueChangeListeners.forEach(listener -> listener.onValueChange(event));
+        }
+
+        private void wireInitialFieldObservers() {
+            fields.forEach(this::observeFieldValue);
+            repeatableGroups.values().forEach(state -> {
+                state.getEntries().forEach(this::registerRepeatableEntry);
+                state.addEntryAddedListener(this::registerRepeatableEntry);
+                state.addEntryRemovedListener(this::unregisterRepeatableEntry);
+            });
+        }
+
+        private void observeFieldValue(FieldDefinition definition, FieldInstance instance) {
+            if (instance == null) {
+                return;
+            }
+            HasValue<?, ?> component = instance.getValueComponent();
+            if (component == null) {
+                return;
+            }
+            if (valueObserverRegistrations.containsKey(instance)) {
+                return;
+            }
+            @SuppressWarnings({ "rawtypes", "unchecked" })
+            Registration registration = ((HasValue) component).addValueChangeListener(event -> {
+                if (valueChangeListeners.isEmpty()) {
+                    return;
+                }
+                Object raw = event.getValue();
+                Object converted = orchestrator.convertRawValue(definition, raw);
+                ValidationContext<T> validationContext = buildValidationContext(currentBean);
+                FieldValueChangeEvent<T> changeEvent = new FieldValueChangeEvent<>(
+                        this,
+                        definition,
+                        instance,
+                        converted,
+                        raw,
+                        validationContext,
+                        event.isFromClient());
+                notifyFieldValueChange(changeEvent);
+            });
+            valueObserverRegistrations.put(instance, registration);
+        }
+
+        private void registerRepeatableEntry(RepeatableEntry entry) {
+            if (entry == null) {
+                return;
+            }
+            entry.fields().forEach(this::observeFieldValue);
+        }
+
+        private void unregisterRepeatableEntry(RepeatableEntry entry) {
+            if (entry == null) {
+                return;
+            }
+            entry.fields().values().forEach(instance -> {
+                Registration registration = valueObserverRegistrations.remove(instance);
+                if (registration != null) {
+                    registration.remove();
+                }
+            });
         }
 
         private ValidationContext<T> buildValidationContext(T bean) {
@@ -491,6 +570,7 @@ public final class FormEngine {
             while (state.getEntries().size() > target) {
                 RepeatableEntry removed = state.getEntries().remove(state.getEntries().size() - 1);
                 state.getContainer().remove(removed.wrapper());
+                state.notifyEntryRemoved(removed);
             }
         }
 
@@ -821,6 +901,67 @@ public final class FormEngine {
                 private Set<String> keys() {
                     return keys;
                 }
+            }
+        }
+
+        @FunctionalInterface
+        public interface FieldValueChangeListener<T> extends java.io.Serializable {
+            void onValueChange(FieldValueChangeEvent<T> event);
+        }
+
+        public static final class FieldValueChangeEvent<T> implements java.io.Serializable {
+            private static final long serialVersionUID = 1L;
+
+            private final RenderedForm<T> form;
+            private final FieldDefinition fieldDefinition;
+            private final FieldInstance fieldInstance;
+            private final Object value;
+            private final Object rawValue;
+            private final ValidationContext<T> validationContext;
+            private final boolean fromClient;
+
+            private FieldValueChangeEvent(RenderedForm<T> form,
+                                          FieldDefinition fieldDefinition,
+                                          FieldInstance fieldInstance,
+                                          Object value,
+                                          Object rawValue,
+                                          ValidationContext<T> validationContext,
+                                          boolean fromClient) {
+                this.form = form;
+                this.fieldDefinition = fieldDefinition;
+                this.fieldInstance = fieldInstance;
+                this.value = value;
+                this.rawValue = rawValue;
+                this.validationContext = validationContext;
+                this.fromClient = fromClient;
+            }
+
+            public RenderedForm<T> getForm() {
+                return form;
+            }
+
+            public FieldDefinition getFieldDefinition() {
+                return fieldDefinition;
+            }
+
+            public FieldInstance getFieldInstance() {
+                return fieldInstance;
+            }
+
+            public Object getValue() {
+                return value;
+            }
+
+            public Object getRawValue() {
+                return rawValue;
+            }
+
+            public ValidationContext<T> getValidationContext() {
+                return validationContext;
+            }
+
+            public boolean isFromClient() {
+                return fromClient;
             }
         }
 
@@ -1813,6 +1954,7 @@ public final class FormEngine {
             }
             state.getContainer().remove(entryWrapper);
             state.getEntries().remove(entry);
+            state.notifyEntryRemoved(entry);
             updateAddButtonState(state);
             updateRemoveButtons(state);
             updateRepeatableTitles(state, context);
@@ -1822,6 +1964,7 @@ public final class FormEngine {
         entryWrapper.add(header, content);
         state.getContainer().add(entryWrapper);
         state.getEntries().add(entry);
+        state.notifyEntryAdded(entry);
         updateAddButtonState(state);
         updateRemoveButtons(state);
         updateRepeatableTitles(state, context);
@@ -2220,6 +2363,8 @@ public final class FormEngine {
         private final String parentPath;
         private final List<GroupDefinition> entryGroups;
         private final List<FieldDefinition> flattenedFields;
+        private final List<Consumer<RepeatableEntry>> entryAddedListeners = new CopyOnWriteArrayList<>();
+        private final List<Consumer<RepeatableEntry>> entryRemovedListeners = new CopyOnWriteArrayList<>();
 
         private RepeatableGroupState(GroupDefinition group,
                                      RepeatableDefinition repeatable,
@@ -2299,6 +2444,32 @@ public final class FormEngine {
 
         private List<FieldDefinition> getFlattenedFields() {
             return flattenedFields;
+        }
+
+        void addEntryAddedListener(Consumer<RepeatableEntry> listener) {
+            if (listener != null) {
+                entryAddedListeners.add(listener);
+            }
+        }
+
+        void addEntryRemovedListener(Consumer<RepeatableEntry> listener) {
+            if (listener != null) {
+                entryRemovedListeners.add(listener);
+            }
+        }
+
+        void notifyEntryAdded(RepeatableEntry entry) {
+            if (entry == null) {
+                return;
+            }
+            entryAddedListeners.forEach(listener -> listener.accept(entry));
+        }
+
+        void notifyEntryRemoved(RepeatableEntry entry) {
+            if (entry == null) {
+                return;
+            }
+            entryRemovedListeners.forEach(listener -> listener.accept(entry));
         }
     }
 
