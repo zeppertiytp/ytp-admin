@@ -483,6 +483,32 @@ String email;
 When the user submits the form, the orchestrator waits for the `emailUniquenessValidator` bean to complete before finalising the
 binder submission.
 
+**Context-aware expressions**
+
+Every validation runs inside a `ValidationContext` that mirrors the form state at submission time. The context exposes:
+
+- the current field `value` (already converted to the target type),
+- the bound `bean` for cross checks against persisted data,
+- sibling field values, accessed via their paths (e.g. `amount`, `account.email`, or `entries.channels.phone`),
+- repeatable entries indexed through `[n]` suffixes, supporting both `contacts[0].profile.fullName` and `contacts.profile.fullName[0]` forms.
+
+This enables concise cross-field checks without leaving the declarative annotations:
+
+```java
+@UiField(path = "payments.confirmTotal",
+        validations = @UiValidation(messageKey = "forms.validation.totals.match",
+                expression = "value == bean.payments.total"))
+BigDecimal confirmTotal;
+
+@UiField(path = "contacts.channels.preferred",
+        validations = @UiValidation(messageKey = "forms.validation.channels.available",
+                expression = "value == null || entries.channels.email != null || entries.channels.phone != null"))
+String preferredChannel;
+```
+
+Dynamic property bags and nested repeatables contribute their keys to the context automatically, so expressions such as
+`profile.nickname != profile.fullName` or `addresses[0].city != null` behave the same way as bean-backed fields.
+
 ### `@UiCrossField`
 
 Captures validation rules that involve multiple fields. The expression is evaluated after individual field validation.
