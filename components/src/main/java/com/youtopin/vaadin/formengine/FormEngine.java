@@ -1510,11 +1510,23 @@ public final class FormEngine {
         wrapper.setPadding(false);
         wrapper.setSpacing(false);
         wrapper.addClassName("form-engine-repeatable-group");
+        wrapper.getStyle().set("gap", "var(--lumo-space-m)");
         RepeatableDefinition repeatable = group.getRepeatableDefinition();
         com.vaadin.flow.component.orderedlayout.VerticalLayout entriesContainer = new com.vaadin.flow.component.orderedlayout.VerticalLayout();
         entriesContainer.setPadding(false);
         entriesContainer.setSpacing(true);
         entriesContainer.getElement().setAttribute("data-repeatable-container", group.getId());
+        if (!group.getTitleKey().isBlank()) {
+            com.vaadin.flow.component.html.H4 heading =
+                    new com.vaadin.flow.component.html.H4(context.translate(group.getTitleKey()));
+            heading.addClassName("form-engine-repeatable-group-title");
+            heading.getStyle().set("margin", "0");
+            heading.getStyle().set("font-size", "var(--lumo-font-size-xl)");
+            heading.getStyle().set("font-weight", "700");
+            heading.getStyle().set("color", "var(--lumo-header-text-color)");
+            heading.getStyle().set("letter-spacing", "-0.015em");
+            wrapper.add(heading);
+        }
         wrapper.add(entriesContainer);
         Button addEntry = new Button(context.translate("form.repeatable.addGroup"));
         addEntry.getElement().setAttribute("aria-label", context.translate("form.repeatable.addGroup"));
@@ -1681,6 +1693,9 @@ public final class FormEngine {
         com.vaadin.flow.component.html.Span title = new com.vaadin.flow.component.html.Span();
         title.getElement().setAttribute("data-repeatable-title", "true");
         title.addClassName("form-engine-repeatable-title");
+        title.getStyle().set("font-size", "var(--lumo-font-size-m)");
+        title.getStyle().set("font-weight", "600");
+        title.getStyle().set("color", "var(--lumo-header-text-color)");
         title.setText(state.getRepeatable().getTitleGenerator()
                 .generate(state.getEntries().size(), context, state.getGroup(), state.getRepeatable()));
         header.add(title, removeButton);
@@ -1733,6 +1748,10 @@ public final class FormEngine {
             String translated = context.translate(groupDefinition.getTitleKey());
             com.vaadin.flow.component.html.H4 heading = new com.vaadin.flow.component.html.H4(translated);
             heading.addClassName("form-engine-repeatable-entry-heading");
+            heading.getStyle().set("margin", "0");
+            heading.getStyle().set("font-size", "var(--lumo-font-size-s)");
+            heading.getStyle().set("font-weight", "600");
+            heading.getStyle().set("color", "var(--lumo-secondary-text-color)");
             heading.getElement().setAttribute("data-repeatable-subtitle", groupDefinition.getId());
             container.add(heading);
             hasContent = true;
