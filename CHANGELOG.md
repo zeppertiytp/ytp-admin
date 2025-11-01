@@ -2,7 +2,11 @@
 
 ## Unreleased
 
-_No changes yet._
+### Form engine value change listeners
+
+* **Form engine:** Scoped the validation context exposed by `RenderedForm#addValueChangeListener` so dynamic property bag
+  bindings can read sibling values via `FieldValueChangeEvent#readScopedValue` and `ValidationContext#read(FieldInstance, String)`.
+* **Docs:** Documented the scoped value helpers for listener callbacks and coordinator integrations.
 
 ## v4.6.21
 ### Multi-group repeatable entries

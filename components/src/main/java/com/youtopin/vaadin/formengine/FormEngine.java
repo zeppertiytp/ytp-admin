@@ -29,6 +29,7 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -441,6 +442,7 @@ public final class FormEngine {
         private ValidationContext<T> buildValidationContext(T bean) {
             Map<String, Object> values = new LinkedHashMap<>();
             Map<FieldDefinition, java.util.function.Function<String, Object>> scopedReaders = new java.util.IdentityHashMap<>();
+            Map<FieldInstance, Function<String, Object>> instanceReaders = new java.util.IdentityHashMap<>();
             BeanEvaluationContext beanContext = new BeanEvaluationContext(bean);
             fields.forEach((definition, instance) -> {
                 HasValue<?, ?> component = instance.getValueComponent();
@@ -451,9 +453,12 @@ public final class FormEngine {
                 Object converted = orchestrator.convertRawValue(definition, raw);
                 addValidationValue(values, definition.getPath(), converted);
                 String property = extractPropertyName(definition.getPath());
-                if (!property.isBlank()) {
+                if (!property.isBlank() && !property.equals(definition.getPath())) {
                     addValidationValue(values, property, converted);
                 }
+                Function<String, Object> reader = createFieldReader(definition, beanContext, null, values);
+                instanceReaders.putIfAbsent(instance, reader);
+                scopedReaders.putIfAbsent(definition, reader);
             });
             Map<String, Map<Integer, Map<String, Object>>> repeatableSnapshots = new LinkedHashMap<>();
             repeatableGroups.values().forEach(state -> {
@@ -487,13 +492,15 @@ public final class FormEngine {
                                 Map<String, Object> snapshot = indexMap.computeIfAbsent(index, key -> new LinkedHashMap<>());
                                 snapshot.put(relative, converted);
                                 String property = extractPropertyName(path);
-                                if (!property.isBlank()) {
+                                if (!property.isBlank() && !property.equals(path)) {
                                     snapshot.putIfAbsent(property, converted);
                                     addValidationValue(values, property + "[" + index + "]", converted);
                                 }
                             }
                         }
-                        scopedReaders.putIfAbsent(definition, entryContext::read);
+                        Function<String, Object> reader = createFieldReader(definition, beanContext, entryContext, values);
+                        instanceReaders.put(instance, reader);
+                        scopedReaders.putIfAbsent(definition, reader);
                     }
                 }
             });
@@ -507,8 +514,38 @@ public final class FormEngine {
                         .toList();
                 values.put(parentPath, ordered);
             });
-            return ValidationContext.of(bean, values, scopedReaders,
+            return ValidationContext.of(bean, values, scopedReaders, instanceReaders,
                     (candidate, path) -> candidate == null ? null : orchestrator.readProperty(path, candidate));
+        }
+
+        private Function<String, Object> createFieldReader(FieldDefinition definition,
+                                                           BeanEvaluationContext beanContext,
+                                                           RepeatableEntryEvaluationContext entryContext,
+                                                           Map<String, Object> values) {
+            return path -> {
+                if (path == null || path.isBlank()) {
+                    return null;
+                }
+                String trimmed = path.trim();
+                if (entryContext != null) {
+                    Object scoped = entryContext.read(trimmed);
+                    if (scoped != null) {
+                        return scoped;
+                    }
+                }
+                if (trimmed.equals(definition.getPath())) {
+                    return values.get(definition.getPath());
+                }
+                String property = extractPropertyName(definition.getPath());
+                if (!property.isBlank() && property.equals(trimmed)) {
+                    return values.get(property);
+                }
+                Object direct = values.get(trimmed);
+                if (direct != null || values.containsKey(trimmed)) {
+                    return direct;
+                }
+                return beanContext.read(trimmed);
+            };
         }
 
         private void addValidationValue(Map<String, Object> target, String key, Object value) {
@@ -962,6 +999,19 @@ public final class FormEngine {
 
             public boolean isFromClient() {
                 return fromClient;
+            }
+
+            public Object readScopedValue(String path) {
+                if (validationContext == null) {
+                    return null;
+                }
+                if (fieldInstance != null) {
+                    Object scoped = validationContext.read(fieldInstance, path);
+                    if (scoped != null) {
+                        return scoped;
+                    }
+                }
+                return validationContext.read(path);
             }
         }
 

@@ -638,7 +638,7 @@ public final class BinderOrchestrator<T> {
             Object converted = convertRawValue(definition, raw);
             addValue(values, definition.getPath(), converted, null, -1);
         }
-        return ValidationContext.of(bean, values, Map.of(),
+        return ValidationContext.of(bean, values, Map.of(), Map.of(),
                 (candidate, path) -> candidate == null ? null : readProperty(path, candidate));
     }
 

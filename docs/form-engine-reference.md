@@ -339,13 +339,14 @@ rendered.addValueChangeListener(event -> {
     ValidationContext<DynamicCustomer> ctx = event.getValidationContext();
 
     // Works for DynamicPropertyBag fields as well: read sibling bag values via the context snapshot.
-    Object segment = ctx.read(field, "segment");
+    Object segment = event.readScopedValue("segment");
     auditLogger.record(field.getPath(), value, segment, ctx.getBean());
 });
 ```
 
-The engine attaches the listener to every current and future repeatable entry, so dynamically added rows and `DynamicPropertyBag`
-bindings emit events without additional plumbing.
+Use `ValidationContext#read(FieldInstance, String)` when you need scoped access outside the event helper—for example inside
+utility methods that only receive the context object. The engine attaches the listener to every current and future repeatable
+entry, so dynamically added rows and `DynamicPropertyBag` bindings emit events without additional plumbing.
 
 ### Runtime read-only overrides
 
