@@ -368,9 +368,11 @@ public final class FormEngine {
             for (int index = 0; index < entries.size(); index++) {
                 Map<String, Object> valueMap = index < values.size() ? values.get(index) : Collections.emptyMap();
                 Map<FieldDefinition, FieldInstance> fieldMap = entries.get(index).fields();
-                for (Map.Entry<FieldDefinition, FieldInstance> fieldEntry : fieldMap.entrySet()) {
-                    FieldDefinition definition = fieldEntry.getKey();
-                    FieldInstance instance = fieldEntry.getValue();
+                for (FieldDefinition definition : state.getFlattenedFields()) {
+                    FieldInstance instance = fieldMap.get(definition);
+                    if (instance == null) {
+                        continue;
+                    }
                     String path = definition.getPath();
                     String relativePath = toRelativePath(path, state.getParentPath());
                     if (relativePath.isBlank()) {
@@ -440,12 +442,16 @@ public final class FormEngine {
                         new RepeatableEntryEvaluationContext(state, entry, index, beanContext, bean);
                 ReadOnlyOverrideContext<T> overrideContext = ReadOnlyOverrideContext.forRepeatableEntry(
                         bean, entryContext.toOverrideContext());
-                for (Map.Entry<FieldDefinition, FieldInstance> entryField : entry.fields().entrySet()) {
-                    FieldDefinition definition = entryField.getKey();
+                Map<FieldDefinition, FieldInstance> fieldMap = entry.fields();
+                for (FieldDefinition definition : state.getFlattenedFields()) {
+                    FieldInstance instance = fieldMap.get(definition);
+                    if (instance == null) {
+                        continue;
+                    }
                     boolean fieldReadOnly = groupReadOnly
                             || evaluateStateExpression(definition.getReadOnlyWhen(), entryContext)
                             || shouldApplyOverride(definition, overrideContext);
-                    applyReadOnlyToField(entryField.getValue(), fieldReadOnly);
+                    applyReadOnlyToField(instance, fieldReadOnly);
                 }
                 if (groupReadOnly) {
                     entry.removeButton().setEnabled(false);
@@ -935,7 +941,7 @@ public final class FormEngine {
                     continue;
                 }
                 Map<String, Object> entryValues = new LinkedHashMap<>();
-                for (FieldDefinition field : state.getGroup().getFields()) {
+                for (FieldDefinition field : state.getFlattenedFields()) {
                     String path = field.getPath();
                     String property = toRelativePath(path, state.getParentPath());
                     if (property.isBlank()) {
@@ -1570,10 +1576,12 @@ public final class FormEngine {
         com.vaadin.flow.component.combobox.ComboBox<RepeatableEntry> duplicateSelectorRef = duplicateSelector;
         Button confirmDuplicateRef = confirmDuplicate;
         Button cancelDuplicateRef = cancelDuplicate;
+        final List<GroupDefinition> entryGroups = group.getEntryGroups();
+        final List<FieldDefinition> flattenedFields = flattenRepeatableFields(group);
         RepeatableGroupState state = repeatableGroups.computeIfAbsent(group.getId(), key ->
                 new RepeatableGroupState(group, repeatable, entriesContainer, addEntry, duplicateButtonRef, duplicateDialogRef,
                         duplicateSelectorRef, confirmDuplicateRef, cancelDuplicateRef, new ArrayList<>(),
-                        deriveParentPath(group, beanType)));
+                        deriveParentPath(group, flattenedFields, beanType), entryGroups, flattenedFields));
         addEntry.addClickListener(event -> {
             if (!state.getRepeatable().isAllowManualAdd()) {
                 return;
@@ -1676,21 +1684,14 @@ public final class FormEngine {
         title.setText(state.getRepeatable().getTitleGenerator()
                 .generate(state.getEntries().size(), context, state.getGroup(), state.getRepeatable()));
         header.add(title, removeButton);
-        com.vaadin.flow.component.formlayout.FormLayout formLayout = new com.vaadin.flow.component.formlayout.FormLayout();
-        configureResponsiveSteps(formLayout, state.getGroup().getColumns());
         Map<FieldDefinition, FieldInstance> entryInstances = new LinkedHashMap<>();
-        for (FieldDefinition fieldDefinition : state.getGroup().getFields()) {
-            FieldInstance instance = registry.create(fieldDefinition, context);
-            entryInstances.put(fieldDefinition, instance);
-            Component component = instance.getComponent();
-            formLayout.add(component);
-            if (fieldDefinition.getColSpan() > 1) {
-                formLayout.setColspan(component, fieldDefinition.getColSpan());
-            }
-            if (fieldDefinition.getRowSpan() > 1) {
-                component.getElement().getStyle().set("grid-row-end", "span " + fieldDefinition.getRowSpan());
-            }
-        }
+        com.vaadin.flow.component.orderedlayout.VerticalLayout content =
+                new com.vaadin.flow.component.orderedlayout.VerticalLayout();
+        content.setPadding(false);
+        content.setSpacing(false);
+        content.addClassName("form-engine-repeatable-entry-content");
+        content.getElement().setAttribute("data-repeatable-content", "true");
+        renderRepeatableEntryGroup(state.getGroup(), registry, context, entryInstances, content, false);
         RepeatableEntry entry = new RepeatableEntry(entryWrapper, entryInstances, removeButton);
         removeButton.addClickListener(event -> {
             if (!state.getRepeatable().isAllowManualRemove()) {
@@ -1707,7 +1708,7 @@ public final class FormEngine {
             updateDuplicateButtonState(state);
             refreshDuplicateDialogOptions(state, context);
         });
-        entryWrapper.add(header, formLayout);
+        entryWrapper.add(header, content);
         state.getContainer().add(entryWrapper);
         state.getEntries().add(entry);
         updateAddButtonState(state);
@@ -1716,6 +1717,77 @@ public final class FormEngine {
         updateDuplicateButtonState(state);
         refreshDuplicateDialogOptions(state, context);
         return entry;
+    }
+
+    private boolean renderRepeatableEntryGroup(GroupDefinition groupDefinition,
+                                               FieldRegistry registry,
+                                               FieldFactoryContext context,
+                                               Map<FieldDefinition, FieldInstance> entryInstances,
+                                               com.vaadin.flow.component.orderedlayout.VerticalLayout container,
+                                               boolean includeHeading) {
+        if (groupDefinition == null) {
+            return false;
+        }
+        boolean hasContent = false;
+        if (includeHeading && !groupDefinition.getTitleKey().isBlank()) {
+            String translated = context.translate(groupDefinition.getTitleKey());
+            com.vaadin.flow.component.html.H4 heading = new com.vaadin.flow.component.html.H4(translated);
+            heading.addClassName("form-engine-repeatable-entry-heading");
+            heading.getElement().setAttribute("data-repeatable-subtitle", groupDefinition.getId());
+            container.add(heading);
+            hasContent = true;
+        }
+        if (!groupDefinition.getFields().isEmpty()) {
+            com.vaadin.flow.component.formlayout.FormLayout formLayout = new com.vaadin.flow.component.formlayout.FormLayout();
+            configureResponsiveSteps(formLayout, groupDefinition.getColumns());
+            for (FieldDefinition fieldDefinition : groupDefinition.getFields()) {
+                FieldInstance instance = registry.create(fieldDefinition, context);
+                entryInstances.put(fieldDefinition, instance);
+                Component component = instance.getComponent();
+                formLayout.add(component);
+                if (fieldDefinition.getColSpan() > 1) {
+                    formLayout.setColspan(component, fieldDefinition.getColSpan());
+                }
+                if (fieldDefinition.getRowSpan() > 1) {
+                    component.getElement().getStyle().set("grid-row-end", "span " + fieldDefinition.getRowSpan());
+                }
+            }
+            container.add(formLayout);
+            hasContent = true;
+        }
+        for (GroupDefinition entryGroup : groupDefinition.getEntryGroups()) {
+            com.vaadin.flow.component.orderedlayout.VerticalLayout nested =
+                    new com.vaadin.flow.component.orderedlayout.VerticalLayout();
+            nested.setPadding(false);
+            nested.setSpacing(false);
+            nested.addClassName("form-engine-repeatable-entry-group");
+            nested.getElement().setAttribute("data-repeatable-subgroup", entryGroup.getId());
+            boolean nestedContent = renderRepeatableEntryGroup(entryGroup, registry, context, entryInstances, nested, true);
+            if (nestedContent) {
+                container.add(nested);
+                hasContent = true;
+            }
+        }
+        return hasContent;
+    }
+
+    private List<FieldDefinition> flattenRepeatableFields(GroupDefinition group) {
+        if (group == null) {
+            return List.of();
+        }
+        List<FieldDefinition> fields = new ArrayList<>();
+        collectRepeatableFields(group, fields);
+        return List.copyOf(fields);
+    }
+
+    private void collectRepeatableFields(GroupDefinition group, List<FieldDefinition> fields) {
+        if (group == null || fields == null) {
+            return;
+        }
+        fields.addAll(group.getFields());
+        for (GroupDefinition nested : group.getEntryGroups()) {
+            collectRepeatableFields(nested, fields);
+        }
     }
 
     private void configureResponsiveSteps(com.vaadin.flow.component.formlayout.FormLayout formLayout, int configuredColumns) {
@@ -1852,12 +1924,23 @@ public final class FormEngine {
         return value;
     }
 
-    private String deriveParentPath(GroupDefinition group, Class<?> beanType) {
-        if (group == null || group.getFields().isEmpty()) {
+    private String deriveParentPath(GroupDefinition group, List<FieldDefinition> flattenedFields, Class<?> beanType) {
+        if (group == null) {
             return "";
         }
-        String samplePath = group.getFields().get(0).getPath();
-        if (samplePath == null || samplePath.isBlank()) {
+        String samplePath = flattenedFields == null ? "" : flattenedFields.stream()
+                .map(FieldDefinition::getPath)
+                .filter(path -> path != null && !path.isBlank())
+                .findFirst()
+                .orElse("");
+        if (samplePath.isBlank()) {
+            samplePath = group.getFields().stream()
+                    .map(FieldDefinition::getPath)
+                    .filter(path -> path != null && !path.isBlank())
+                    .findFirst()
+                    .orElse("");
+        }
+        if (samplePath.isBlank()) {
             return "";
         }
         if (beanType == null) {
@@ -2016,6 +2099,8 @@ public final class FormEngine {
         private final Button cancelDuplicateButton;
         private final List<RepeatableEntry> entries;
         private final String parentPath;
+        private final List<GroupDefinition> entryGroups;
+        private final List<FieldDefinition> flattenedFields;
 
         private RepeatableGroupState(GroupDefinition group,
                                      RepeatableDefinition repeatable,
@@ -2027,7 +2112,9 @@ public final class FormEngine {
                                      Button confirmDuplicateButton,
                                      Button cancelDuplicateButton,
                                      List<RepeatableEntry> entries,
-                                     String parentPath) {
+                                     String parentPath,
+                                     List<GroupDefinition> entryGroups,
+                                     List<FieldDefinition> flattenedFields) {
             this.group = group;
             this.repeatable = repeatable;
             this.container = container;
@@ -2039,6 +2126,8 @@ public final class FormEngine {
             this.cancelDuplicateButton = cancelDuplicateButton;
             this.entries = entries;
             this.parentPath = parentPath == null ? "" : parentPath;
+            this.entryGroups = entryGroups == null ? List.of() : List.copyOf(entryGroups);
+            this.flattenedFields = flattenedFields == null ? List.of() : List.copyOf(flattenedFields);
         }
 
         private GroupDefinition getGroup() {
@@ -2083,6 +2172,14 @@ public final class FormEngine {
 
         private String getParentPath() {
             return parentPath;
+        }
+
+        private List<GroupDefinition> getEntryGroups() {
+            return entryGroups;
+        }
+
+        private List<FieldDefinition> getFlattenedFields() {
+            return flattenedFields;
         }
     }
 

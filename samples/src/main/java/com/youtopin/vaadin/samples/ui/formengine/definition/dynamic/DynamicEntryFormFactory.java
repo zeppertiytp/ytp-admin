@@ -78,7 +78,7 @@ public final class DynamicEntryFormFactory {
                 createReadOnlyField("schema.summaryFieldKey", UiField.ComponentType.TEXT,
                         "dynamicwizard.entries.field.summaryField"));
         return new GroupDefinition("dynamic-entry-schema-group", "", 2,
-                null, null, "true", fields);
+                null, null, "true", fields, List.of());
     }
 
     private static FieldDefinition createReadOnlyField(String path,
@@ -111,7 +111,7 @@ public final class DynamicEntryFormFactory {
                 false);
 
         return new GroupDefinition(GROUP_ID, "", 2, repeatable, null, "",
-                fields);
+                fields, List.of());
     }
 
     private static FieldDefinition createDynamicField(DynamicFieldBlueprint blueprint, int order) {

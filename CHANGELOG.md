@@ -4,6 +4,14 @@
 
 _No changes yet._
 
+## v4.6.20
+### Multi-group repeatable entries
+
+* **Form engine:** Added `entryGroups` support to `@UiGroup`, allowing repeatable entries to compose multiple child layouts while reusing field path validation.
+* **Form engine:** Updated the runtime to render per-entry subgroups, flatten nested field definitions for hydration, and compute collection paths from child groups.
+* **Docs:** Documented the `entryGroups` attribute and multi-group semantics in the form engine reference.
+* **Samples:** Introduced the composite contact directory form showcasing multi-group repeatable entries with localized headings.
+
 ## v4.6.19
 ### Option catalog creation API
 

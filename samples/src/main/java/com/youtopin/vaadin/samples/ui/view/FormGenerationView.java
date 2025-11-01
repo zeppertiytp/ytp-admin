@@ -15,6 +15,7 @@ import com.youtopin.vaadin.formengine.registry.FieldInstance;
 import com.youtopin.vaadin.i18n.TranslationProvider;
 import com.youtopin.vaadin.samples.ui.formengine.definition.AccessPolicyFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.AgendaBuilderFormDefinition;
+import com.youtopin.vaadin.samples.ui.formengine.definition.CompositeContactFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.DailyPlanFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.DailyPlanListFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.definition.EmployeeOnboardingFormDefinition;
@@ -24,6 +25,7 @@ import com.youtopin.vaadin.samples.ui.formengine.definition.RepeatableDuplicatio
 import com.youtopin.vaadin.samples.ui.formengine.definition.ProfileLockFormDefinition;
 import com.youtopin.vaadin.samples.ui.formengine.model.AccessPolicyFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.AgendaBuilderFormData;
+import com.youtopin.vaadin.samples.ui.formengine.model.CompositeContactFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.DailyPlanFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.DailyPlanListFormData;
 import com.youtopin.vaadin.samples.ui.formengine.model.EmployeeOnboardingFormData;
@@ -177,6 +179,13 @@ public class FormGenerationView extends AppPageLayout implements LocaleChangeObs
                         "forms.sample.duplicate.features",
                         RepeatableDuplicationFormDefinition.class,
                         RepeatableDuplicationFormData::new
+                ),
+                new SampleDescriptor<>(
+                        "forms.sample.composite.heading",
+                        "forms.sample.composite.description",
+                        "forms.sample.composite.features",
+                        CompositeContactFormDefinition.class,
+                        CompositeContactFormData::sample
                 ),
                 new SampleDescriptor<>(
                         "forms.sample.agenda.heading",

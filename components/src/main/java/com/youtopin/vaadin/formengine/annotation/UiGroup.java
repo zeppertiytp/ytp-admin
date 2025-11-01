@@ -35,6 +35,11 @@ public @interface UiGroup {
     UiRepeatable repeatable() default @UiRepeatable;
 
     /**
+     * @return Nested layout groups rendered inside each repeatable entry when {@link UiRepeatable#enabled()} is true.
+     */
+    Class<?>[] entryGroups() default {};
+
+    /**
      * @return Subform configuration applied when {@link UiField#component()} is {@link UiField.ComponentType#SUBFORM}.
      */
     UiSubform subform() default @UiSubform;
