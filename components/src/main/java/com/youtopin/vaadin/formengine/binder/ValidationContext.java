@@ -1,7 +1,6 @@
 package com.youtopin.vaadin.formengine.binder;
 
 import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -10,6 +9,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import com.youtopin.vaadin.formengine.definition.FieldDefinition;
+import com.youtopin.vaadin.formengine.registry.FieldInstance;
 
 /**
  * Snapshot of the current form state supplied to validation expressions.
@@ -23,16 +23,19 @@ public final class ValidationContext<T> {
     private final Map<String, Object> values;
     private final Set<String> valueKeys;
     private final Map<FieldDefinition, Function<String, Object>> scopedReaders;
+    private final Map<FieldInstance, Function<String, Object>> instanceReaders;
     private final BiFunction<T, String, Object> beanReader;
 
     private ValidationContext(T bean,
                               Map<String, Object> values,
                               Map<FieldDefinition, Function<String, Object>> scopedReaders,
+                              Map<FieldInstance, Function<String, Object>> instanceReaders,
                               BiFunction<T, String, Object> beanReader) {
         this.bean = bean;
         this.values = Collections.unmodifiableMap(new LinkedHashMap<>(values));
         this.valueKeys = Set.copyOf(values.keySet());
-        this.scopedReaders = Collections.unmodifiableMap(new IdentityHashMap<>(scopedReaders));
+        this.scopedReaders = Collections.unmodifiableMap(new java.util.IdentityHashMap<>(scopedReaders));
+        this.instanceReaders = Collections.unmodifiableMap(new java.util.IdentityHashMap<>(instanceReaders));
         this.beanReader = beanReader;
     }
 
@@ -61,6 +64,19 @@ public final class ValidationContext<T> {
     public Object read(FieldDefinition definition, String path) {
         if (definition != null) {
             Function<String, Object> reader = scopedReaders.get(definition);
+            if (reader != null) {
+                Object scoped = reader.apply(path);
+                if (scoped != null) {
+                    return scoped;
+                }
+            }
+        }
+        return read(path);
+    }
+
+    public Object read(FieldInstance instance, String path) {
+        if (instance != null) {
+            Function<String, Object> reader = instanceReaders.get(instance);
             if (reader != null) {
                 Object scoped = reader.apply(path);
                 if (scoped != null) {
@@ -139,14 +155,16 @@ public final class ValidationContext<T> {
     public static <T> ValidationContext<T> of(T bean,
                                               Map<String, Object> values,
                                               Map<FieldDefinition, Function<String, Object>> scopedReaders,
+                                              Map<FieldInstance, Function<String, Object>> instanceReaders,
                                               BiFunction<T, String, Object> beanReader) {
         Objects.requireNonNull(values, "values");
         Objects.requireNonNull(scopedReaders, "scopedReaders");
-        return new ValidationContext<>(bean, values, scopedReaders, beanReader);
+        Objects.requireNonNull(instanceReaders, "instanceReaders");
+        return new ValidationContext<>(bean, values, scopedReaders, instanceReaders, beanReader);
     }
 
     public static <T> ValidationContext<T> empty(T bean) {
-        return new ValidationContext<>(bean, Map.of(), Map.of(), null);
+        return new ValidationContext<>(bean, Map.of(), Map.of(), Map.of(), null);
     }
 
     private record IndexLookup(String basePath, int index, String suffix) {
