@@ -4,6 +4,11 @@
 
 _No changes yet._
 
+## v4.6.21
+### Multi-group repeatable entries
+
+* **Form engine:** Refined repeatable group typography so parent headings, per-entry titles, and nested group captions remain visually distinct when multiple layouts appear inside the same entry.
+
 ## v4.6.20
 ### Multi-group repeatable entries
 
