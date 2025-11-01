@@ -1761,6 +1761,10 @@ public final class FormEngine {
             nested.setPadding(false);
             nested.setSpacing(false);
             nested.addClassName("form-engine-repeatable-entry-group");
+            nested.getStyle().set("margin-top", "var(--lumo-space-l)");
+            nested.getStyle().set("padding-top", "var(--lumo-space-m)");
+            nested.getStyle().set("border-top", "1px solid var(--lumo-contrast-20pct)");
+            nested.getStyle().set("gap", "var(--lumo-space-m)");
             nested.getElement().setAttribute("data-repeatable-subgroup", entryGroup.getId());
             boolean nestedContent = renderRepeatableEntryGroup(entryGroup, registry, context, entryInstances, nested, true);
             if (nestedContent) {
