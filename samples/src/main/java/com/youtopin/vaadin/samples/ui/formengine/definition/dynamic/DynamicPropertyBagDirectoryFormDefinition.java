@@ -7,6 +7,7 @@ import com.youtopin.vaadin.formengine.annotation.UiGroup;
 import com.youtopin.vaadin.formengine.annotation.UiRepeatable;
 import com.youtopin.vaadin.formengine.annotation.UiSection;
 import com.youtopin.vaadin.formengine.annotation.UiOptions;
+import com.youtopin.vaadin.formengine.annotation.UiValidation;
 import com.youtopin.vaadin.samples.application.dynamicbag.DynamicBagFormData;
 
 /**
@@ -129,6 +130,8 @@ public final class DynamicPropertyBagDirectoryFormDefinition {
                                 "Phone|forms.dynamicBag.option.phone",
                                 "Chat|forms.dynamicBag.option.chat"
                         }),
+                validations = @UiValidation(messageKey = "forms.dynamicBag.validation.preferred",
+                        expression = "value == null || entries.channels.email != null || entries.channels.phone != null"),
                 order = 20)
         public void preferredChannel() {
         }

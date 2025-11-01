@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,17 +38,27 @@ public final class BinderOrchestrator<T> {
 
     private final Class<T> beanType;
     private final Map<FieldDefinition, FieldInstance> boundFields = new LinkedHashMap<>();
-    private final List<CompletableFuture<?>> asyncValidations = new ArrayList<>();
+    private final List<AsyncValidationTask> asyncValidations = new ArrayList<>();
     private final Function<String, String> messageResolver;
+    private final Function<String, Object> validatorBeanResolver;
 
     private static final Pattern LENGTH_PATTERN = Pattern.compile("^length\\s*(<=|>=|<|>)\\s*(\\d+)$", Pattern.CASE_INSENSITIVE);
     private static final Pattern VALUE_COMPARISON_PATTERN = Pattern.compile(
             "^value\\s*(==|!=|>=|<=|>|<)\\s*(-?\\d+(?:\\.\\d+)?)$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern GENERAL_COMPARISON_PATTERN = Pattern.compile(
+            "^\\s*(.+?)\\s*(==|!=|>=|<=|>|<)\\s*(.+)\\s*$");
 
     public BinderOrchestrator(Class<T> beanType, Function<String, String> messageResolver) {
+        this(beanType, messageResolver, null);
+    }
+
+    public BinderOrchestrator(Class<T> beanType,
+                              Function<String, String> messageResolver,
+                              Function<String, Object> validatorBeanResolver) {
         this.beanType = beanType;
         this.messageResolver = messageResolver != null ? messageResolver : key -> key == null ? "" : key;
+        this.validatorBeanResolver = validatorBeanResolver != null ? validatorBeanResolver : name -> null;
     }
 
     public void bindField(FieldInstance instance, FieldDefinition definition) {
@@ -55,6 +66,12 @@ public final class BinderOrchestrator<T> {
     }
 
     public void writeBean(T bean) throws ValidationException {
+        ValidationContext<T> context = buildDefaultContext(bean);
+        writeBean(bean, context);
+    }
+
+    public void writeBean(T bean, ValidationContext<T> context) throws ValidationException {
+        ValidationContext<T> effectiveContext = context == null ? ValidationContext.empty(bean) : context;
         List<ValidationResult> validationErrors = new ArrayList<>();
         Map<FieldDefinition, Object> pendingWrites = new LinkedHashMap<>();
         for (Map.Entry<FieldDefinition, FieldInstance> entry : boundFields.entrySet()) {
@@ -62,7 +79,7 @@ public final class BinderOrchestrator<T> {
             FieldInstance fieldInstance = entry.getValue();
             clearValidationState(fieldInstance);
             Object rawValue = ((HasValue<?, ?>) fieldInstance.getValueComponent()).getValue();
-            List<String> errorKeys = validate(definition, rawValue);
+            List<String> errorKeys = validate(definition, fieldInstance, rawValue, effectiveContext);
             if (!errorKeys.isEmpty()) {
                 errorKeys.stream()
                         .map(this::resolveMessage)
@@ -79,8 +96,20 @@ public final class BinderOrchestrator<T> {
             asyncValidations.clear();
             throw new ValidationException(List.of(), validationErrors);
         }
-        asyncValidations.forEach(CompletableFuture::join);
-        asyncValidations.clear();
+        if (!asyncValidations.isEmpty()) {
+            for (AsyncValidationTask task : new ArrayList<>(asyncValidations)) {
+                boolean valid = awaitAsyncValidation(task);
+                if (!valid) {
+                    String message = resolveMessage(task.messageKey());
+                    applyValidationError(task.instance(), message);
+                    validationErrors.add(ValidationResult.error(message));
+                }
+            }
+            asyncValidations.clear();
+            if (!validationErrors.isEmpty()) {
+                throw new ValidationException(List.of(), validationErrors);
+            }
+        }
         for (Map.Entry<FieldDefinition, Object> entry : pendingWrites.entrySet()) {
             writeProperty(entry.getKey().getPath(), bean, entry.getValue());
         }
@@ -94,7 +123,10 @@ public final class BinderOrchestrator<T> {
         return coerceValue(value, targetType);
     }
 
-    private List<String> validate(FieldDefinition definition, Object value) {
+    private List<String> validate(FieldDefinition definition,
+                                  FieldInstance fieldInstance,
+                                  Object value,
+                                  ValidationContext<T> context) {
         List<String> messages = new ArrayList<>();
         if (!definition.getRequiredWhen().isBlank() && isEmpty(value)) {
             String key = definition.getRequiredMessageKey().isBlank()
@@ -107,17 +139,117 @@ public final class BinderOrchestrator<T> {
             if (optionalAndEmpty) {
                 continue;
             }
+            boolean validationFailed = false;
             if (!validation.getExpression().isBlank()) {
-                SerializablePredicate<Object> predicate = candidate -> evaluateExpression(validation.getExpression(), candidate);
+                SerializablePredicate<Object> predicate = candidate ->
+                        evaluateExpression(definition, validation.getExpression(), candidate, context);
                 if (!predicate.test(value)) {
                     messages.add(validation.getMessageKey());
+                    validationFailed = true;
                 }
             }
-            if (!validation.getAsyncValidatorBean().isBlank()) {
-                asyncValidations.add(CompletableFuture.supplyAsync(() -> Boolean.TRUE));
+            if (!validation.getValidatorBean().isBlank() && !validationFailed) {
+                if (!executeValidatorBean(validation.getValidatorBean(), definition, value, context)) {
+                    messages.add(validation.getMessageKey());
+                    validationFailed = true;
+                }
+            }
+            if (!validation.getAsyncValidatorBean().isBlank() && !validationFailed && messages.isEmpty()) {
+                scheduleAsyncValidation(fieldInstance, definition, validation, value, context);
             }
         }
         return messages;
+    }
+
+    private boolean executeValidatorBean(String beanName,
+                                          FieldDefinition definition,
+                                          Object value,
+                                          ValidationContext<T> context) {
+        Object candidate = resolveValidatorBean(beanName);
+        if (candidate instanceof FieldValidator<?> validator) {
+            @SuppressWarnings("unchecked")
+            FieldValidator<T> typed = (FieldValidator<T>) validator;
+            return typed.validate(new FieldValidationRequest<>(definition, value, context));
+        }
+        throw new IllegalStateException(
+                "Validator bean '" + beanName + "' must implement " + FieldValidator.class.getName());
+    }
+
+    private void scheduleAsyncValidation(FieldInstance fieldInstance,
+                                         FieldDefinition definition,
+                                         ValidationDefinition validation,
+                                         Object value,
+                                         ValidationContext<T> context) {
+        CompletableFuture<Boolean> future = invokeAsyncValidator(validation.getAsyncValidatorBean(), definition, value,
+                context);
+        asyncValidations.add(new AsyncValidationTask(fieldInstance, future, validation.getMessageKey(),
+                validation.getAsyncValidatorBean()));
+    }
+
+    private CompletableFuture<Boolean> invokeAsyncValidator(String beanName,
+                                                            FieldDefinition definition,
+                                                            Object value,
+                                                            ValidationContext<T> context) {
+        Object candidate = resolveValidatorBean(beanName);
+        if (candidate instanceof AsyncFieldValidator<?> asyncValidator) {
+            @SuppressWarnings("unchecked")
+            AsyncFieldValidator<T> typed = (AsyncFieldValidator<T>) asyncValidator;
+            CompletableFuture<Boolean> future = typed.validateAsync(new FieldValidationRequest<>(definition, value, context));
+            if (future == null) {
+                throw new IllegalStateException("Async validator '" + beanName + "' returned null future");
+            }
+            return future;
+        }
+        if (candidate instanceof FieldValidator<?> validator) {
+            @SuppressWarnings("unchecked")
+            FieldValidator<T> typed = (FieldValidator<T>) validator;
+            return CompletableFuture
+                    .supplyAsync(() -> typed.validate(new FieldValidationRequest<>(definition, value, context)));
+        }
+        throw new IllegalStateException("Validator bean '" + beanName + "' must implement "
+                + AsyncFieldValidator.class.getName() + " or " + FieldValidator.class.getName());
+    }
+
+    private boolean awaitAsyncValidation(AsyncValidationTask task) {
+        try {
+            Boolean result = task.future().join();
+            return Boolean.TRUE.equals(result);
+        } catch (CompletionException ex) {
+            Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+            throw new IllegalStateException("Async validator '" + task.beanName() + "' failed", cause);
+        }
+    }
+
+    private Object resolveValidatorBean(String beanName) {
+        if (beanName == null || beanName.isBlank()) {
+            return null;
+        }
+        Object bean = null;
+        try {
+            bean = validatorBeanResolver.apply(beanName);
+        } catch (RuntimeException ex) {
+            throw new IllegalStateException("Unable to resolve validator bean '" + beanName + "'", ex);
+        }
+        if (bean != null) {
+            return bean;
+        }
+        Object instantiated = instantiateValidatorBean(beanName);
+        if (instantiated != null) {
+            return instantiated;
+        }
+        throw new IllegalStateException(
+                "Validator bean '" + beanName + "' not found for orchestrator managing " + beanType.getName());
+    }
+
+    private Object instantiateValidatorBean(String className) {
+        try {
+            Class<?> type = Class.forName(className);
+            return type.getDeclaredConstructor().newInstance();
+        } catch (ClassNotFoundException ex) {
+            return null;
+        } catch (ReflectiveOperationException ex) {
+            throw new IllegalStateException("Unable to instantiate validator '" + className + "'", ex);
+        }
     }
 
     private Object convertToBean(FieldDefinition definition, Object value) {
@@ -380,11 +512,31 @@ public final class BinderOrchestrator<T> {
         };
     }
 
-    private boolean evaluateExpression(String expression, Object value) {
+    private boolean evaluateExpression(FieldDefinition definition,
+                                       String expression,
+                                       Object value,
+                                       ValidationContext<T> context) {
         if (expression == null || expression.isBlank()) {
             return true;
         }
         String trimmed = expression.trim();
+        int orIndex = findLogicalOperator(trimmed, "||");
+        if (orIndex >= 0) {
+            String left = trimmed.substring(0, orIndex);
+            String right = trimmed.substring(orIndex + 2);
+            return evaluateExpression(definition, left, value, context)
+                    || evaluateExpression(definition, right, value, context);
+        }
+        int andIndex = findLogicalOperator(trimmed, "&&");
+        if (andIndex >= 0) {
+            String left = trimmed.substring(0, andIndex);
+            String right = trimmed.substring(andIndex + 2);
+            return evaluateExpression(definition, left, value, context)
+                    && evaluateExpression(definition, right, value, context);
+        }
+        if (trimmed.startsWith("!")) {
+            return !evaluateExpression(definition, trimmed.substring(1), value, context);
+        }
         if ("notBlank".equalsIgnoreCase(trimmed) || "notEmpty".equalsIgnoreCase(trimmed)) {
             return !isEmpty(value);
         }
@@ -403,10 +555,246 @@ public final class BinderOrchestrator<T> {
             double threshold = Double.parseDouble(comparisonMatcher.group(2));
             return compare(comparedValue, threshold, comparisonMatcher.group(1));
         }
-        if (value instanceof String str) {
-            return !str.isBlank();
+        Matcher generalMatcher = GENERAL_COMPARISON_PATTERN.matcher(trimmed);
+        if (generalMatcher.matches()) {
+            Object left = resolveOperand(definition, generalMatcher.group(1), value, context);
+            Object right = resolveOperand(definition, generalMatcher.group(3), value, context);
+            return compareOperands(left, right, generalMatcher.group(2));
         }
-        return value != null;
+        Object candidate = resolveOperand(definition, trimmed, value, context);
+        return toTruth(candidate);
+    }
+
+    private int findLogicalOperator(String expression, String operator) {
+        int length = expression.length();
+        boolean inSingleQuote = false;
+        boolean inDoubleQuote = false;
+        for (int index = 0; index < length - 1; index++) {
+            char current = expression.charAt(index);
+            if (current == '\\' && index + 1 < length) {
+                index++;
+                continue;
+            }
+            if (current == '\'') {
+                inSingleQuote = !inSingleQuote;
+                continue;
+            }
+            if (current == '"') {
+                inDoubleQuote = !inDoubleQuote;
+                continue;
+            }
+            if (inSingleQuote || inDoubleQuote) {
+                continue;
+            }
+            if (expression.startsWith(operator, index)) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    private Object resolveOperand(FieldDefinition definition,
+                                  String token,
+                                  Object value,
+                                  ValidationContext<T> context) {
+        if (token == null) {
+            return null;
+        }
+        String trimmed = token.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        if (trimmed.startsWith("'") && trimmed.endsWith("'") && trimmed.length() >= 2) {
+            return unescape(trimmed.substring(1, trimmed.length() - 1), '\'');
+        }
+        if (trimmed.startsWith("\"") && trimmed.endsWith("\"") && trimmed.length() >= 2) {
+            return unescape(trimmed.substring(1, trimmed.length() - 1), '"');
+        }
+        if ("null".equalsIgnoreCase(trimmed)) {
+            return null;
+        }
+        if ("true".equalsIgnoreCase(trimmed)) {
+            return Boolean.TRUE;
+        }
+        if ("false".equalsIgnoreCase(trimmed)) {
+            return Boolean.FALSE;
+        }
+        if ("value".equalsIgnoreCase(trimmed)) {
+            return value;
+        }
+        if (context != null) {
+            if ("bean".equalsIgnoreCase(trimmed)) {
+                return context.getBean();
+            }
+            if (trimmed.startsWith("bean.")) {
+                return context.read(trimmed);
+            }
+            Object scoped = context.read(definition, trimmed);
+            if (scoped != null || context.containsValue(trimmed)) {
+                return scoped;
+            }
+        }
+        if (isNumeric(trimmed)) {
+            try {
+                return new BigDecimal(trimmed);
+            } catch (NumberFormatException ex) {
+                return trimmed;
+            }
+        }
+        return trimmed;
+    }
+
+    private String unescape(String candidate, char quote) {
+        String escapedQuote = "\\" + quote;
+        return candidate.replace(escapedQuote, String.valueOf(quote)).replace("\\\\", "\\");
+    }
+
+    private boolean isNumeric(String token) {
+        try {
+            new BigDecimal(token);
+            return true;
+        } catch (NumberFormatException ex) {
+            return false;
+        }
+    }
+
+    private boolean compareOperands(Object left, Object right, String operator) {
+        if ("==".equals(operator)) {
+            return Objects.equals(normalizeOperand(left), normalizeOperand(right));
+        }
+        if ("!=".equals(operator)) {
+            return !compareOperands(left, right, "==");
+        }
+        Double leftNumber = toComparableNumber(left);
+        Double rightNumber = toComparableNumber(right);
+        if (leftNumber != null && rightNumber != null) {
+            return compare(leftNumber, rightNumber, operator);
+        }
+        if (left instanceof Comparable<?> comparable && right != null
+                && comparable.getClass().isAssignableFrom(right.getClass())) {
+            @SuppressWarnings({ "unchecked", "rawtypes" })
+            int comparison = ((Comparable) comparable).compareTo(right);
+            return switch (operator) {
+                case ">" -> comparison > 0;
+                case "<" -> comparison < 0;
+                case ">=" -> comparison >= 0;
+                case "<=" -> comparison <= 0;
+                default -> false;
+            };
+        }
+        if (left instanceof String leftStr && right instanceof String rightStr) {
+            int comparison = leftStr.compareTo(rightStr);
+            return switch (operator) {
+                case ">" -> comparison > 0;
+                case "<" -> comparison < 0;
+                case ">=" -> comparison >= 0;
+                case "<=" -> comparison <= 0;
+                default -> false;
+            };
+        }
+        return false;
+    }
+
+    private Object normalizeOperand(Object operand) {
+        if (operand instanceof BigDecimal decimal) {
+            return decimal.stripTrailingZeros();
+        }
+        if (operand instanceof Number number) {
+            return number.doubleValue();
+        }
+        if (operand instanceof Enum<?> enumValue) {
+            return enumValue.name();
+        }
+        return operand;
+    }
+
+    private Double toComparableNumber(Object value) {
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        if (value instanceof BigDecimal decimal) {
+            return decimal.doubleValue();
+        }
+        if (value instanceof String str && isNumeric(str)) {
+            try {
+                return new BigDecimal(str).doubleValue();
+            } catch (NumberFormatException ex) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private boolean toTruth(Object candidate) {
+        if (candidate == null) {
+            return false;
+        }
+        if (candidate instanceof Boolean bool) {
+            return bool;
+        }
+        if (candidate instanceof Number number) {
+            return Math.abs(number.doubleValue()) > 0.0000001d;
+        }
+        if (candidate instanceof String str) {
+            return !str.isBlank() && !"false".equalsIgnoreCase(str.trim())
+                    && !"0".equals(str.trim());
+        }
+        return true;
+    }
+
+    private ValidationContext<T> buildDefaultContext(T bean) {
+        if (boundFields.isEmpty()) {
+            return ValidationContext.empty(bean);
+        }
+        Map<String, Object> values = new LinkedHashMap<>();
+        for (Map.Entry<FieldDefinition, FieldInstance> entry : boundFields.entrySet()) {
+            FieldDefinition definition = entry.getKey();
+            FieldInstance instance = entry.getValue();
+            HasValue<?, ?> component = instance.getValueComponent();
+            if (component == null) {
+                continue;
+            }
+            Object raw = component.getValue();
+            Object converted = convertRawValue(definition, raw);
+            addValue(values, definition.getPath(), converted, null, -1);
+        }
+        return ValidationContext.of(bean, values, Map.of(),
+                (candidate, path) -> candidate == null ? null : readProperty(path, candidate));
+    }
+
+    private void addValue(Map<String, Object> target,
+                          String path,
+                          Object value,
+                          String relative,
+                          int index) {
+        if (path == null || path.isBlank()) {
+            return;
+        }
+        mergeValue(target, path, value);
+        if (relative != null && !relative.isBlank() && index >= 0) {
+            mergeValue(target, relative + "[" + index + "]", value);
+        }
+    }
+
+    private void mergeValue(Map<String, Object> target, String key, Object value) {
+        if (key == null || key.isBlank()) {
+            return;
+        }
+        Object existing = target.get(key);
+        if (existing == null) {
+            target.put(key, value);
+            return;
+        }
+        if (existing instanceof List<?> list) {
+            List<Object> merged = new ArrayList<>(list);
+            merged.add(value);
+            target.put(key, merged);
+            return;
+        }
+        List<Object> merged = new ArrayList<>();
+        merged.add(existing);
+        merged.add(value);
+        target.put(key, merged);
     }
 
     private String capitalize(String property) {
@@ -488,5 +876,11 @@ public final class BinderOrchestrator<T> {
             return key;
         }
         return resolved;
+    }
+
+    private record AsyncValidationTask(FieldInstance instance,
+                                       CompletableFuture<Boolean> future,
+                                       String messageKey,
+                                       String beanName) {
     }
 }

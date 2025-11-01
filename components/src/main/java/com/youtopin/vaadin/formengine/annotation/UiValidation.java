@@ -30,6 +30,11 @@ public @interface UiValidation {
     Class<?>[] groups() default {};
 
     /**
+     * @return Bean name of a synchronous validator that inspects the current field value.
+     */
+    String validatorBean() default "";
+
+    /**
      * @return Fully qualified name of a validator bean implementing asynchronous validation (CompletableFuture based).
      */
     String asyncValidatorBean() default "";

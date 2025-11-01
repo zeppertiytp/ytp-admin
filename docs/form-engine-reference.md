@@ -466,6 +466,7 @@ Defines per-field validators executed in addition to Bean Validation constraints
 | `messageKey` | Localised message shown when the validation fails. |
 | `expression` | State-engine expression returning `true` for invalid states. Ideal for synchronous rules. |
 | `groups` | Bean Validation groups controlling when the rule is active. Useful for staged validation flows. |
+| `validatorBean` | Spring bean implementing `FieldValidator<T>` for Java-based checks that receive the full `ValidationContext`. |
 | `asyncValidatorBean` | Bean name implementing asynchronous validation via `CompletableFuture`. Blocks form submission until resolved. |
 
 **Example – async email uniqueness**
@@ -482,6 +483,63 @@ String email;
 
 When the user submits the form, the orchestrator waits for the `emailUniquenessValidator` bean to complete before finalising the
 binder submission.
+
+**Example – validator bean**
+
+```java
+@UiField(path = "payments.amount", labelKey = "form.payments.amount",
+        component = UiField.ComponentType.NUMBER,
+        validations = @UiValidation(messageKey = "forms.validation.amount.positive",
+                validatorBean = "positiveAmountValidator"))
+BigDecimal amount;
+```
+
+Validator beans implement the `FieldValidator<T>` interface. The engine injects the current value, field metadata, and the
+`ValidationContext` to allow rich, cross-field checks:
+
+```java
+@Component("positiveAmountValidator")
+class PositiveAmountValidator implements FieldValidator<PaymentDraft> {
+
+    @Override
+    public boolean validate(FieldValidationRequest<PaymentDraft> request) {
+        Object candidate = request.getValue();
+        if (candidate instanceof BigDecimal amount) {
+            return amount.signum() > 0;
+        }
+        return false;
+    }
+}
+```
+
+Outside Spring environments, specify the fully qualified validator class name in `validatorBean`. The orchestrator will attempt
+to instantiate the class via its zero-argument constructor.
+
+**Context-aware expressions**
+
+Every validation runs inside a `ValidationContext` that mirrors the form state at submission time. The context exposes:
+
+- the current field `value` (already converted to the target type),
+- the bound `bean` for cross checks against persisted data,
+- sibling field values, accessed via their paths (e.g. `amount`, `account.email`, or `entries.channels.phone`),
+- repeatable entries indexed through `[n]` suffixes, supporting both `contacts[0].profile.fullName` and `contacts.profile.fullName[0]` forms.
+
+This enables concise cross-field checks without leaving the declarative annotations:
+
+```java
+@UiField(path = "payments.confirmTotal",
+        validations = @UiValidation(messageKey = "forms.validation.totals.match",
+                expression = "value == bean.payments.total"))
+BigDecimal confirmTotal;
+
+@UiField(path = "contacts.channels.preferred",
+        validations = @UiValidation(messageKey = "forms.validation.channels.available",
+                expression = "value == null || entries.channels.email != null || entries.channels.phone != null"))
+String preferredChannel;
+```
+
+Dynamic property bags and nested repeatables contribute their keys to the context automatically, so expressions such as
+`profile.nickname != profile.fullName` or `addresses[0].city != null` behave the same way as bean-backed fields.
 
 ### `@UiCrossField`
 

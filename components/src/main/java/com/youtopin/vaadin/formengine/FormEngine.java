@@ -27,6 +27,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,6 +42,7 @@ import com.vaadin.flow.i18n.I18NProvider;
 import com.youtopin.vaadin.formengine.annotation.UiForm;
 import com.youtopin.vaadin.formengine.binder.BinderOrchestrator;
 import com.youtopin.vaadin.formengine.binder.DynamicPropertyBag;
+import com.youtopin.vaadin.formengine.binder.ValidationContext;
 import com.youtopin.vaadin.formengine.definition.ActionDefinition;
 import com.youtopin.vaadin.formengine.definition.FieldDefinition;
 import com.youtopin.vaadin.formengine.definition.FormDefinition;
@@ -62,11 +64,18 @@ public final class FormEngine {
 
     private final AnnotationFormScanner scanner = new AnnotationFormScanner();
     private final OptionCatalogRegistry optionCatalogRegistry;
+    private final Function<String, Object> validatorBeanResolver;
 
     private static final Pattern SIMPLE_COMPARISON = Pattern.compile("^\\s*(.+?)\\s*(==|!=)\\s*(.+)\\s*$");
 
     public FormEngine(OptionCatalogRegistry optionCatalogRegistry) {
+        this(optionCatalogRegistry, null);
+    }
+
+    public FormEngine(OptionCatalogRegistry optionCatalogRegistry,
+                      Function<String, Object> validatorBeanResolver) {
         this.optionCatalogRegistry = Objects.requireNonNull(optionCatalogRegistry, "optionCatalogRegistry");
+        this.validatorBeanResolver = validatorBeanResolver != null ? validatorBeanResolver : name -> null;
     }
 
     public <T> RenderedForm<T> render(Class<?> definitionClass,
@@ -90,7 +99,8 @@ public final class FormEngine {
         @SuppressWarnings("unchecked")
         Class<T> beanType = (Class<T>) definition.getBeanType();
         BinderOrchestrator<T> orchestrator = new BinderOrchestrator<>(beanType,
-                key -> key == null || key.isBlank() ? "" : provider.getTranslation(key, locale));
+                key -> key == null || key.isBlank() ? "" : provider.getTranslation(key, locale),
+                validatorBeanResolver);
         FieldRegistry registry = new FieldRegistry(optionCatalogRegistry);
         VerticalLayout layout = new VerticalLayout();
         layout.setPadding(false);
@@ -297,7 +307,8 @@ public final class FormEngine {
                     throw new IllegalStateException("Action bean supplier returned null");
                 }
                 try {
-                    orchestrator.writeBean(bean);
+                    ValidationContext<T> validationContext = buildValidationContext(bean);
+                    orchestrator.writeBean(bean, validationContext);
                     applyRepeatableValues(bean);
                     handler.onAction(new ActionExecutionContext<>(actionDefinitions.get(actionId), bean, orchestrator));
                 } catch (ValidationException ex) {
@@ -355,6 +366,100 @@ public final class FormEngine {
             }
             validationFailureListeners.forEach(listener -> listener.onValidationFailure(actionDefinition, exception));
             return true;
+        }
+
+        private ValidationContext<T> buildValidationContext(T bean) {
+            Map<String, Object> values = new LinkedHashMap<>();
+            Map<FieldDefinition, java.util.function.Function<String, Object>> scopedReaders = new java.util.IdentityHashMap<>();
+            BeanEvaluationContext beanContext = new BeanEvaluationContext(bean);
+            fields.forEach((definition, instance) -> {
+                HasValue<?, ?> component = instance.getValueComponent();
+                if (component == null) {
+                    return;
+                }
+                Object raw = component.getValue();
+                Object converted = orchestrator.convertRawValue(definition, raw);
+                addValidationValue(values, definition.getPath(), converted);
+                String property = extractPropertyName(definition.getPath());
+                if (!property.isBlank()) {
+                    addValidationValue(values, property, converted);
+                }
+            });
+            Map<String, Map<Integer, Map<String, Object>>> repeatableSnapshots = new LinkedHashMap<>();
+            repeatableGroups.values().forEach(state -> {
+                List<RepeatableEntry> entries = state.getEntries();
+                for (int index = 0; index < entries.size(); index++) {
+                    RepeatableEntry entry = entries.get(index);
+                    RepeatableEntryEvaluationContext entryContext =
+                            new RepeatableEntryEvaluationContext(state, entry, index, beanContext, bean);
+                    Map<FieldDefinition, FieldInstance> fieldMap = entry.fields();
+                    for (Map.Entry<FieldDefinition, FieldInstance> fieldEntry : fieldMap.entrySet()) {
+                        FieldDefinition definition = fieldEntry.getKey();
+                        FieldInstance instance = fieldEntry.getValue();
+                        HasValue<?, ?> component = instance.getValueComponent();
+                        if (component == null) {
+                            continue;
+                        }
+                        Object raw = component.getValue();
+                        Object converted = orchestrator.convertRawValue(definition, raw);
+                        String path = definition.getPath();
+                        addValidationValue(values, path, converted);
+                        String indexedPath = path + "[" + index + "]";
+                        addValidationValue(values, indexedPath, converted);
+                        String parentPath = state.getParentPath();
+                        if (!parentPath.isBlank()) {
+                            String relative = toRelativePath(path, parentPath);
+                            if (!relative.isBlank()) {
+                                addValidationValue(values, parentPath + "[" + index + "]." + relative, converted);
+                                addValidationValue(values, parentPath + "." + relative, converted);
+                                Map<Integer, Map<String, Object>> indexMap = repeatableSnapshots
+                                        .computeIfAbsent(parentPath, key -> new LinkedHashMap<>());
+                                Map<String, Object> snapshot = indexMap.computeIfAbsent(index, key -> new LinkedHashMap<>());
+                                snapshot.put(relative, converted);
+                                String property = extractPropertyName(path);
+                                if (!property.isBlank()) {
+                                    snapshot.putIfAbsent(property, converted);
+                                    addValidationValue(values, property + "[" + index + "]", converted);
+                                }
+                            }
+                        }
+                        scopedReaders.putIfAbsent(definition, entryContext::read);
+                    }
+                }
+            });
+            repeatableSnapshots.forEach((parentPath, snapshotMap) -> {
+                if (snapshotMap.isEmpty()) {
+                    return;
+                }
+                List<Map<String, Object>> ordered = snapshotMap.entrySet().stream()
+                        .sorted(Map.Entry.comparingByKey())
+                        .map(entry -> Collections.unmodifiableMap(new LinkedHashMap<>(entry.getValue())))
+                        .toList();
+                values.put(parentPath, ordered);
+            });
+            return ValidationContext.of(bean, values, scopedReaders,
+                    (candidate, path) -> candidate == null ? null : orchestrator.readProperty(path, candidate));
+        }
+
+        private void addValidationValue(Map<String, Object> target, String key, Object value) {
+            if (key == null || key.isBlank()) {
+                return;
+            }
+            Object existing = target.get(key);
+            if (existing == null) {
+                target.put(key, value);
+                return;
+            }
+            if (existing instanceof List<?> list) {
+                List<Object> merged = new ArrayList<>(list);
+                merged.add(value);
+                target.put(key, merged);
+                return;
+            }
+            List<Object> merged = new ArrayList<>();
+            merged.add(existing);
+            merged.add(value);
+            target.put(key, merged);
         }
 
         private void populateRepeatableState(RepeatableGroupState state, T bean) {
