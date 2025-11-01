@@ -67,11 +67,18 @@ public final class FormEngine {
 
     private final AnnotationFormScanner scanner = new AnnotationFormScanner();
     private final OptionCatalogRegistry optionCatalogRegistry;
+    private final Function<String, Object> validatorBeanResolver;
 
     private static final Pattern SIMPLE_COMPARISON = Pattern.compile("^\\s*(.+?)\\s*(==|!=)\\s*(.+)\\s*$");
 
     public FormEngine(OptionCatalogRegistry optionCatalogRegistry) {
+        this(optionCatalogRegistry, null);
+    }
+
+    public FormEngine(OptionCatalogRegistry optionCatalogRegistry,
+                      Function<String, Object> validatorBeanResolver) {
         this.optionCatalogRegistry = Objects.requireNonNull(optionCatalogRegistry, "optionCatalogRegistry");
+        this.validatorBeanResolver = validatorBeanResolver != null ? validatorBeanResolver : name -> null;
     }
 
     public <T> RenderedForm<T> render(Class<?> definitionClass,
@@ -95,7 +102,8 @@ public final class FormEngine {
         @SuppressWarnings("unchecked")
         Class<T> beanType = (Class<T>) definition.getBeanType();
         BinderOrchestrator<T> orchestrator = new BinderOrchestrator<>(beanType,
-                key -> key == null || key.isBlank() ? "" : provider.getTranslation(key, locale));
+                key -> key == null || key.isBlank() ? "" : provider.getTranslation(key, locale),
+                validatorBeanResolver);
         FieldRegistry registry = new FieldRegistry(optionCatalogRegistry);
         VerticalLayout layout = new VerticalLayout();
         layout.setPadding(false);

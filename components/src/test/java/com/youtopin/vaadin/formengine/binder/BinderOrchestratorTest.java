@@ -2,8 +2,10 @@ package com.youtopin.vaadin.formengine.binder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -156,6 +158,124 @@ class BinderOrchestratorTest {
         assertThat(exception.getValidationErrors()).isNotEmpty();
         assertThat(field.isInvalid()).isTrue();
         assertThat(field.getErrorMessage()).isEqualTo("positive");
+    }
+
+    @Test
+    void delegatesToValidatorBean() {
+        Map<String, Object> validators = new HashMap<>();
+        validators.put("positiveValidator", (FieldValidator<TestBean>) request -> {
+            Object raw = request.getValue();
+            if (raw instanceof Number number) {
+                return number.doubleValue() > 0d;
+            }
+            return false;
+        });
+        BinderOrchestrator<TestBean> orchestrator = new BinderOrchestrator<>(TestBean.class, key -> key,
+                validators::get);
+        NumberField field = new NumberField();
+        field.setValue(-5d);
+        ValidationDefinition rule = new ValidationDefinition("positive", "", List.of(), "", "positiveValidator");
+        FieldDefinition definition = new FieldDefinition(
+                "amount",
+                UiField.ComponentType.NUMBER,
+                "amount",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false, "", true),
+                List.of(rule),
+                List.<CrossFieldValidationDefinition>of(),
+                new SecurityDefinition("", "", List.of(), false),
+                0,
+                1,
+                1);
+        orchestrator.bindField(new FieldInstance(field, field, List.of()), definition);
+
+        ValidationException exception = assertThrows(ValidationException.class, () -> orchestrator.writeBean(new TestBean()));
+
+        assertThat(exception.getValidationErrors()).isNotEmpty();
+        assertThat(field.isInvalid()).isTrue();
+        assertThat(field.getErrorMessage()).isEqualTo("positive");
+    }
+
+    @Test
+    void acceptsValueWhenValidatorBeanPasses() throws ValidationException {
+        Map<String, Object> validators = new HashMap<>();
+        validators.put("positiveValidator", (FieldValidator<TestBean>) request -> {
+            Object raw = request.getValue();
+            if (raw instanceof Number number) {
+                return number.doubleValue() > 0d;
+            }
+            return false;
+        });
+        BinderOrchestrator<TestBean> orchestrator = new BinderOrchestrator<>(TestBean.class, key -> key,
+                validators::get);
+        NumberField field = new NumberField();
+        field.setValue(10d);
+        ValidationDefinition rule = new ValidationDefinition("positive", "", List.of(), "", "positiveValidator");
+        FieldDefinition definition = new FieldDefinition(
+                "amount",
+                UiField.ComponentType.NUMBER,
+                "amount",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false, "", true),
+                List.of(rule),
+                List.<CrossFieldValidationDefinition>of(),
+                new SecurityDefinition("", "", List.of(), false),
+                0,
+                1,
+                1);
+        orchestrator.bindField(new FieldInstance(field, field, List.of()), definition);
+        TestBean bean = new TestBean();
+
+        orchestrator.writeBean(bean);
+
+        assertThat(bean.amount).isEqualTo(10d);
+        assertThat(field.isInvalid()).isFalse();
+    }
+
+    @Test
+    void throwsWhenValidatorBeanMissing() {
+        BinderOrchestrator<TestBean> orchestrator = new BinderOrchestrator<>(TestBean.class, key -> key);
+        NumberField field = new NumberField();
+        field.setValue(5d);
+        ValidationDefinition rule = new ValidationDefinition("positive", "", List.of(), "", "missingValidator");
+        FieldDefinition definition = new FieldDefinition(
+                "amount",
+                UiField.ComponentType.NUMBER,
+                "amount",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                new OptionsDefinition(false, UiOptions.ProviderType.STATIC, List.of(), "", "", "", "", false, "", true),
+                List.of(rule),
+                List.<CrossFieldValidationDefinition>of(),
+                new SecurityDefinition("", "", List.of(), false),
+                0,
+                1,
+                1);
+        orchestrator.bindField(new FieldInstance(field, field, List.of()), definition);
+
+        assertThatThrownBy(() -> orchestrator.writeBean(new TestBean()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("missingValidator");
     }
 
     @Test

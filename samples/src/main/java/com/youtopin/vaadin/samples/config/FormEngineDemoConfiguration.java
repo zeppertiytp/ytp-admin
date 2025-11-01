@@ -20,6 +20,7 @@ import com.youtopin.vaadin.formengine.options.OptionPage;
 import com.youtopin.vaadin.formengine.options.SearchQuery;
 import com.youtopin.vaadin.i18n.TranslationProvider;
 import com.youtopin.vaadin.samples.application.tour.TourReferenceDataService;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -149,8 +150,16 @@ public class FormEngineDemoConfiguration {
     }
 
     @Bean
-    public FormEngine formEngine(OptionCatalogRegistry optionCatalogRegistry) {
-        return new FormEngine(optionCatalogRegistry);
+    public FormEngine formEngine(OptionCatalogRegistry optionCatalogRegistry, ApplicationContext applicationContext) {
+        return new FormEngine(optionCatalogRegistry, name -> {
+            if (name == null || name.isBlank()) {
+                return null;
+            }
+            if (applicationContext.containsBean(name)) {
+                return applicationContext.getBean(name);
+            }
+            return null;
+        });
     }
 
     private OptionCatalog messageCatalog(Map<String, String> entries) {
