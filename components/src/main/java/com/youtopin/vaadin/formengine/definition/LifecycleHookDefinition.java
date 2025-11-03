@@ -2,9 +2,12 @@ package com.youtopin.vaadin.formengine.definition;
 
 import java.util.Objects;
 
+import lombok.Getter;
+
 /**
  * Describes a lifecycle hook registered on the form.
  */
+@Getter
 public final class LifecycleHookDefinition {
 
     private final String id;
@@ -17,15 +20,4 @@ public final class LifecycleHookDefinition {
         this.method = method == null ? "" : method;
     }
 
-    public String getId() {
-        return id;
-    }
-
-    public String getBeanName() {
-        return beanName;
-    }
-
-    public String getMethod() {
-        return method;
-    }
 }

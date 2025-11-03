@@ -2,9 +2,12 @@ package com.youtopin.vaadin.formengine.definition;
 
 import com.youtopin.vaadin.formengine.annotation.UiSubform;
 
+import lombok.Getter;
+
 /**
  * Definition for subform metadata.
  */
+@Getter
 public class SubformDefinition implements Cloneable {
 
     private boolean enabled;
@@ -17,22 +20,6 @@ public class SubformDefinition implements Cloneable {
         setFormId(formId);
         setMode(mode);
         setAutoOpen(autoOpen);
-    }
-
-    public boolean isEnabled() {
-        return enabled;
-    }
-
-    public String getFormId() {
-        return formId;
-    }
-
-    public UiSubform.SubformMode getMode() {
-        return mode;
-    }
-
-    public boolean isAutoOpen() {
-        return autoOpen;
     }
 
     public void setEnabled(boolean enabled) {

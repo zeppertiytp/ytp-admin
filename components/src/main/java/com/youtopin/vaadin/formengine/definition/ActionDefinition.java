@@ -4,9 +4,12 @@ import java.util.Objects;
 
 import com.youtopin.vaadin.formengine.annotation.UiAction;
 
+import lombok.Getter;
+
 /**
  * Metadata for a form action (submit, approve, cancel...).
  */
+@Getter
 public final class ActionDefinition {
 
     private final String id;
@@ -42,43 +45,4 @@ public final class ActionDefinition {
         this.securityDefinition = securityDefinition;
     }
 
-    public String getId() {
-        return id;
-    }
-
-    public String getLabelKey() {
-        return labelKey;
-    }
-
-    public String getDescriptionKey() {
-        return descriptionKey;
-    }
-
-    public String getVisibleWhen() {
-        return visibleWhen;
-    }
-
-    public String getEnabledWhen() {
-        return enabledWhen;
-    }
-
-    public UiAction.Placement getPlacement() {
-        return placement;
-    }
-
-    public String getSectionId() {
-        return sectionId;
-    }
-
-    public UiAction.ActionType getType() {
-        return type;
-    }
-
-    public int getOrder() {
-        return order;
-    }
-
-    public SecurityDefinition getSecurityDefinition() {
-        return securityDefinition;
-    }
 }

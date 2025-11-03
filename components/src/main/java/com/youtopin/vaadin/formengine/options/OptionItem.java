@@ -3,9 +3,12 @@ package com.youtopin.vaadin.formengine.options;
 import java.util.Map;
 import java.util.Objects;
 
+import lombok.Getter;
+
 /**
  * Represents a selectable option with both internal value and localized label.
  */
+@Getter
 public final class OptionItem {
 
     private final String id;
@@ -20,18 +23,6 @@ public final class OptionItem {
         this.id = Objects.requireNonNull(id, "id");
         this.label = Objects.requireNonNull(label, "label");
         this.payload = Map.copyOf(payload);
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public String getLabel() {
-        return label;
-    }
-
-    public Map<String, Object> getPayload() {
-        return payload;
     }
 
     @Override

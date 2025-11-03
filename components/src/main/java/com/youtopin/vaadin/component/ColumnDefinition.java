@@ -1,5 +1,7 @@
 package com.youtopin.vaadin.component;
 
+import lombok.Getter;
+
 /**
  * Describes a single column in a filterable paginated grid.  Each column
  * consists of a property name to read from the data item, a header key
@@ -7,6 +9,7 @@ package com.youtopin.vaadin.component;
  * determines the filtering component used (for example, text field for
  * strings or number field for numbers).
  */
+@Getter
 public class ColumnDefinition {
     private final String propertyName;
     private final String headerKey;
@@ -18,15 +21,4 @@ public class ColumnDefinition {
         this.propertyType = propertyType;
     }
 
-    public String getPropertyName() {
-        return propertyName;
-    }
-
-    public String getHeaderKey() {
-        return headerKey;
-    }
-
-    public Class<?> getPropertyType() {
-        return propertyType;
-    }
 }

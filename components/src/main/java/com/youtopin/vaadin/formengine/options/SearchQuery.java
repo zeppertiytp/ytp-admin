@@ -4,9 +4,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
+import lombok.Getter;
+
 /**
  * Encapsulates search parameters for option providers.
  */
+@Getter
 public final class SearchQuery {
 
     private final String search;
@@ -23,23 +26,4 @@ public final class SearchQuery {
         this.context = Map.copyOf(context);
     }
 
-    public String getSearch() {
-        return search;
-    }
-
-    public int getPage() {
-        return page;
-    }
-
-    public int getPageSize() {
-        return pageSize;
-    }
-
-    public Locale getLocale() {
-        return locale;
-    }
-
-    public Map<String, Object> getContext() {
-        return context;
-    }
 }

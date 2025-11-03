@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import lombok.Getter;
+
 /**
  * Branded notification component used across the application. It enlarges the
  * default Vaadin notification, applies consistent iconography and allows
@@ -379,6 +381,7 @@ public class AppNotification extends Notification implements LocaleChangeObserve
                                         "host.__appNotificationAutoClose=null;")));
     }
 
+    @Getter
     public static final class Message {
 
         private final String key;
@@ -431,18 +434,6 @@ public class AppNotification extends Notification implements LocaleChangeObserve
                 return firstNonBlank(fa, en);
             }
             return firstNonBlank(en, fa);
-        }
-
-        public String getKey() {
-            return key;
-        }
-
-        public String getEn() {
-            return en;
-        }
-
-        public String getFa() {
-            return fa;
         }
 
         private static String firstNonBlank(String primary, String secondary) {

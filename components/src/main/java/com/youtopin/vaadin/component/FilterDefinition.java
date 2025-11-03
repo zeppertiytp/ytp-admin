@@ -1,5 +1,7 @@
 package com.youtopin.vaadin.component;
 
+import lombok.Getter;
+
 /**
  * Defines a property that can be filtered in a {@link FilterablePaginatedGrid}.
  * Unlike {@link ColumnDefinition}, a filter definition may correspond to a
@@ -10,6 +12,7 @@ package com.youtopin.vaadin.component;
  * key that can be resolved via {@code Component.getTranslation()} in the
  * consuming view.
  */
+@Getter
 public class FilterDefinition {
     public enum FilterType {
         TEXT,
@@ -49,27 +52,4 @@ public class FilterDefinition {
         this.dependsOn = dependsOn;
     }
 
-    public String getPropertyName() {
-        return propertyName;
-    }
-
-    public String getLabelKey() {
-        return labelKey;
-    }
-
-    public FilterType getType() {
-        return type;
-    }
-
-    public Class<?> getPropertyType() {
-        return propertyType;
-    }
-
-    public java.util.List<String> getOptions() {
-        return options;
-    }
-
-    public String getDependsOn() {
-        return dependsOn;
-    }
 }

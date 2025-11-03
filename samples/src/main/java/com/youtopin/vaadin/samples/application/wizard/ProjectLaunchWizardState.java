@@ -11,6 +11,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import lombok.Getter;
+
 /**
  * Session-scoped state tracking the wizard progress and collected form data.
  */
@@ -23,25 +25,18 @@ public class ProjectLaunchWizardState implements Serializable {
     public static final String STEP_TEAM = "project-team";
     public static final String STEP_CHECKLIST = "project-checklist";
 
+    @Getter
     private final ProjectLaunchBasicsFormData basics = new ProjectLaunchBasicsFormData();
+    @Getter
     private final ProjectLaunchTeamFormData team = new ProjectLaunchTeamFormData();
+    @Getter
     private final ProjectLaunchChecklistFormData checklist = new ProjectLaunchChecklistFormData();
     private final LinkedHashSet<String> completedSteps = new LinkedHashSet<>();
 
+    @Getter
     private String currentStepId = STEP_BASICS;
+    @Getter
     private String projectId = "";
-
-    public ProjectLaunchBasicsFormData getBasics() {
-        return basics;
-    }
-
-    public ProjectLaunchTeamFormData getTeam() {
-        return team;
-    }
-
-    public ProjectLaunchChecklistFormData getChecklist() {
-        return checklist;
-    }
 
     public Set<String> getCompletedSteps() {
         return Collections.unmodifiableSet(completedSteps);
@@ -57,20 +52,11 @@ public class ProjectLaunchWizardState implements Serializable {
         }
     }
 
-    public String getCurrentStepId() {
-        return currentStepId;
-    }
-
     public void setCurrentStepId(String currentStepId) {
         if (currentStepId != null && !currentStepId.isBlank()) {
             this.currentStepId = currentStepId;
         }
     }
-
-    public String getProjectId() {
-        return projectId;
-    }
-
     public void setProjectId(String projectId) {
         if (projectId == null) {
             this.projectId = "";

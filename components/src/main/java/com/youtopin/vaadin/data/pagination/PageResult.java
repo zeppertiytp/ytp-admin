@@ -2,6 +2,8 @@ package com.youtopin.vaadin.data.pagination;
 
 import java.util.List;
 
+import lombok.Getter;
+
 /**
  * Simple DTO representing a page of results along with the total count of
  * items matching the current filter.  It is used by the
@@ -10,6 +12,7 @@ import java.util.List;
  *
  * @param <T> the type of items in the page
  */
+@Getter
 public class PageResult<T> {
     private final List<T> items;
     private final int totalCount;
@@ -19,11 +22,4 @@ public class PageResult<T> {
         this.totalCount = totalCount;
     }
 
-    public List<T> getItems() {
-        return items;
-    }
-
-    public int getTotalCount() {
-        return totalCount;
-    }
 }

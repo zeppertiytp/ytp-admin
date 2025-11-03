@@ -2,9 +2,12 @@ package com.youtopin.vaadin.formengine.options;
 
 import java.util.List;
 
+import lombok.Getter;
+
 /**
  * Represents a page of options.
  */
+@Getter
 public final class OptionPage {
 
     private final List<OptionItem> items;
@@ -23,11 +26,4 @@ public final class OptionPage {
         return new OptionPage(List.of(), 0);
     }
 
-    public List<OptionItem> getItems() {
-        return items;
-    }
-
-    public int getTotalSize() {
-        return totalSize;
-    }
 }
