@@ -12,6 +12,8 @@ import com.vaadin.flow.i18n.LocaleChangeEvent;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
 import com.vaadin.flow.shared.Registration;
 
+import lombok.Getter;
+
 @Tag("location-picker")
 @NpmPackage(value = "leaflet", version = "1.9.4")
 @NpmPackage(value = "@types/leaflet", version = "1.9.7")
@@ -52,12 +54,11 @@ public class LocationPicker extends Component implements LocaleChangeObserver {
         getElement().callJsFunction("invalidateSize");
     }
 
+    @Getter
     public static class LocationSelectedEvent extends ComponentEvent<LocationPicker> {
         private final double lat, lng;
         public LocationSelectedEvent(LocationPicker src, double lat, double lng) {
             super(src, false); this.lat = lat; this.lng = lng;
         }
-        public double getLat() { return lat; }
-        public double getLng() { return lng; }
     }
 }

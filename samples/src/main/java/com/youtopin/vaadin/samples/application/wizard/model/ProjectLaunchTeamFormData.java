@@ -4,9 +4,12 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 
+import lombok.Getter;
+
 /**
  * Stores team information captured during the wizard flow.
  */
+@Getter
 public class ProjectLaunchTeamFormData implements Serializable {
 
     @Serial
@@ -18,24 +21,12 @@ public class ProjectLaunchTeamFormData implements Serializable {
     private String workModel = "";
     private String communicationChannel = "";
 
-    public String getLeadName() {
-        return leadName;
-    }
-
     public void setLeadName(String leadName) {
         this.leadName = Objects.toString(leadName, "");
     }
 
-    public String getLeadEmail() {
-        return leadEmail;
-    }
-
     public void setLeadEmail(String leadEmail) {
         this.leadEmail = Objects.toString(leadEmail, "");
-    }
-
-    public Integer getTeamSize() {
-        return teamSize;
     }
 
     public void setTeamSize(Integer teamSize) {
@@ -46,16 +37,8 @@ public class ProjectLaunchTeamFormData implements Serializable {
         }
     }
 
-    public String getWorkModel() {
-        return workModel;
-    }
-
     public void setWorkModel(String workModel) {
         this.workModel = Objects.toString(workModel, "");
-    }
-
-    public String getCommunicationChannel() {
-        return communicationChannel;
     }
 
     public void setCommunicationChannel(String communicationChannel) {

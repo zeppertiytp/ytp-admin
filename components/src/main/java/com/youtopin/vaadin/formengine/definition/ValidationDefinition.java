@@ -3,9 +3,12 @@ package com.youtopin.vaadin.formengine.definition;
 import java.util.List;
 import java.util.Objects;
 
+import lombok.Getter;
+
 /**
  * Definition of a single validator.
  */
+@Getter
 public final class ValidationDefinition {
 
     private final String messageKey;
@@ -30,23 +33,4 @@ public final class ValidationDefinition {
         this.validatorBean = validatorBean == null ? "" : validatorBean;
     }
 
-    public String getMessageKey() {
-        return messageKey;
-    }
-
-    public String getExpression() {
-        return expression;
-    }
-
-    public List<Class<?>> getGroups() {
-        return groups;
-    }
-
-    public String getAsyncValidatorBean() {
-        return asyncValidatorBean;
-    }
-
-    public String getValidatorBean() {
-        return validatorBean;
-    }
 }

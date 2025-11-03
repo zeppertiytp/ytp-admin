@@ -4,9 +4,12 @@ import java.util.List;
 
 import com.youtopin.vaadin.formengine.annotation.UiOptions;
 
+import lombok.Getter;
+
 /**
  * Definition of an option provider.
  */
+@Getter
 public final class OptionsDefinition {
 
     private final boolean enabled;
@@ -42,43 +45,4 @@ public final class OptionsDefinition {
         this.clientFilter = clientFilter;
     }
 
-    public boolean isEnabled() {
-        return enabled;
-    }
-
-    public UiOptions.ProviderType getProviderType() {
-        return providerType;
-    }
-
-    public List<String> getEntries() {
-        return entries;
-    }
-
-    public String getEnumType() {
-        return enumType;
-    }
-
-    public String getCallbackRef() {
-        return callbackRef;
-    }
-
-    public String getRemoteRef() {
-        return remoteRef;
-    }
-
-    public String getCascadeFrom() {
-        return cascadeFrom;
-    }
-
-    public boolean isAllowCreate() {
-        return allowCreate;
-    }
-
-    public String getAllowCreateFormId() {
-        return allowCreateFormId;
-    }
-
-    public boolean isClientFilter() {
-        return clientFilter;
-    }
 }

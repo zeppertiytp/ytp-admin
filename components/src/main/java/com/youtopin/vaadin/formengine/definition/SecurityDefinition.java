@@ -2,9 +2,12 @@ package com.youtopin.vaadin.formengine.definition;
 
 import java.util.List;
 
+import lombok.Getter;
+
 /**
  * Security metadata resolved from {@link com.youtopin.vaadin.formengine.annotation.UiSecurity}.
  */
+@Getter
 public final class SecurityDefinition {
 
     private final String guardId;
@@ -19,19 +22,4 @@ public final class SecurityDefinition {
         this.showWhenDenied = showWhenDenied;
     }
 
-    public String getGuardId() {
-        return guardId;
-    }
-
-    public String getExpression() {
-        return expression;
-    }
-
-    public List<String> getRequiredAuthorities() {
-        return requiredAuthorities;
-    }
-
-    public boolean isShowWhenDenied() {
-        return showWhenDenied;
-    }
 }
