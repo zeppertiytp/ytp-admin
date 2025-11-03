@@ -11,7 +11,9 @@ public class SectionDefinition implements Cloneable {
 
     private String id;
     private String titleKey;
+    private String title;
     private String descriptionKey;
+    private String description;
     private String visibleWhen;
     private String readOnlyWhen;
     private String securityGuard;
@@ -20,7 +22,9 @@ public class SectionDefinition implements Cloneable {
 
     public SectionDefinition(String id,
                              String titleKey,
+                             String title,
                              String descriptionKey,
+                             String description,
                              String visibleWhen,
                              String readOnlyWhen,
                              String securityGuard,
@@ -28,7 +32,9 @@ public class SectionDefinition implements Cloneable {
                              List<GroupDefinition> groups) {
         setId(id);
         setTitleKey(titleKey);
+        setTitle(title);
         setDescriptionKey(descriptionKey);
+        setDescription(description);
         setVisibleWhen(visibleWhen);
         setReadOnlyWhen(readOnlyWhen);
         setSecurityGuard(securityGuard);
@@ -44,8 +50,16 @@ public class SectionDefinition implements Cloneable {
         return titleKey;
     }
 
+    public String getTitle() {
+        return title;
+    }
+
     public String getDescriptionKey() {
         return descriptionKey;
+    }
+
+    public String getDescription() {
+        return description;
     }
 
     public String getVisibleWhen() {
@@ -76,8 +90,16 @@ public class SectionDefinition implements Cloneable {
         this.titleKey = normalize(titleKey);
     }
 
+    public void setTitle(String title) {
+        this.title = normalize(title);
+    }
+
     public void setDescriptionKey(String descriptionKey) {
         this.descriptionKey = normalize(descriptionKey);
+    }
+
+    public void setDescription(String description) {
+        this.description = normalize(description);
     }
 
     public void setVisibleWhen(String visibleWhen) {
@@ -110,6 +132,6 @@ public class SectionDefinition implements Cloneable {
         List<GroupDefinition> clonedGroups = groups.stream()
                 .map(group -> group == null ? null : group.clone())
                 .toList();
-        return new SectionDefinition(id, titleKey, descriptionKey, visibleWhen, readOnlyWhen, securityGuard, order, clonedGroups);
+        return new SectionDefinition(id, titleKey, title, descriptionKey, description, visibleWhen, readOnlyWhen, securityGuard, order, clonedGroups);
     }
 }

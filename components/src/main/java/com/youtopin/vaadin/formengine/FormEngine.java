@@ -130,8 +130,18 @@ public final class FormEngine {
             sectionLayout.addClassName("form-engine-section");
             sectionLayout.getStyle().set("background-color", "var(--lumo-base-color)");
             sectionLayout.getStyle().set("border-radius", "var(--lumo-border-radius-l)");
-            if (!section.getTitleKey().isBlank()) {
-                sectionLayout.add(new com.vaadin.flow.component.html.H3(context.translate(section.getTitleKey())));
+            String sectionTitle = resolveLabel(section.getTitleKey(), section.getTitle(), context);
+            if (!sectionTitle.isBlank()) {
+                sectionLayout.add(new com.vaadin.flow.component.html.H3(sectionTitle));
+            }
+            String sectionDescription = resolveLabel(section.getDescriptionKey(), section.getDescription(), context);
+            if (!sectionDescription.isBlank()) {
+                com.vaadin.flow.component.html.Paragraph helper =
+                        new com.vaadin.flow.component.html.Paragraph(sectionDescription);
+                helper.addClassName("form-engine-section-description");
+                helper.getStyle().set("margin", "0");
+                helper.getStyle().set("color", "var(--lumo-secondary-text-color)");
+                sectionLayout.add(helper);
             }
             for (GroupDefinition group : section.getGroups()) {
                 Component renderedGroup = renderGroup(group, registry, context, instances, repeatableGroups, beanType);
@@ -1811,9 +1821,10 @@ public final class FormEngine {
         entriesContainer.setPadding(false);
         entriesContainer.setSpacing(true);
         entriesContainer.getElement().setAttribute("data-repeatable-container", group.getId());
-        if (!group.getTitleKey().isBlank()) {
+        String groupTitle = resolveLabel(group.getTitleKey(), group.getTitle(), context);
+        if (!groupTitle.isBlank()) {
             com.vaadin.flow.component.html.H4 heading =
-                    new com.vaadin.flow.component.html.H4(context.translate(group.getTitleKey()));
+                    new com.vaadin.flow.component.html.H4(groupTitle);
             heading.addClassName("form-engine-repeatable-group-title");
             heading.getStyle().set("margin", "0");
             heading.getStyle().set("font-size", "var(--lumo-font-size-xl)");
@@ -2041,17 +2052,19 @@ public final class FormEngine {
             return false;
         }
         boolean hasContent = false;
-        if (includeHeading && !groupDefinition.getTitleKey().isBlank()) {
-            String translated = context.translate(groupDefinition.getTitleKey());
-            com.vaadin.flow.component.html.H4 heading = new com.vaadin.flow.component.html.H4(translated);
-            heading.addClassName("form-engine-repeatable-entry-heading");
-            heading.getStyle().set("margin", "0");
-            heading.getStyle().set("font-size", "var(--lumo-font-size-s)");
-            heading.getStyle().set("font-weight", "600");
-            heading.getStyle().set("color", "var(--lumo-secondary-text-color)");
-            heading.getElement().setAttribute("data-repeatable-subtitle", groupDefinition.getId());
-            container.add(heading);
-            hasContent = true;
+        if (includeHeading) {
+            String translated = resolveLabel(groupDefinition.getTitleKey(), groupDefinition.getTitle(), context);
+            if (!translated.isBlank()) {
+                com.vaadin.flow.component.html.H4 heading = new com.vaadin.flow.component.html.H4(translated);
+                heading.addClassName("form-engine-repeatable-entry-heading");
+                heading.getStyle().set("margin", "0");
+                heading.getStyle().set("font-size", "var(--lumo-font-size-s)");
+                heading.getStyle().set("font-weight", "600");
+                heading.getStyle().set("color", "var(--lumo-secondary-text-color)");
+                heading.getElement().setAttribute("data-repeatable-subtitle", groupDefinition.getId());
+                container.add(heading);
+                hasContent = true;
+            }
         }
         if (!groupDefinition.getFields().isEmpty()) {
             com.vaadin.flow.component.formlayout.FormLayout formLayout = new com.vaadin.flow.component.formlayout.FormLayout();
@@ -2098,6 +2111,18 @@ public final class FormEngine {
         List<FieldDefinition> fields = new ArrayList<>();
         collectRepeatableFields(group, fields);
         return List.copyOf(fields);
+    }
+
+    private String resolveLabel(String messageKey, String staticLabel, FieldFactoryContext context) {
+        String resolved = "";
+        if (messageKey != null && !messageKey.isBlank()) {
+            String translated = context.translate(messageKey);
+            resolved = translated == null ? "" : translated;
+        }
+        if ((resolved == null || resolved.isBlank()) && staticLabel != null && !staticLabel.isBlank()) {
+            resolved = staticLabel;
+        }
+        return resolved == null ? "" : resolved;
     }
 
     private void collectRepeatableFields(GroupDefinition group, List<FieldDefinition> fields) {

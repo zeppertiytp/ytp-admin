@@ -65,8 +65,9 @@ public final class AnnotationFormScanner {
             for (Class<?> groupClass : section.groups()) {
                 groups.add(scanGroup(groupClass, uiForm.bean(), fieldPaths, false));
             }
-            sections.add(new SectionDefinition(section.id(), section.titleKey(), section.descriptionKey(),
-                    section.visibleWhen(), section.readOnlyWhen(), section.securityGuard(), section.order(), groups));
+            sections.add(new SectionDefinition(section.id(), section.titleKey(), section.title(), section.descriptionKey(),
+                    section.description(), section.visibleWhen(), section.readOnlyWhen(), section.securityGuard(),
+                    section.order(), groups));
         }
         List<ActionDefinition> actions = Arrays.stream(uiForm.actions())
                 .map(action -> new ActionDefinition(action.id(), action.labelKey(), action.descriptionKey(),
@@ -99,7 +100,7 @@ public final class AnnotationFormScanner {
         }
         RepeatableDefinition repeatable = toRepeatable(group.repeatable());
         SubformDefinition subform = toSubform(group.subform());
-        return new GroupDefinition(group.id(), group.titleKey(), group.columns(), repeatable, subform,
+        return new GroupDefinition(group.id(), group.titleKey(), group.title(), group.columns(), repeatable, subform,
                 group.readOnlyWhen(), fields, entryGroups);
     }
 
