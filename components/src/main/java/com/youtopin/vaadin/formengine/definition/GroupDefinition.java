@@ -112,7 +112,9 @@ public class GroupDefinition implements Cloneable {
 
     @Override
     public GroupDefinition clone() {
-        List<FieldDefinition> clonedFields = new ArrayList<>(fields);
+        List<FieldDefinition> clonedFields = fields.stream()
+                .map(field -> field == null ? null : field.clone())
+                .toList();
         List<GroupDefinition> clonedEntryGroups = entryGroups.stream()
                 .map(group -> group == null ? null : group.clone())
                 .toList();

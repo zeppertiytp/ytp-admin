@@ -40,6 +40,11 @@ class FormDefinitionCloneTest {
         assertNotSame(originalGroup, clonedGroup);
         assertEquals(originalGroup.getId(), clonedGroup.getId());
 
+        FieldDefinition originalField = originalGroup.getFields().get(0);
+        FieldDefinition clonedField = clonedGroup.getFields().get(0);
+        assertNotSame(originalField, clonedField);
+        assertEquals(originalField.getPath(), clonedField.getPath());
+
         GroupDefinition originalNestedGroup = originalGroup.getEntryGroups().get(0);
         GroupDefinition clonedNestedGroup = clonedGroup.getEntryGroups().get(0);
         assertNotSame(originalNestedGroup, clonedNestedGroup);
@@ -83,6 +88,24 @@ class FormDefinitionCloneTest {
         clonedGroup.setEntryGroups(updatedEntryGroups);
         assertEquals(1, originalGroup.getEntryGroups().size());
         assertEquals(2, clonedGroup.getEntryGroups().size());
+
+        FieldDefinition clonedField = clonedGroup.getFields().get(0);
+        FieldDefinition originalField = originalGroup.getFields().get(0);
+        clonedField.setLabelKey("changed.field.label");
+        assertEquals("employee.code.label", originalField.getLabelKey());
+        assertEquals("changed.field.label", clonedField.getLabelKey());
+
+        List<ValidationDefinition> updatedValidations = new ArrayList<>(clonedField.getValidations());
+        updatedValidations.add(new ValidationDefinition("other.message", "", List.of(), ""));
+        clonedField.setValidations(updatedValidations);
+        assertEquals(1, originalField.getValidations().size());
+        assertEquals(2, clonedField.getValidations().size());
+
+        List<CrossFieldValidationDefinition> updatedCrossField = new ArrayList<>(clonedField.getCrossFieldValidations());
+        updatedCrossField.add(new CrossFieldValidationDefinition("true", "cross.other", List.of(), List.of("other")));
+        clonedField.setCrossFieldValidations(updatedCrossField);
+        assertEquals(1, originalField.getCrossFieldValidations().size());
+        assertEquals(2, clonedField.getCrossFieldValidations().size());
 
         List<SectionDefinition> updatedSections = new ArrayList<>(cloned.getSections());
         updatedSections.add(createSection("extra-section", List.of(createLeafGroup("leaf"))));
