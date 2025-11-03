@@ -6,21 +6,21 @@ import com.youtopin.vaadin.formengine.annotation.UiRepeatable;
 /**
  * Definition of repeatable configuration.
  */
-public final class RepeatableDefinition {
+public class RepeatableDefinition implements Cloneable {
 
-    private final boolean enabled;
-    private final UiRepeatable.RepeatableMode mode;
-    private final int min;
-    private final int max;
-    private final String uniqueBy;
-    private final String summaryTemplate;
-    private final String itemTitleKey;
-    private final int itemTitleOffset;
-    private final RepeatableTitleGenerator titleGenerator;
-    private final boolean allowReorder;
-    private final boolean allowDuplicate;
-    private final boolean allowManualAdd;
-    private final boolean allowManualRemove;
+    private boolean enabled;
+    private UiRepeatable.RepeatableMode mode;
+    private int min;
+    private int max;
+    private String uniqueBy;
+    private String summaryTemplate;
+    private String itemTitleKey;
+    private int itemTitleOffset;
+    private RepeatableTitleGenerator titleGenerator;
+    private boolean allowReorder;
+    private boolean allowDuplicate;
+    private boolean allowManualAdd;
+    private boolean allowManualRemove;
 
     public RepeatableDefinition(boolean enabled,
                                 UiRepeatable.RepeatableMode mode,
@@ -35,19 +35,19 @@ public final class RepeatableDefinition {
                                 boolean allowDuplicate,
                                 boolean allowManualAdd,
                                 boolean allowManualRemove) {
-        this.enabled = enabled;
-        this.mode = mode;
-        this.min = min;
-        this.max = max;
-        this.uniqueBy = uniqueBy == null ? "" : uniqueBy;
-        this.summaryTemplate = summaryTemplate == null ? "" : summaryTemplate;
-        this.itemTitleKey = itemTitleKey == null ? "" : itemTitleKey;
-        this.itemTitleOffset = itemTitleOffset;
-        this.titleGenerator = titleGenerator == null ? new RepeatableTitleGenerator.Default() : titleGenerator;
-        this.allowReorder = allowReorder;
-        this.allowDuplicate = allowDuplicate;
-        this.allowManualAdd = allowManualAdd;
-        this.allowManualRemove = allowManualRemove;
+        setEnabled(enabled);
+        setMode(mode);
+        setMin(min);
+        setMax(max);
+        setUniqueBy(uniqueBy);
+        setSummaryTemplate(summaryTemplate);
+        setItemTitleKey(itemTitleKey);
+        setItemTitleOffset(itemTitleOffset);
+        setTitleGenerator(titleGenerator);
+        setAllowReorder(allowReorder);
+        setAllowDuplicate(allowDuplicate);
+        setAllowManualAdd(allowManualAdd);
+        setAllowManualRemove(allowManualRemove);
     }
 
     public boolean isEnabled() {
@@ -100,5 +100,67 @@ public final class RepeatableDefinition {
 
     public boolean isAllowManualRemove() {
         return allowManualRemove;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public void setMode(UiRepeatable.RepeatableMode mode) {
+        this.mode = mode;
+    }
+
+    public void setMin(int min) {
+        this.min = min;
+    }
+
+    public void setMax(int max) {
+        this.max = max;
+    }
+
+    public void setUniqueBy(String uniqueBy) {
+        this.uniqueBy = normalize(uniqueBy);
+    }
+
+    public void setSummaryTemplate(String summaryTemplate) {
+        this.summaryTemplate = normalize(summaryTemplate);
+    }
+
+    public void setItemTitleKey(String itemTitleKey) {
+        this.itemTitleKey = normalize(itemTitleKey);
+    }
+
+    public void setItemTitleOffset(int itemTitleOffset) {
+        this.itemTitleOffset = itemTitleOffset;
+    }
+
+    public void setTitleGenerator(RepeatableTitleGenerator titleGenerator) {
+        this.titleGenerator = titleGenerator == null ? new RepeatableTitleGenerator.Default() : titleGenerator;
+    }
+
+    public void setAllowReorder(boolean allowReorder) {
+        this.allowReorder = allowReorder;
+    }
+
+    public void setAllowDuplicate(boolean allowDuplicate) {
+        this.allowDuplicate = allowDuplicate;
+    }
+
+    public void setAllowManualAdd(boolean allowManualAdd) {
+        this.allowManualAdd = allowManualAdd;
+    }
+
+    public void setAllowManualRemove(boolean allowManualRemove) {
+        this.allowManualRemove = allowManualRemove;
+    }
+
+    private static String normalize(String value) {
+        return value == null ? "" : value;
+    }
+
+    @Override
+    public RepeatableDefinition clone() {
+        return new RepeatableDefinition(enabled, mode, min, max, uniqueBy, summaryTemplate, itemTitleKey,
+                itemTitleOffset, titleGenerator, allowReorder, allowDuplicate, allowManualAdd, allowManualRemove);
     }
 }

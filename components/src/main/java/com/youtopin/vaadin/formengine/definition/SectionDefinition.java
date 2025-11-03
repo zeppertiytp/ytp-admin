@@ -1,21 +1,22 @@
 package com.youtopin.vaadin.formengine.definition;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 /**
  * Definition of a form section.
  */
-public final class SectionDefinition {
+public class SectionDefinition implements Cloneable {
 
-    private final String id;
-    private final String titleKey;
-    private final String descriptionKey;
-    private final String visibleWhen;
-    private final String readOnlyWhen;
-    private final String securityGuard;
-    private final int order;
-    private final List<GroupDefinition> groups;
+    private String id;
+    private String titleKey;
+    private String descriptionKey;
+    private String visibleWhen;
+    private String readOnlyWhen;
+    private String securityGuard;
+    private int order;
+    private List<GroupDefinition> groups;
 
     public SectionDefinition(String id,
                              String titleKey,
@@ -25,14 +26,14 @@ public final class SectionDefinition {
                              String securityGuard,
                              int order,
                              List<GroupDefinition> groups) {
-        this.id = Objects.requireNonNull(id, "id");
-        this.titleKey = titleKey == null ? "" : titleKey;
-        this.descriptionKey = descriptionKey == null ? "" : descriptionKey;
-        this.visibleWhen = visibleWhen == null ? "" : visibleWhen;
-        this.readOnlyWhen = readOnlyWhen == null ? "" : readOnlyWhen;
-        this.securityGuard = securityGuard == null ? "" : securityGuard;
-        this.order = order;
-        this.groups = List.copyOf(groups);
+        setId(id);
+        setTitleKey(titleKey);
+        setDescriptionKey(descriptionKey);
+        setVisibleWhen(visibleWhen);
+        setReadOnlyWhen(readOnlyWhen);
+        setSecurityGuard(securityGuard);
+        setOrder(order);
+        setGroups(groups);
     }
 
     public String getId() {
@@ -64,6 +65,51 @@ public final class SectionDefinition {
     }
 
     public List<GroupDefinition> getGroups() {
-        return groups;
+        return Collections.unmodifiableList(groups);
+    }
+
+    public void setId(String id) {
+        this.id = Objects.requireNonNull(id, "id");
+    }
+
+    public void setTitleKey(String titleKey) {
+        this.titleKey = normalize(titleKey);
+    }
+
+    public void setDescriptionKey(String descriptionKey) {
+        this.descriptionKey = normalize(descriptionKey);
+    }
+
+    public void setVisibleWhen(String visibleWhen) {
+        this.visibleWhen = normalize(visibleWhen);
+    }
+
+    public void setReadOnlyWhen(String readOnlyWhen) {
+        this.readOnlyWhen = normalize(readOnlyWhen);
+    }
+
+    public void setSecurityGuard(String securityGuard) {
+        this.securityGuard = normalize(securityGuard);
+    }
+
+    public void setOrder(int order) {
+        this.order = order;
+    }
+
+    public void setGroups(List<GroupDefinition> groups) {
+        Objects.requireNonNull(groups, "groups");
+        this.groups = List.copyOf(groups);
+    }
+
+    private static String normalize(String value) {
+        return value == null ? "" : value;
+    }
+
+    @Override
+    public SectionDefinition clone() {
+        List<GroupDefinition> clonedGroups = groups.stream()
+                .map(group -> group == null ? null : group.clone())
+                .toList();
+        return new SectionDefinition(id, titleKey, descriptionKey, visibleWhen, readOnlyWhen, securityGuard, order, clonedGroups);
     }
 }
