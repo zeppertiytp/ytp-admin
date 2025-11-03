@@ -1,21 +1,23 @@
 package com.youtopin.vaadin.formengine.definition;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 /**
  * Definition of a field group inside a section.
  */
-public final class GroupDefinition {
+public class GroupDefinition implements Cloneable {
 
-    private final String id;
-    private final String titleKey;
-    private final int columns;
-    private final RepeatableDefinition repeatableDefinition;
-    private final SubformDefinition subformDefinition;
-    private final String readOnlyWhen;
-    private final List<FieldDefinition> fields;
-    private final List<GroupDefinition> entryGroups;
+    private String id;
+    private String titleKey;
+    private int columns;
+    private RepeatableDefinition repeatableDefinition;
+    private SubformDefinition subformDefinition;
+    private String readOnlyWhen;
+    private List<FieldDefinition> fields;
+    private List<GroupDefinition> entryGroups;
 
     public GroupDefinition(String id,
                            String titleKey,
@@ -25,14 +27,14 @@ public final class GroupDefinition {
                            String readOnlyWhen,
                            List<FieldDefinition> fields,
                            List<GroupDefinition> entryGroups) {
-        this.id = Objects.requireNonNull(id, "id");
-        this.titleKey = titleKey == null ? "" : titleKey;
-        this.columns = columns;
-        this.repeatableDefinition = repeatableDefinition;
-        this.subformDefinition = subformDefinition;
-        this.readOnlyWhen = readOnlyWhen == null ? "" : readOnlyWhen;
-        this.fields = List.copyOf(fields);
-        this.entryGroups = entryGroups == null ? List.of() : List.copyOf(entryGroups);
+        setId(id);
+        setTitleKey(titleKey);
+        setColumns(columns);
+        setRepeatableDefinition(repeatableDefinition);
+        setSubformDefinition(subformDefinition);
+        setReadOnlyWhen(readOnlyWhen);
+        setFields(fields);
+        setEntryGroups(entryGroups);
     }
 
     public String getId() {
@@ -60,10 +62,63 @@ public final class GroupDefinition {
     }
 
     public List<FieldDefinition> getFields() {
-        return fields;
+        return Collections.unmodifiableList(fields);
     }
 
     public List<GroupDefinition> getEntryGroups() {
-        return entryGroups;
+        return Collections.unmodifiableList(entryGroups);
+    }
+
+    public void setId(String id) {
+        this.id = Objects.requireNonNull(id, "id");
+    }
+
+    public void setTitleKey(String titleKey) {
+        this.titleKey = normalize(titleKey);
+    }
+
+    public void setColumns(int columns) {
+        this.columns = columns;
+    }
+
+    public void setRepeatableDefinition(RepeatableDefinition repeatableDefinition) {
+        this.repeatableDefinition = repeatableDefinition;
+    }
+
+    public void setSubformDefinition(SubformDefinition subformDefinition) {
+        this.subformDefinition = subformDefinition;
+    }
+
+    public void setReadOnlyWhen(String readOnlyWhen) {
+        this.readOnlyWhen = normalize(readOnlyWhen);
+    }
+
+    public void setFields(List<FieldDefinition> fields) {
+        Objects.requireNonNull(fields, "fields");
+        this.fields = List.copyOf(fields);
+    }
+
+    public void setEntryGroups(List<GroupDefinition> entryGroups) {
+        if (entryGroups == null) {
+            this.entryGroups = List.of();
+        } else {
+            this.entryGroups = List.copyOf(entryGroups);
+        }
+    }
+
+    private static String normalize(String value) {
+        return value == null ? "" : value;
+    }
+
+    @Override
+    public GroupDefinition clone() {
+        List<FieldDefinition> clonedFields = new ArrayList<>(fields);
+        List<GroupDefinition> clonedEntryGroups = entryGroups.stream()
+                .map(group -> group == null ? null : group.clone())
+                .toList();
+        return new GroupDefinition(id, titleKey, columns,
+                repeatableDefinition == null ? null : repeatableDefinition.clone(),
+                subformDefinition == null ? null : subformDefinition.clone(),
+                readOnlyWhen, clonedFields, clonedEntryGroups);
     }
 }
