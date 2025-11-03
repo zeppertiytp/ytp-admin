@@ -59,6 +59,19 @@ class AnnotationFormScannerTest {
         assertThat(definition.getSections().get(0).getGroups().get(0).getFields()).hasSize(1);
     }
 
+    @Test
+    void staticTitlesAndDescriptionsAreCaptured() {
+        FormDefinition definition = scanner.scan(StaticCaptionForm.class);
+        assertThat(definition.getSections()).hasSize(1);
+        assertThat(definition.getSections().get(0).getTitleKey()).isEmpty();
+        assertThat(definition.getSections().get(0).getTitle()).isEqualTo("Static Section");
+        assertThat(definition.getSections().get(0).getDescriptionKey()).isEmpty();
+        assertThat(definition.getSections().get(0).getDescription()).isEqualTo("Static Description");
+        assertThat(definition.getSections().get(0).getGroups()).hasSize(1);
+        assertThat(definition.getSections().get(0).getGroups().get(0).getTitleKey()).isEmpty();
+        assertThat(definition.getSections().get(0).getGroups().get(0).getTitle()).isEqualTo("Static Group");
+    }
+
     @UiForm(id = "sample-form", bean = SampleBean.class, sections = {SampleSection.class})
     static class SampleForm {
     }
@@ -165,5 +178,20 @@ class AnnotationFormScannerTest {
         public void setValue(String value) {
             this.value = value;
         }
+    }
+
+    @UiForm(id = "static-caption-form", bean = SampleBean.class, sections = {StaticSection.class})
+    static class StaticCaptionForm {
+    }
+
+    @UiSection(id = "static-section", title = "Static Section", description = "Static Description",
+            groups = {StaticGroup.class})
+    static class StaticSection {
+    }
+
+    @UiGroup(id = "static-group", title = "Static Group")
+    static class StaticGroup {
+        @UiField(path = "name", labelKey = "field.name")
+        String name;
     }
 }

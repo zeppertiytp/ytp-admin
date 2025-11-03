@@ -8,6 +8,11 @@
   bindings can read sibling values via `FieldValueChangeEvent#readScopedValue` and `ValidationContext#read(FieldInstance, String)`.
 * **Docs:** Documented the scoped value helpers for listener callbacks and coordinator integrations.
 
+### Static section and group captions
+
+* **Form engine:** Added `title` and `description` attributes to `@UiSection` and `title` to `@UiGroup`, enabling static captions when translation keys are omitted and ensuring repeatable headings respect the new fields.
+* **Docs:** Described the static caption fallbacks in the form engine reference.
+
 ## v4.6.21
 ### Multi-group repeatable entries
 

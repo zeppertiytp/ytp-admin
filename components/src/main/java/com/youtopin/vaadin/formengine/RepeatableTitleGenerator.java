@@ -41,12 +41,9 @@ public interface RepeatableTitleGenerator {
             String patternKey = repeatable.getItemTitleKey();
             String pattern;
             if (patternKey != null && !patternKey.isBlank()) {
-                pattern = context.translate(patternKey);
+                pattern = safeString(context.translate(patternKey));
             } else {
-                pattern = context.translate(group.getTitleKey());
-            }
-            if (pattern == null) {
-                pattern = "";
+                pattern = resolveGroupTitle(context, group);
             }
             if (!pattern.isBlank() && pattern.contains("{") && pattern.contains("}")) {
                 MessageFormat formatter = new MessageFormat(pattern, resolveLocale(context));
@@ -56,6 +53,18 @@ public interface RepeatableTitleGenerator {
                 return String.valueOf(displayIndex);
             }
             return pattern.trim() + " " + displayIndex;
+        }
+
+        private String resolveGroupTitle(FieldFactoryContext context, GroupDefinition group) {
+            String translated = safeString(context.translate(group.getTitleKey()));
+            if (!translated.isBlank()) {
+                return translated;
+            }
+            return safeString(group.getTitle());
+        }
+
+        private String safeString(String value) {
+            return value == null ? "" : value;
         }
 
         private Locale resolveLocale(FieldFactoryContext context) {

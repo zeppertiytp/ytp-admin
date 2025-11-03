@@ -25,9 +25,19 @@ public @interface UiSection {
     String titleKey() default "";
 
     /**
+     * @return Static section header title used when {@link #titleKey()} is blank.
+     */
+    String title() default "";
+
+    /**
      * @return Message key for helper text displayed under the section title.
      */
     String descriptionKey() default "";
+
+    /**
+     * @return Static helper text displayed under the section title when {@link #descriptionKey()} is blank.
+     */
+    String description() default "";
 
     /**
      * @return Field group classes belonging to the section. Classes must carry {@link UiGroup} annotation.

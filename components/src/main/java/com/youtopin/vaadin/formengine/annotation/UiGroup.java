@@ -25,6 +25,11 @@ public @interface UiGroup {
     String titleKey() default "";
 
     /**
+     * @return Static group caption used when {@link #titleKey()} is blank.
+     */
+    String title() default "";
+
+    /**
      * @return Number of columns used by this group when rendered.
      */
     int columns() default 1;

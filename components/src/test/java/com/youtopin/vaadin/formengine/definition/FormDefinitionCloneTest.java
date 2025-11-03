@@ -136,6 +136,7 @@ class FormDefinitionCloneTest {
         GroupDefinition parentGroup = new GroupDefinition(
                 "group",
                 "group.title",
+                "",
                 2,
                 createRepeatableDefinition(),
                 createSubformDefinition(),
@@ -159,6 +160,7 @@ class FormDefinitionCloneTest {
         return new GroupDefinition(
                 id,
                 id + ".title",
+                "",
                 1,
                 null,
                 null,
@@ -171,7 +173,9 @@ class FormDefinitionCloneTest {
         return new SectionDefinition(
                 id,
                 "section.title",
+                "",
                 "section.description",
+                "",
                 "",
                 "",
                 "",

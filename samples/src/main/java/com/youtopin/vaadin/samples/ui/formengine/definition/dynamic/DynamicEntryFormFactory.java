@@ -38,12 +38,14 @@ public final class DynamicEntryFormFactory {
                 "",
                 "",
                 "",
+                "",
                 0,
                 List.of(createSchemaSummaryGroup())));
 
         sections.add(new SectionDefinition(
                 "dynamic-entry-editor",
                 "dynamicwizard.entries.section.entries",
+                "",
                 "",
                 "",
                 "",
@@ -77,7 +79,7 @@ public final class DynamicEntryFormFactory {
                         "dynamicwizard.entries.field.entryCount"),
                 createReadOnlyField("schema.summaryFieldKey", UiField.ComponentType.TEXT,
                         "dynamicwizard.entries.field.summaryField"));
-        return new GroupDefinition("dynamic-entry-schema-group", "", 2,
+        return new GroupDefinition("dynamic-entry-schema-group", "", "", 2,
                 null, null, "true", fields, List.of());
     }
 
@@ -110,7 +112,7 @@ public final class DynamicEntryFormFactory {
                 false,
                 false);
 
-        return new GroupDefinition(GROUP_ID, "", 2, repeatable, null, "",
+        return new GroupDefinition(GROUP_ID, "", "", 2, repeatable, null, "",
                 fields, List.of());
     }
 

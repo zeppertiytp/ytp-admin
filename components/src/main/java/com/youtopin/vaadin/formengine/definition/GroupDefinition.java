@@ -12,6 +12,7 @@ public class GroupDefinition implements Cloneable {
 
     private String id;
     private String titleKey;
+    private String title;
     private int columns;
     private RepeatableDefinition repeatableDefinition;
     private SubformDefinition subformDefinition;
@@ -21,6 +22,7 @@ public class GroupDefinition implements Cloneable {
 
     public GroupDefinition(String id,
                            String titleKey,
+                           String title,
                            int columns,
                            RepeatableDefinition repeatableDefinition,
                            SubformDefinition subformDefinition,
@@ -29,6 +31,7 @@ public class GroupDefinition implements Cloneable {
                            List<GroupDefinition> entryGroups) {
         setId(id);
         setTitleKey(titleKey);
+        setTitle(title);
         setColumns(columns);
         setRepeatableDefinition(repeatableDefinition);
         setSubformDefinition(subformDefinition);
@@ -43,6 +46,10 @@ public class GroupDefinition implements Cloneable {
 
     public String getTitleKey() {
         return titleKey;
+    }
+
+    public String getTitle() {
+        return title;
     }
 
     public int getColumns() {
@@ -75,6 +82,10 @@ public class GroupDefinition implements Cloneable {
 
     public void setTitleKey(String titleKey) {
         this.titleKey = normalize(titleKey);
+    }
+
+    public void setTitle(String title) {
+        this.title = normalize(title);
     }
 
     public void setColumns(int columns) {
@@ -118,7 +129,7 @@ public class GroupDefinition implements Cloneable {
         List<GroupDefinition> clonedEntryGroups = entryGroups.stream()
                 .map(group -> group == null ? null : group.clone())
                 .toList();
-        return new GroupDefinition(id, titleKey, columns,
+        return new GroupDefinition(id, titleKey, title, columns,
                 repeatableDefinition == null ? null : repeatableDefinition.clone(),
                 subformDefinition == null ? null : subformDefinition.clone(),
                 readOnlyWhen, clonedFields, clonedEntryGroups);

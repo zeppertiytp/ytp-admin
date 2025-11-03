@@ -108,8 +108,10 @@ Groups one or more `@UiGroup` blocks into a logical section with its own visibil
 | Attribute | Description |
 | --- | --- |
 | `id` | Stable identifier for referencing in expressions or action placement. |
-| `titleKey` | Message key for the section header; empty hides the title. |
-| `descriptionKey` | Helper text key displayed beneath the header. Useful for contextual guidance. |
+| `titleKey` | Message key for the section header; empty falls back to `title`. |
+| `title` | Static section header used when `titleKey` is blank. |
+| `descriptionKey` | Helper text key displayed beneath the header; empty falls back to `description`. |
+| `description` | Static helper text shown beneath the header when `descriptionKey` is blank. |
 | `groups` | Ordered array of classes annotated with `@UiGroup`. |
 | `visibleWhen` | Expression evaluated by the state engine to toggle section visibility. |
 | `readOnlyWhen` | Expression that keeps the section visible but renders all children as read-only when truthy. |
@@ -136,7 +138,8 @@ Defines a layout container inside a section. Groups control the column count, ne
 | Attribute | Description |
 | --- | --- |
 | `id` | Stable identifier for referencing in summaries or expressions. |
-| `titleKey` | Optional caption key displayed above the group. |
+| `titleKey` | Optional caption key displayed above the group; empty falls back to `title`. |
+| `title` | Static caption rendered when `titleKey` is blank. |
 | `columns` | Number of columns used in the responsive grid when rendering child fields. |
 | `repeatable` | `@UiRepeatable` configuration enabling list-style editing (grid, cards, inline panels). |
 | `entryGroups` | Array of `@UiGroup` classes rendered inside each repeatable entry. Child groups must keep their own `repeatable` configuration disabled. |
